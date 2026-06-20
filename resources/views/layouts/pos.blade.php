@@ -4,22 +4,30 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<title>MobiPOS — Mobile Shop Management</title>
+<title>MobiPOS — POS Terminal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="{{ asset('assets/css/style.css') }}?v={{ time() }}">
+<link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
+<style>
+    /* Full screen specific overrides */
+    body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+    }
+    .pos-layout-wrapper {
+        height: 100vh;
+        width: 100vw;
+        display: flex;
+        flex-direction: column;
+    }
+</style>
 </head>
 <body>
-
-    @include('partials.sidebar')
     
-    <!-- OVERLAY -->
-    <div class="overlay" id="overlay"></div>
-    
-    <!-- MAIN -->
-    <div class="main-wrapper">
-        @include('partials.topbar')
-        
+    <div class="pos-layout-wrapper">
         @yield('content')
         {{ $slot ?? '' }}
     </div>

@@ -32,7 +32,9 @@ class ProductController extends Controller
             'purchase_price' => 'nullable|numeric|min:0',
             'sale_price' => 'required|numeric|min:0',
             'status' => 'required|in:in_stock,sold,in_repair',
+            'stock' => 'nullable|integer|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'buyer_id' => 'nullable|exists:customers,id',
         ]);
 
         $validated['user_id'] = Auth::id();
@@ -62,7 +64,9 @@ class ProductController extends Controller
             'purchase_price' => 'nullable|numeric|min:0',
             'sale_price' => 'required|numeric|min:0',
             'status' => 'required|in:in_stock,sold,in_repair',
+            'stock' => 'nullable|integer|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'buyer_id' => 'nullable|exists:customers,id',
         ]);
 
         if ($request->hasFile('image')) {

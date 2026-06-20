@@ -12,19 +12,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            if (!Schema::hasColumn('products', 'image')) {
-                $table->string('image')->nullable()->after('name');
-            }
+            $table->unsignedBigInteger('buyer_id')->nullable()->after('category_id');
+            $table->foreign('buyer_id')->references('id')->on('customers')->nullOnDelete();
         });
     }
 
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down()
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->dropColumn('image');
+            $table->dropForeign(['buyer_id']);
+            $table->dropColumn('buyer_id');
         });
     }
 };

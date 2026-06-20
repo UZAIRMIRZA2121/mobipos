@@ -1,6 +1,3 @@
-// ============================================================
-// MediPos POS - Main Script
-// ============================================================
 
 // ============================================================
 // STORAGE HELPERS
@@ -85,11 +82,11 @@ async function syncData() {
     };
 
     try {
-        const cats = await safeFetch('/shop/api/categories', 'categories');
-        const prods = await safeFetch('/shop/api/products', 'products');
+        const cats = await safeFetch('/shop/api/categories', 'categories') || [];
+        const prods = await safeFetch('/shop/api/products', 'products') || [];
         // Force suppliers to empty array if API fails, so we don't load old offline mocks that violate DB Foreign Keys
-                const custs = await safeFetch('/shop/api/customers', 'customers');
-        const sales = await safeFetch('/shop/api/sales', 'invoices');
+        const custs = await safeFetch('/shop/api/customers', 'customers') || [];
+        const sales = store.get('invoices') || [];
         
         // Map DB columns to frontend expected fields if necessary
         const mappedProds = Array.isArray(prods) ? prods.map(p => ({
@@ -100,11 +97,13 @@ async function syncData() {
         })) : [];
         
         store.set('categories', cats);
-        store.set('products', mappedProds);        store.set('customers', custs);
+        store.set('products', mappedProds);
+        store.set('customers', custs);
         store.set('invoices', sales);
         
         if (document.getElementById('page-categories')) renderCategories();
-        if (document.getElementById('page-products')) renderProducts();        if (document.getElementById('page-customers')) renderCustomers();
+        if (document.getElementById('page-products')) renderProducts();
+        if (document.getElementById('page-customers')) renderCustomers();
         if (document.getElementById('page-alerts')) renderAlerts();
         if (document.getElementById('page-sales')) renderSales();
         if (document.getElementById('page-invoices')) renderInvoices();
@@ -184,12 +183,12 @@ function updateThemeIcon(theme) {
 // TOAST
 // ============================================================
 function toast(msg, type = 'success') {
-  const icons = { success: 'âœ“', warning: 'âš ', danger: 'âœ•', info: 'â„¹' };
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.innerHTML = `<span class="toast-icon">${icons[type] || 'âœ“'}</span><span class="toast-msg">${msg}</span><button class="toast-close" onclick="this.parentElement.remove()">Ã—</button>`;
-  document.getElementById('toastContainer').appendChild(el);
-  setTimeout(() => { el.style.animation = 'fadeOut 0.3s ease forwards'; setTimeout(() => el.remove(), 300); }, 3500);
+    const icons = { success: '✓', warning: '⚠', danger: '✕', info: 'ℹ' };
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span class="toast-icon">${icons[type] || '✓'}</span><span class="toast-msg">${msg}</span><button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+    document.getElementById('toastContainer').appendChild(el);
+    setTimeout(() => { el.style.animation = 'fadeOut 0.3s ease forwards'; setTimeout(() => el.remove(), 300); }, 3500);
 }
 
 // ============================================================
@@ -214,6 +213,13 @@ function daysDiff(dateStr) { return Math.ceil((new Date(dateStr) - new Date()) /
 function isExpired(d) { return new Date(d) < new Date(); }
 function isLowStock(m) { return m.stock <= m.lowStock; }
 function getCategory(id) { return store.get('categories').find(c => c.id == id) || {}; }
+
+function getProdBadge(p) {
+  if (p.status === 'in_repair') return `<span class="badge badge-warning">IN REPAIR</span>`;
+  if (p.stock <= 0 || p.status === 'defective') return `<span class="badge badge-danger">OUT OF STOCK</span>`;
+  if (p.stock < 10) return `<span class="badge badge-warning">LOW STOCK (${p.stock})</span>`;
+  return `<span class="badge badge-success">IN STOCK (${p.stock})</span>`;
+}
 function getSupplier(id) { return store.get('suppliers').find(s => s.id == id) || {}; }
 function getCustomer(id) { return store.get('customers').find(c => c.id == id) || {}; }
 function nextId(arr) { return arr.length ? Math.max(...arr.map(x => x.id)) + 1 : 1; }
@@ -263,9 +269,7 @@ function renderDashboard() {
             <td style="text-transform:capitalize">${p.condition}</td>
             <td style="font-weight:600">${fmtCur(p.sale)}</td>
             <td>
-              <span class="badge ${p.status === 'in_stock' ? 'badge-success' : p.status === 'sold' ? 'badge-warning' : 'badge-danger'}">
-                ${p.status.replace('_', ' ').toUpperCase()}
-              </span>
+              ${getProdBadge(p)}
             </td>
           </tr>
         `).join('') : '<tr><td colspan="5" class="empty-cell">No products added yet</td></tr>';
@@ -276,10 +280,18 @@ function renderDashboard() {
 // POS
 // ============================================================
 function renderPOS() {
-  // Populate customer select
-  const custSel = document.getElementById('posCustomer');
-  custSel.innerHTML = '<option value="">Walk-in Customer</option>' +
-    store.get('customers').map(c => `<option value="${c.id}">${c.name} â€” ${c.phone}</option>`).join('');
+    // Populate customer select
+    const custSel = document.getElementById('posCustomer');
+    if (custSel) {
+        const currentCust = custSel.value;
+        custSel.innerHTML = '<option value="">Walk-in Customer</option>' +
+          store.get('customers').map(c => `<option value="${c.id}">${c.name} — ${c.phone}</option>`).join('');
+        if (currentCust) custSel.value = currentCust;
+        if (window.lastCreatedCustomerId) {
+            custSel.value = window.lastCreatedCustomerId;
+            window.lastCreatedCustomerId = null;
+        }
+    }
 
   // Populate category tabs (if exists)
   const cats = store.get('categories');
@@ -299,7 +311,7 @@ function renderPOS() {
 }
 
 // State for POS filters
-let posFilter = { q: '', catId: '', view: 'grid' };
+let posFilter = { q: '', catId: '', view: 'grid', showImage: true };
 
 function filterPosCat(btn, catId) {
   posFilter.catId = catId;
@@ -316,6 +328,13 @@ function setPosView(v) {
   document.getElementById('viewList').classList.toggle('active', v === 'list');
   const grid = document.getElementById('posProdGrid');
   if(grid) grid.classList.toggle('list-view', v === 'list');
+  renderProdGrid();
+}
+
+function togglePosImage() {
+  posFilter.showImage = !posFilter.showImage;
+  const btn = document.getElementById('viewImageToggle');
+  if(btn) btn.classList.toggle('active', posFilter.showImage);
   renderProdGrid();
 }
 
@@ -362,24 +381,31 @@ function renderProdGrid() {
 }
 
 function buildProdCard(p) {
-    const oos = p.status === 'sold' || p.status === 'defective';
-    const inCart = cart.find(c => c.prodId == p.id);
-    const cartQty = inCart ? inCart.qty : 0;
-  
-    let stockBg = '#d1fae5'; let stockColor = '#065f46';
-    if (oos) { stockBg = '#fee2e2'; stockColor = '#991b1b'; }
-  
-    return `<div class="med-card${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})">
-      ${inCart ? `<div class="med-card-incart" style="position:absolute; right:8px; top:8px; background:var(--success); color:white; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; z-index:2;">${cartQty}</div>` : ''}
-      <div class="med-card-cat">${p.type || 'Phone'} - ${p.condition || 'Used'}</div>
-      <div class="med-card-name">${p.name}</div>
-      ${p.storage || p.color ? `<div class="med-card-generic" style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">${p.storage || ''} ${p.color ? '('+p.color+')' : ''}</div>` : ''}
-      <div class="med-card-footer">
-        <span class="med-price">${fmtCur(p.sale)}</span>
-        <span class="med-stock" style="background:${stockBg}; color:${stockColor};">${oos ? p.status : 'In Stock'}</span>
-      </div>
-    </div>`;
-  }
+  const oos = p.stock <= 0 || p.status === 'defective' || p.status === 'in_repair';
+  const inCart = cart.find(c => c.prodId == p.id);
+  const cartQty = inCart ? inCart.qty : 0;
+
+  let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + p.stock + ')';
+  if (oos) { stockBg = '#fee2e2'; stockColor = '#991b1b'; stockText = 'Out of Stock'; }
+  else if (p.stock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + p.stock + ')'; }
+
+  return `<div class="med-card${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})" style="position:relative; overflow:hidden;">
+    ${(posFilter.showImage && p.image) ? `<img src="/storage/${p.image}" alt="${p.name}" style="width:calc(100% + 24px); height:80px; object-fit:cover; margin:-12px -12px 12px -12px; display:block;">` : ''}
+    ${inCart ? `<div class="med-card-incart" style="position:absolute; right:8px; top:8px; background:var(--success); color:white; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; z-index:2; box-shadow:0 2px 4px rgba(0,0,0,0.2);">${cartQty}</div>` : ''}
+    <div class="med-card-cat">${p.type || 'Phone'} - ${p.condition || 'Used'}</div>
+    <div class="med-card-name" style="margin-bottom:2px; display:flex; justify-content:space-between; align-items:flex-start; gap:4px;">
+      <span>${p.name}</span>
+      <span style="font-weight:800; font-size:14px; color:var(--primary);">${fmtCur(p.sale)}</span>
+    </div>
+    ${p.storage || p.color || p.imei ? `<div class="med-card-generic" style="font-size:10.5px; color:var(--text-muted); line-height:1.2; margin-bottom:auto; padding-bottom:8px;">
+      ${p.storage ? `<b>${p.storage}</b> ` : ''} ${p.color ? `· ${p.color}` : ''}
+      ${p.imei ? `<br><span style="font-family:monospace; font-size:9.5px;">SN: ${p.imei}</span>` : ''}
+    </div>` : ''}
+    <div class="med-card-footer" style="margin-top:auto; padding-top:6px; border-top:1px dashed var(--border-light); display:flex; justify-content:flex-end; align-items:center;">
+      <span class="med-stock" style="font-size:10px; font-weight:600; padding:2px 6px; border-radius:10px; background:${stockBg}; color:${stockColor};">${stockText}</span>
+    </div>
+  </div>`;
+}
 
 function buildProdRow(p) {
   const oos = p.status === 'sold' || p.status === 'defective';
@@ -387,8 +413,7 @@ function buildProdRow(p) {
 
   return `<div class="med-row${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})">
     <div class="med-row-info">
-      <div class="med-row-name">${p.name} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart Ã—${inCart.qty}</span>` : ''}
-        ${oos ? '<span class="badge badge-danger" style="font-size:10px">Sold</span>' : ''}
+      <div class="med-row-name">${p.name} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart ✕${inCart.qty}</span>` : ''}
       </div>
       <div class="med-row-meta">
         ${p.storage ? p.storage + ' Â· ' : ''}
@@ -436,17 +461,16 @@ document.addEventListener('DOMContentLoaded', () => {
 function addToCart(prodId) {
   const p = store.get('products').find(m => m.id == prodId);
   if (!p) return;
-  if (p.status === 'sold' || p.status === 'defective') { toast('Product is unavailable!', 'danger'); return; }
+    if (p.stock <= 0 || p.status === 'defective' || p.status === 'in_repair') { toast('Product is unavailable!', 'danger'); return; }
 
   const existing = cart.find(c => c.prodId == prodId);
   if (existing) {
-    if (existing.qty >= 1) { toast('Product already in cart!', 'warning'); return; }
+    if (existing.qty >= p.stock) { toast('Not enough stock!', 'warning'); return; }
     existing.qty++;
     existing.sub = existing.qty * existing.price;
   } else {
-    // For single-item products (like phones with unique IMEI), qty is usually 1 max.
-    // Assuming qty 1 max for simplicity, or allow multiple for accessories if we had a stock field.
-    cart.push({ prodId: p.id, name: p.name, price: parseFloat(p.sale), qty: 1, sub: parseFloat(p.sale), maxStock: 1 });
+    if (p.stock <= 0) { toast('Out of stock!', 'danger'); return; }
+    cart.push({ prodId: p.id, name: p.name, price: parseFloat(p.sale), qty: 1, sub: parseFloat(p.sale), maxStock: p.stock });
   }
   renderCart();
   renderProdGrid();
@@ -465,6 +489,17 @@ function changeQty(prodId, delta) {
   renderProdGrid();
 }
 
+function changePrice(prodId, newPrice) {
+  const item = cart.find(c => c.prodId == prodId);
+  if (!item) return;
+  const p = parseFloat(newPrice);
+  if (isNaN(p) || p < 0) return;
+  item.price = p;
+  item.sub = item.qty * item.price;
+  renderCart();
+  renderProdGrid();
+}
+
 function removeFromCart(prodId) {
   cart = cart.filter(c => c.prodId != prodId);
   renderCart();
@@ -475,10 +510,10 @@ function clearCart() {
   cart = [];
   renderCart();
   renderProdGrid();
-  document.getElementById('posDiscount').value = 0;
-  document.getElementById('posTax').value = 0;
-  document.getElementById('posPaid').value = 0;
-  document.getElementById('posNotes').value = '';
+  const d = document.getElementById('posDiscount'); if(d) d.value = 0;
+  const t = document.getElementById('posTax'); if(t) t.value = 0;
+  const p = document.getElementById('posPaid'); if(p) p.value = 0;
+  const n = document.getElementById('posNotes'); if(n) n.value = '';
 }
 
 function renderCart() {
@@ -517,9 +552,11 @@ function renderCart() {
             <button class="qty-btn" onclick="changeQty(${item.prodId}, 1)">+</button>
           </div>
         </td>
-        <td style="text-align:right; font-weight:600; color:var(--primary)">${fmtCur(item.sub)}</td>
-        <td style="text-align:right"><button class="action-btn del" style="width:24px;height:24px;padding:4px;" onclick="removeFromCart(${item.prodId})">${DEL_SVG}</button></td>
-      </tr>`
+          <td style="text-align:right;">
+             <input type="number" class="input input-sm" style="width: 75px; text-align: right; padding: 2px 4px; height: 26px; font-size: 13px; display: inline-block; font-weight: 600; color: var(--primary);" value="${item.price}" onchange="changePrice(${item.prodId}, this.value)" title="Edit Price">
+          </td>
+          <td style="text-align:right"><button class="action-btn del" style="width:24px;height:24px;padding:4px;" onclick="removeFromCart(${item.prodId})">${DEL_SVG}</button></td>
+        </tr>`
     ).join('');
     renderCartSummary();
 }
@@ -536,63 +573,75 @@ function renderCartSummary() {
   const due = Math.max(0, grand - paid);
   const ret = Math.max(0, paid - grand);
 
-  document.getElementById('sumItems').textContent = cart.reduce((s, c) => s + c.qty, 0);
-  document.getElementById('sumSubtotal').textContent = fmtCur(subtotal);
-  document.getElementById('sumGrandTotal').textContent = fmtCur(grand);
-  document.getElementById('sumDue').textContent = fmtCur(due);
-  document.getElementById('sumReturn').textContent = fmtCur(ret);
+  const elItems = document.getElementById('sumItems'); if(elItems) elItems.textContent = cart.reduce((s, c) => s + c.qty, 0);
+  const elSub = document.getElementById('sumSubtotal'); if(elSub) elSub.textContent = fmtCur(subtotal);
+  const elGrand = document.getElementById('sumGrandTotal'); if(elGrand) elGrand.textContent = fmtCur(grand);
+  const elDue = document.getElementById('sumDue'); if(elDue) elDue.textContent = fmtCur(due);
+  const elRet = document.getElementById('sumReturn'); if(elRet) elRet.textContent = fmtCur(ret);
 }
 
 async function checkout() {
-  if (!cart.length) { toast('Cart is empty!', 'warning'); return; }
+    if (!cart.length) { toast('Cart is empty!', 'warning'); return; }
+  
+    const discount = parseFloat(document.getElementById('posDiscount')?.value || 0);
+    const tax = parseFloat(document.getElementById('posTax')?.value || 0);
+    const paid = parseFloat(document.getElementById('posPaid')?.value || 0);
+    const custId = document.getElementById('posCustomer')?.value || null;
+    const payment = document.getElementById('posPayment')?.value || 'Cash';
+    const notes = document.getElementById('posNotes')?.value || '';
+  
+    let subtotal = 0;
+    cart.forEach(c => { subtotal += c.qty * c.price; });
+    const taxAmt = subtotal * (tax / 100);
+    const discAmt = subtotal * (discount / 100);
+    const total = subtotal + taxAmt - discAmt;
 
-  const discount = parseFloat(document.getElementById('posDiscount').value || 0);
-  const tax = parseFloat(document.getElementById('posTax').value || 0);
-  const paid = parseFloat(document.getElementById('posPaid').value || 0);
-  const custId = document.getElementById('posCustomer').value || null;
-  const payment = document.getElementById('posPayment').value;
-  const notes = document.getElementById('posNotes').value;
+    const due = Math.abs(total - paid);
+    const paymentStatus = paid >= total ? 'paid' : (paid > 0 ? 'partial' : 'unpaid');
 
-  const payload = {
-      customer_id: custId,
-      discount_percent: discount,
-      tax_percent: tax,
-      paid_amount: paid,
-      payment_method: payment,
-      notes: notes,
-      items: cart.map(c => ({
-          medicine_id: c.medId,
-          quantity: c.qty,
-          unit_price: c.price
-      }))
-  };
-
-  try {
-      const btn = document.getElementById('checkoutBtn');
-      const origText = btn.innerHTML;
-      btn.innerHTML = 'Processing...';
-      btn.disabled = true;
-
-      const invoice = await api('/pos/checkout', 'POST', payload);
-      
-      clearCart();
-      await syncData();
-      
-      toast(`Invoice generated successfully!`, 'success');
-      showInvoiceModal(invoice);
-
-      if (document.getElementById('autoPrint')?.checked) {
-          setTimeout(printInvoice, 300);
-      }
-
-      btn.innerHTML = origText;
-      btn.disabled = false;
-  } catch(e) {
-      toast(e.message, 'danger');
-      const btn = document.getElementById('checkoutBtn');
-      btn.innerHTML = 'Generate Invoice';
-      btn.disabled = false;
-  }
+    const payload = {
+        buyer_id: custId,
+        subtotal: subtotal,
+        tax: taxAmt,
+        discount: discAmt,
+        total: total,
+        paid_amount: paid,
+        due_amount: due,
+        payment_status: paymentStatus,
+        payment_method: payment,
+        items: cart.map(c => ({
+            product_id: c.prodId,
+            qty: c.qty,
+            price: c.price
+        }))
+    };
+  
+    try {
+        const btn = document.getElementById('checkoutBtn');
+        const origText = btn.innerHTML;
+        btn.innerHTML = 'Processing...';
+        btn.disabled = true;
+  
+        const response = await api('/shop/api/orders', 'POST', payload);
+        
+        clearCart();
+        await syncData(); // Refresh product grid
+        
+        toast(`Order generated successfully!`, 'success');
+        
+        // Open Invoice in new tab or popup
+        if (response.order_id) {
+            window.open(`/shop/orders/${response.order_id}/invoice`, 'InvoicePopup', 'width=400,height=600');
+        }
+  
+        btn.innerHTML = origText;
+        btn.disabled = false;
+    } catch(e) {
+        toast(e.message || 'Error occurred', 'danger');
+        const btn = document.getElementById('checkoutBtn');
+        btn.innerHTML = '<span>Pay Now</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+        btn.disabled = false;
+    }
 }
 
 // ============================================================
@@ -702,12 +751,12 @@ function buildInvoiceHTML(inv) {
 
   const custPhone = inv.custId ? (getCustomer(inv.custId).phone || '') : '';
 
-  const sName = window.printSettings?.name || 'MediPos Pharmacy';
-  const sDesc = (window.printSettings?.desc || "Shop #12, Main Market").replace(/\\n/g, '<br>');
-  const sAddress = (window.printSettings?.address || "Faisalabad, Punjab, Pakistan\\nPh: 041-1234567").replace(/\\n/g, '<br>');
-  const sHeading = window.printSettings?.heading || 'INVOICE';
-  const sFooter = (window.printSettings?.footer || "*** Thank You! ***\\nGet well soon. Visit again.\\nKeep medicines away from children.\\nStore as directed on packaging.").replace(/\\n/g, '<br>');
-  const sLogo = window.printSettings?.logo ? `<img src="${window.printSettings.logo}" style="max-height:40px; margin-bottom: 5px;">` : `<div class="r-logo">${sName.charAt(0)}</div>`;
+  const sName = 'MobiPos';
+  const sDesc = "Shop #12, Main Market";
+  const sAddress = "Faisalabad, Punjab, Pakistan Ph: 041-1234567";
+  const sHeading = 'INVOICE';
+  const sFooter = "*** Thank You! ***.";
+  const sLogo = `<div class="r-logo">${sName.charAt(0)}</div>`;
 
   return `<div class="receipt" id="invoicePrintArea">
 
@@ -904,8 +953,10 @@ function renderProducts() {
 
   document.getElementById('prodTbody').innerHTML = prods.length ?
     prods.map(p => {
-      const supp = getSupplier(p.supplierId);
       return `<tr>
+        <td>
+          ${p.image ? `<img src="/storage/${p.image}" alt="Product" style="width:40px; height:40px; border-radius:4px; object-fit:cover;">` : '<div style="width:40px; height:40px; background:#f3f4f6; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#9ca3af; font-size:10px;">No Img</div>'}
+        </td>
         <td>
           <div style="font-weight:500">${p.name}</div>
           ${p.imei ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">IMEI/SN: ${p.imei}</div>` : ''}
@@ -915,11 +966,8 @@ function renderProducts() {
         <td>${p.storage || '-'} / ${p.color || '-'}</td>
         <td style="font-weight:600">${fmtCur(p.sale)}</td>
         <td>
-          <span class="badge ${p.status === 'in_stock' ? 'badge-success' : p.status === 'sold' ? 'badge-warning' : 'badge-danger'}">
-            ${p.status.replace('_', ' ').toUpperCase()}
-          </span>
+          ${getProdBadge(p)}
         </td>
-        <td>${supp.name || '-'}</td>
         <td>
           ${p.category_id ? (store.get('categories').find(c => c.id == p.category_id)?.name || '-') : '-'}
         </td>
@@ -932,36 +980,46 @@ function renderProducts() {
     '<tr><td colspan="9" class="empty-cell">No products found</td></tr>';
 }
 
-function openProductModal(id) {
+function editProduct(id = null) {
+  document.getElementById('prodId').value = id || '';
   
   const cats = store.get('categories') || [];
   document.getElementById('prodCategory').innerHTML = '<option value="">Select category</option>' + cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+  const custs = store.get('customers') || [];
+  document.getElementById('prodBuyer').innerHTML = '<option value="">Select Customer (Optional)</option>' + custs.map(c => `<option value="${c.id}">${c.name} (${c.phone})</option>`).join('');
 
   if (id) {
     const p = store.get('products').find(x => x.id == id);
     if (!p) return;
     document.getElementById('prodModalTitle').textContent = 'Edit Product';
-    document.getElementById('prodId').value = p.id;
     document.getElementById('prodName').value = p.name;
     document.getElementById('prodType').value = p.type;
     document.getElementById('prodCondition').value = p.condition;
-    document.getElementById('prodImei').value = p.imei || '';
+    document.getElementById('prodImei').value = p.imei_serial || '';
     document.getElementById('prodColor').value = p.color || '';
     document.getElementById('prodStorage').value = p.storage || '';
-    document.getElementById('prodPurchase').value = p.purchase || '';
+    document.getElementById('prodPurchase').value = p.purchase;
     document.getElementById('prodSale').value = p.sale;
     document.getElementById('prodStatus').value = p.status;
+    document.getElementById('prodStock').value = p.stock !== undefined ? p.stock : 1;
     document.getElementById('prodCategory').value = p.category_id || '';
+    document.getElementById('prodBuyer').value = p.buyer_id || '';
   } else {
     document.getElementById('prodModalTitle').textContent = 'Add Product';
     document.getElementById('prodId').value = '';
-    ['prodName','prodImei','prodColor','prodStorage','prodPurchase','prodSale','prodImage'].forEach(id => document.getElementById(id).value = '');
+    ['prodName','prodImei','prodColor','prodStorage','prodPurchase','prodSale','prodImage','prodBuyer'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('prodType').value = 'mobile';
     document.getElementById('prodCondition').value = 'new';
     document.getElementById('prodStatus').value = 'in_stock';
+    document.getElementById('prodStock').value = '1';
     document.getElementById('prodCategory').value = '';
   }
   document.getElementById('prodModal').classList.remove('hidden');
+}
+
+function openProductModal(id) {
+  editProduct(id);
 }
 function closeProductModal() { document.getElementById('prodModal').classList.add('hidden'); }
 
@@ -984,9 +1042,13 @@ async function saveProduct() {
   formData.append('purchase_price', document.getElementById('prodPurchase').value || 0);
   formData.append('sale_price', sale);
   formData.append('status', document.getElementById('prodStatus').value);
+  formData.append('stock', document.getElementById('prodStock').value || 1);
   
   const catId = parseInt(document.getElementById('prodCategory').value);
   if (catId) formData.append('category_id', catId);
+  
+  const buyerId = parseInt(document.getElementById('prodBuyer').value);
+  if (buyerId) formData.append('buyer_id', buyerId);
   
   const imgInput = document.getElementById('prodImage');
   if (imgInput.files.length > 0) {
@@ -1263,7 +1325,8 @@ async function saveCustomer() {
           await api('/shop/api/customers/' + editId, 'POST', formData);
           toast('Customer updated!', 'success');
       } else {
-          await api('/shop/api/customers', 'POST', formData);
+          const res = await api('/shop/api/customers', 'POST', formData);
+          if (res && res.id) window.lastCreatedCustomerId = res.id;
           toast('Customer added!', 'success');
       }
       closeCustModal();
@@ -1362,3 +1425,4 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAlertBadge();
   // navigate('dashboard'); // Removed to prevent infinite reload loop in MPA mode
 });
+

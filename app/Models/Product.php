@@ -17,7 +17,9 @@ class Product extends Model
         'purchase_price',
         'sale_price',
         'status',
+        'stock',
         'category_id',
+        'buyer_id',
         'user_id',
     ];
 
@@ -34,5 +36,10 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function buyer()
+    {
+        return $this->belongsTo(Customer::class, 'buyer_id');
     }
 }

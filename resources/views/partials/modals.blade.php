@@ -3,7 +3,7 @@
   <div class="modal modal-lg">
     <div class="modal-header">
       <h3 id="prodModalTitle">Add Product</h3>
-      <button class="modal-close" onclick="closeProductModal()">Ã—</button>
+      <button class="modal-close" onclick="closeProductModal()">✕</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="prodId"/>
@@ -18,6 +18,8 @@
         <div class="form-group"><label>Sale Price (PKR) *</label><input type="number" id="prodSale" class="input" min="0" step="0.01"/></div>
         <div class="form-group"><label>Status *</label><select id="prodStatus" class="input"><option value="in_stock">In Stock</option><option value="sold">Sold</option><option value="in_repair">In Repair</option></select></div>
         <div class="form-group"><label>Category</label><select id="prodCategory" class="input"><option value="">Select category</option></select></div>
+        <div class="form-group"><label>Sourced From (Buyer)</label><select id="prodBuyer" class="input"><option value="">Select Customer (Optional)</option></select></div>
+        <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" class="input" min="0" value="1"/></div>
         <div class="form-group"><label>Product Image</label><input type="file" id="prodImage" class="input" accept="image/*"/></div>
       </div>
     </div>
@@ -33,7 +35,7 @@
   <div class="modal">
     <div class="modal-header">
       <h3 id="custModalTitle">Add Customer</h3>
-      <button class="modal-close" onclick="closeCustModal()">Ã—</button>
+      <button class="modal-close" onclick="closeCustModal()">✕</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="custId"/>
@@ -55,7 +57,7 @@
   <div class="modal modal-lg">
     <div class="modal-header">
       <h3>Invoice Preview</h3>
-      <button class="modal-close" onclick="closeInvoiceModal()">Ã—</button>
+      <button class="modal-close" onclick="closeInvoiceModal()">✕</button>
     </div>
     <div class="modal-body" id="invoicePreview" style="background:#f0f0f0;padding:24px"></div>
     <div class="modal-footer">
@@ -70,7 +72,7 @@
   <div class="modal modal-sm">
     <div class="modal-header">
       <h3>Confirm Delete</h3>
-      <button class="modal-close" onclick="closeConfirmModal()">Ã—</button>
+      <button class="modal-close" onclick="closeConfirmModal()">✕</button>
     </div>
     <div class="modal-body">
       <p id="confirmMsg">Are you sure you want to delete this item? This action cannot be undone.</p>

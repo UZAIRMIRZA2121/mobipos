@@ -1,10 +1,10 @@
-@extends('layouts.app')
+@extends('layouts.pos')
 
 @section('content')
-<main class="page-content" style="padding: 0; height: 100vh; overflow: hidden; background: var(--surface2);">
+<main class="page-content" style="padding: 0; height: 100vh; width: 100vw; overflow: hidden; background: var(--surface2);">
 
     <!-- PREMIUM POS -->
-    <div class="page" id="page-pos" style="height: 100%; display: flex; flex-direction: column;">
+    <div class="page" id="page-pos" style="height: 100%; width: 100%; display: flex; flex-direction: column;">
       
       <!-- Top Header for POS -->
       <div class="pos-premium-header">
@@ -16,6 +16,10 @@
           <div class="pos-clock" id="posClock">Loading time...</div>
         </div>
         <div class="pos-header-right">
+            <a href="{{ url('/') }}" class="btn btn-ghost btn-sm" title="Back to Dashboard">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                Back
+            </a>
             <button class="btn btn-ghost btn-sm" onclick="toggleFullScreen()" title="Full Screen">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
             </button>
@@ -36,7 +40,7 @@
             <div class="pos-search-inner">
                 <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" id="posSearch" class="pos-premium-search" placeholder="Scan barcode or search products..."/>
-                <button class="pos-search-clear hidden" id="posSearchClear" onclick="clearPosSearch()">×</button>
+                <button class="pos-search-clear hidden" id="posSearchClear" onclick="clearPosSearch()">✕</button>
             </div>
             <select id="posCatFilter" class="pos-premium-filter">
                 <option value="">All Categories</option>
@@ -48,6 +52,9 @@
             <div class="pos-med-header" style="border-bottom: none; padding-bottom: 4px;">
               <span id="posProdCount" class="pos-med-count">All products</span>
               <div class="pos-view-toggle">
+                <button class="view-btn active" id="viewImageToggle" onclick="togglePosImage()" title="Toggle Images">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </button>
                 <button class="view-btn active" id="viewGrid" onclick="setPosView('grid')" title="Grid view">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
                 </button>
@@ -90,9 +97,12 @@
             <div class="checkout-inputs">
                 <div class="form-group">
                     <label>Customer</label>
-                    <select id="posCustomer" class="input input-sm">
-                        <option value="">Walk-in Customer</option>
-                    </select>
+                    <div style="display:flex; gap:4px;">
+                        <select id="posCustomer" class="input input-sm" style="flex:1;">
+                            <option value="">Walk-in Customer</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm" onclick="openCustModal()" title="Add Customer" style="padding:0 8px;font-size:16px;line-height:1;">+</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Payment</label>
@@ -132,8 +142,8 @@
             </div>
 
             <button class="btn btn-primary btn-checkout" id="checkoutBtn" onclick="checkout()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-right:8px;"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
-              Complete Sale
+                <span>Pay Now</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </button>
             
           </div>
