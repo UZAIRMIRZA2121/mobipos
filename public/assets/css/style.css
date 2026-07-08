@@ -4,10 +4,10 @@
    ============================================================ */
 
 :root {
-  --primary: #0066cc;
-  --primary-light: #e6f0ff;
-  --primary-dark: #0047a0;
-  --accent: #00b4d8;
+  --primary: #0B4589;
+  --primary-light: #e8f0fe;
+  --primary-dark: #073062;
+  --accent: #FA7704;
   --success: #10b981;
   --success-light: #d1fae5;
   --warning: #f59e0b;
@@ -26,10 +26,10 @@
   --text-muted: #64748b;
   --text-light: #94a3b8;
 
-  --sidebar-bg: #0a1628;
+  --sidebar-bg: #07254d;
   --sidebar-text: #94a3b8;
   --sidebar-active: #ffffff;
-  --sidebar-active-bg: #0066cc;
+  --sidebar-active-bg: #0B4589;
   --sidebar-hover-bg: rgba(255,255,255,0.07);
   --sidebar-width: 248px;
 
@@ -921,20 +921,20 @@ select.input { cursor: pointer; }
   color: #1a202c;
   background: white;
 }
-.inv-header { text-align: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #0066cc; }
-.inv-store-name { font-size: 22px; font-weight: 700; color: #0066cc; margin-bottom: 2px; }
+.inv-header { text-align: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid var(--primary); }
+.inv-store-name { font-size: 22px; font-weight: 700; color: var(--primary); margin-bottom: 2px; }
 .inv-store-info { font-size: 12px; color: #64748b; line-height: 1.7; }
 .inv-meta { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 12px; }
 .inv-meta-block { line-height: 2; }
 .inv-meta-block strong { display: inline-block; min-width: 100px; color: #1a202c; }
 .inv-meta-block span { color: #64748b; }
 .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 12px; }
-.inv-table th { background: #0066cc; color: white; padding: 8px 10px; text-align: left; font-size: 11px; }
+.inv-table th { background: var(--primary); color: white; padding: 8px 10px; text-align: left; font-size: 11px; }
 .inv-table td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
 .inv-table tr:last-child td { border-bottom: none; }
 .inv-totals { margin-left: auto; width: 240px; font-size: 13px; }
 .inv-totals-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #e2e8f0; }
-.inv-totals-row.grand { font-weight: 700; font-size: 15px; color: #0066cc; border-top: 2px solid #0066cc; margin-top: 4px; padding-top: 8px; }
+.inv-totals-row.grand { font-weight: 700; font-size: 15px; color: var(--primary); border-top: 2px solid var(--primary); margin-top: 4px; padding-top: 8px; }
 .inv-footer { text-align: center; margin-top: 24px; font-size: 12px; color: #64748b; border-top: 1px dashed #e2e8f0; padding-top: 12px; }
 
 /* THERMAL RECEIPT PREVIEW (inside modal) */

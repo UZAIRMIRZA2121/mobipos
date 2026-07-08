@@ -31,7 +31,9 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="#"><i class="fas fa-mobile-alt me-2"></i>MobiPOS</a>
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <img src="{{ asset('assets/logo/main-logo.png') }}" alt="MobiPOS Logo" style="height: 40px;">
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <i class="fas fa-bars text-white"></i>
             </button>
@@ -39,7 +41,7 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
                     <li class="nav-item"><a class="nav-link" href="#modules">Modules</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#pricing">Pricing</a></li>
+                    {{-- <li class="nav-item"><a class="nav-link" href="#pricing">Pricing</a></li> --}}
                     <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
                 </ul>
                 <div class="d-flex ms-3">
@@ -355,7 +357,8 @@
     </section>
 
     <!-- Pricing Section -->
-    <section id="pricing">
+   {{--  <section id="pricing">
+
         <div class="container">
             <div class="text-center mb-5" data-aos="fade-up">
                 <h6 class="text-gradient fw-bold">PRICING</h6>
@@ -410,7 +413,7 @@
                 </div>
             </div>
         </div>
-    </section>
+    </section>--}}
 
     <!-- FAQ -->
     <section id="faq" style="background: rgba(255,255,255,0.01);">
@@ -483,7 +486,9 @@
         <div class="container">
             <div class="row g-4 mb-4">
                 <div class="col-lg-4">
-                    <h4 class="text-primary mb-4"><i class="fas fa-mobile-alt me-2"></i>MobiPOS</h4>
+                    <h4 class="text-primary mb-4 d-flex align-items-center">
+                        <img src="{{ asset('assets/logo/main-logo.png') }}" alt="MobiPOS Logo" style="height: 40px;">
+                    </h4>
                     <p class="text-secondary">The ultimate Point of Sale and Inventory Management system for modern mobile, laptop, and electronics stores.</p>
                     <div class="social-icons mt-4">
                         <a href="#"><i class="fab fa-facebook-f"></i></a>
@@ -495,7 +500,7 @@
                 <div class="col-lg-2 col-6">
                     <h5 class="mb-4">Quick Links</h5>
                     <a href="#features" class="footer-link">Features</a>
-                    <a href="#pricing" class="footer-link">Pricing</a>
+                    {{-- <a href="#pricing" class="footer-link">Pricing</a> --}}
                     <a href="#" class="footer-link">About Us</a>
                     <a href="#" class="footer-link">Contact</a>
                 </div>

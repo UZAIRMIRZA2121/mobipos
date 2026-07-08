@@ -1,7 +1,7 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-brand">
-    <div class="brand-icon">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="10"/></svg>
+    <div class="brand-icon" style="background: transparent;">
+      <img src="{{ asset('assets/logo/main-logo.png') }}" style="max-height: 36px; max-width: 36px; object-fit: contain;" alt="Logo">
     </div>
     <div class="brand-text">
       <span class="brand-name">MobiPOS</span>

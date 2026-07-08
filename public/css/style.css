@@ -1,13 +1,13 @@
 :root {
-  --primary-color: #00E5FF;
-  --secondary-color: #4F46E5;
-  --accent-color: #00FF95;
+  --primary-color: #FA7704;
+  --secondary-color: #0B4589;
+  --accent-color: #FF9838;
   --bg-color: #050816;
   --text-primary: #FFFFFF;
   --text-secondary: #94A3B8;
   --glass-bg: rgba(255, 255, 255, 0.03);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-glow: rgba(0, 229, 255, 0.15);
+  --glass-glow: rgba(250, 119, 4, 0.15);
 }
 
 html, body {
