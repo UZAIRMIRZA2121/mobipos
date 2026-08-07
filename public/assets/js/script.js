@@ -1068,12 +1068,14 @@ function buildInvoiceHTML(inv) {
 
   const custPhone = inv.custId ? (getCustomer(inv.custId).phone || '') : '';
 
-  const sName = 'MobiPos';
-  const sDesc = "Shop #12, Main Market";
-  const sAddress = "Faisalabad, Punjab, Pakistan Ph: 041-1234567";
-  const sHeading = 'INVOICE';
-  const sFooter = "*** Thank You! ***.";
-  const sLogo = `<div class="r-logo">${sName.charAt(0)}</div>`;
+  const sName = (window.printSettings?.name || 'MobiPos').replace(/\n/g, '<br>');
+  const sDesc = (window.printSettings?.desc || '').replace(/\n/g, '<br>');
+  const sAddress = (window.printSettings?.address || '').replace(/\n/g, '<br>');
+  const sHeading = (window.printSettings?.heading || 'INVOICE').replace(/\n/g, '<br>');
+  const sFooter = (window.printSettings?.footer || '*** Thank You! ***').replace(/\n/g, '<br>');
+  const sLogoSize = window.printSettings?.logoSize || 120;
+  const sLogo = window.printSettings?.logo ? `<img src="${window.printSettings.logo}" style="max-width: ${sLogoSize}px; max-height: 200px; object-fit: contain; margin-bottom: 5px;">` : `<div class="r-logo">${sName.charAt(0)}</div>`;
+
 
   return `<div class="receipt" id="invoicePrintArea">
 
@@ -1159,9 +1161,9 @@ function buildInvoiceHTML(inv) {
 function printInvoice() {
   const content = document.getElementById('invoicePrintArea').outerHTML;
   const win = window.open('', '_blank', 'width=340,height=700');
-  win.document.write(`<!DOCTYPE html><html><head><title>Receipt â€” ${document.getElementById('invoicePrintArea')?.querySelector?.('.r-inv-num')?.textContent || 'Invoice'}</title><style>${THERMAL_CSS}</style></head><body>${content}</body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><base href="${window.location.origin}"><title>Receipt â€” ${document.getElementById('invoicePrintArea')?.querySelector?.('.r-inv-num')?.textContent || 'Invoice'}</title><style>${THERMAL_CSS}</style></head><body>${content}</body></html>`);
   win.document.close();
-  setTimeout(() => win.print(), 400);
+  setTimeout(() => win.print(), 800);
 }
 
 // ============================================================

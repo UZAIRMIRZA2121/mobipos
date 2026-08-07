@@ -16,6 +16,8 @@ class InvoiceSetting extends Model
         'address',
         'phone',
         'footer_text',
+        'logo',
+        'logo_size',
     ];
 
     public function user()

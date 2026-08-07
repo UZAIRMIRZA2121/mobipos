@@ -21,7 +21,9 @@ class InvoiceSettingController extends Controller
             'header_text' => '',
             'address' => '',
             'phone' => '',
-            'footer_text' => ''
+            'footer_text' => '',
+            'logo' => null,
+            'logo_size' => 120
         ]);
     }
 
@@ -33,7 +35,16 @@ class InvoiceSettingController extends Controller
             'address' => 'nullable|string',
             'phone' => 'nullable|string|max:255',
             'footer_text' => 'nullable|string',
+            'logo' => 'nullable|image|max:2048',
+            'logo_size' => 'nullable|integer|min:40|max:250',
         ]);
+
+        if ($request->has('remove_logo') && $request->remove_logo == '1') {
+            $validated['logo'] = null;
+        } elseif ($request->hasFile('logo')) {
+            $path = $request->file('logo')->store('logos', 'public');
+            $validated['logo'] = '/storage/' . $path;
+        }
 
         $settings = InvoiceSetting::updateOrCreate(
             ['user_id' => Auth::id()],

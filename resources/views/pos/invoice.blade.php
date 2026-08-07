@@ -147,6 +147,9 @@
 
 <div class="receipt-container">
     <div class="header text-center">
+        @if(isset($invoiceSettings) && $invoiceSettings->logo)
+            <img src="{{ url($invoiceSettings->logo) }}" alt="Logo" style="max-width: {{ $invoiceSettings->logo_size ?? 120 }}px; max-height: 200px; object-fit: contain; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto;">
+        @endif
         <h1>{{ $invoiceSettings->store_name ?? 'MobiPOS' }}</h1>
         @if(isset($invoiceSettings) && $invoiceSettings->header_text)
             <p>{!! nl2br(e($invoiceSettings->header_text)) !!}</p>

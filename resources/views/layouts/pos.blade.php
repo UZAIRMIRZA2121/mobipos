@@ -37,16 +37,17 @@
 <div class="toast-container" id="toastContainer"></div>
 
 @php
-    $printSetting = null;
+    $printSetting = Auth::check() ? \App\Models\InvoiceSetting::where('user_id', Auth::id())->first() : null;
 @endphp
 <script>
     window.printSettings = {
-        name: "MobiPOS",
-        desc: "Store address here",
-        address: "Address details",
+        name: {!! json_encode($printSetting->store_name ?? 'MobiPOS') !!},
+        desc: {!! json_encode($printSetting->header_text ?? 'Store address here') !!},
+        address: {!! json_encode($printSetting->address ?? 'Address details') !!},
         heading: "INVOICE",
-        footer: "*** Thank You! ***",
-        logo: null
+        footer: {!! json_encode($printSetting->footer_text ?? '*** Thank You! ***') !!},
+        logo: {!! json_encode($printSetting->logo ?? null) !!},
+        logoSize: {!! json_encode($printSetting->logo_size ?? 120) !!}
     };
 </script>
 
