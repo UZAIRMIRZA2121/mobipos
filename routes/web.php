@@ -56,6 +56,31 @@ Route::middleware(['auth', 'role:shop'])->prefix('shop')->name('shop.')->group(f
     Route::post('/api/customers/{customer}', [CustomerController::class, 'update'])->name('api.customers.update'); // POST instead of PUT because of FormData file uploads
     Route::delete('/api/customers/{customer}', [CustomerController::class, 'destroy'])->name('api.customers.destroy');
 
+    Route::get('/api/expenses', [App\Http\Controllers\ExpenseController::class, 'apiIndex'])->name('api.expenses.index');
+    Route::post('/api/expenses', [App\Http\Controllers\ExpenseController::class, 'store'])->name('api.expenses.store');
+    Route::put('/api/expenses/{expense}', [App\Http\Controllers\ExpenseController::class, 'update'])->name('api.expenses.update');
+    Route::delete('/api/expenses/{expense}', [App\Http\Controllers\ExpenseController::class, 'destroy'])->name('api.expenses.destroy');
+
+    Route::get('/api/settings', [App\Http\Controllers\StoreSettingController::class, 'apiGet'])->name('api.settings.get');
+    Route::post('/api/settings', [App\Http\Controllers\StoreSettingController::class, 'apiUpdate'])->name('api.settings.update');
+
+    Route::get('/api/settings/print', [App\Http\Controllers\InvoiceSettingController::class, 'apiGet'])->name('api.settings.print.get');
+    Route::post('/api/settings/print', [App\Http\Controllers\InvoiceSettingController::class, 'apiUpdate'])->name('api.settings.print.update');
+
+    // Reports routes
+    Route::get('/api/reports/generate', [App\Http\Controllers\ReportController::class, 'generate'])->name('api.reports.generate');
+    Route::post('/api/reports/generate', [App\Http\Controllers\ReportController::class, 'generate'])->name('api.reports.generate.post');
+    Route::get('/api/purchase-orders', [App\Http\Controllers\PurchaseOrderController::class, 'apiIndex'])->name('api.purchase_orders.index');
+    Route::post('/api/purchase-orders', [App\Http\Controllers\PurchaseOrderController::class, 'store'])->name('api.purchase_orders.store');
+    Route::put('/api/purchase-orders/{purchaseOrder}', [App\Http\Controllers\PurchaseOrderController::class, 'update'])->name('api.purchase_orders.update');
+    Route::delete('/api/purchase-orders/{purchaseOrder}', [App\Http\Controllers\PurchaseOrderController::class, 'destroy'])->name('api.purchase_orders.destroy');
+
+    Route::get('/api/dashboard-stats', [App\Http\Controllers\OrderController::class, 'dashboardStats'])->name('api.dashboard.stats');
+    Route::get('/api/orders', [App\Http\Controllers\OrderController::class, 'apiIndex'])->name('api.orders.index');
+    Route::get('/api/orders/{order}', [App\Http\Controllers\OrderController::class, 'apiShow'])->name('api.orders.show');
+    Route::put('/api/orders/{order}', [App\Http\Controllers\OrderController::class, 'update'])->name('api.orders.update');
+    Route::delete('/api/orders/{order}', [App\Http\Controllers\OrderController::class, 'destroy'])->name('api.orders.destroy');
+    Route::post('/api/orders/{order}/refund', [App\Http\Controllers\OrderController::class, 'refund'])->name('api.orders.refund');
     Route::post('/api/orders', [App\Http\Controllers\OrderController::class, 'store'])->name('api.orders.store');
     Route::get('/orders/{order}/invoice', [App\Http\Controllers\OrderController::class, 'invoice'])->name('orders.invoice');
 
@@ -65,13 +90,17 @@ Route::middleware(['auth', 'role:shop'])->prefix('shop')->name('shop.')->group(f
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::get('/invoices', function() { return 'Invoices UI Pending'; })->name('invoices.index');
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
-    Route::get('/expenses', function() { return 'Expenses UI Pending'; })->name('expenses.index');
+    Route::get('/expenses', [App\Http\Controllers\ExpenseController::class, 'index'])->name('expenses.index');
+    Route::get('/reports', [App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/print', [App\Http\Controllers\ReportController::class, 'print'])->name('reports.print');
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/purchase-orders', [App\Http\Controllers\PurchaseOrderController::class, 'index'])->name('purchase_orders.index');
     Route::get('/medicines', function() { return 'Medicines UI Pending'; })->name('medicines.index');
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::get('/alerts', function() { return 'Alerts UI Pending'; })->name('alerts.index');
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
-    Route::get('/settings/print', function() { return 'Settings UI Pending'; })->name('settings.print');
+    Route::get('/settings', [App\Http\Controllers\StoreSettingController::class, 'index'])->name('settings.index');
+    Route::get('/settings/print', [App\Http\Controllers\InvoiceSettingController::class, 'index'])->name('settings.print');
 });
 
 // Seller Dummy Routes

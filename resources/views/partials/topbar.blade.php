@@ -3,7 +3,7 @@
       <button class="menu-btn" id="menuBtn">
         <span></span><span></span><span></span>
       </button>
-      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="page-title" id="pageTitle">@yield('title', 'Dashboard')</div>
     </div>
     <div class="topbar-right">
       @if(Auth::check() && Auth::user()->type === 'store')

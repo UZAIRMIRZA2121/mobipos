@@ -42,6 +42,7 @@
     };
 </script>
 
-<script src="{{ asset('assets/js/script.js') }}"></script>
+<script src="{{ asset('assets/js/script.js') }}?v={{ time() }}"></script>
+@yield('scripts')
 </body>
 </html>

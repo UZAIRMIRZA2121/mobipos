@@ -62,7 +62,11 @@ async function api(url, method = 'GET', body = null) {
         let errMsg = 'API Error';
         try {
             const errData = await res.json();
-            errMsg = errData.message || errMsg;
+            if (errData.errors) {
+                errMsg = Object.values(errData.errors).flat().join('<br>');
+            } else {
+                errMsg = errData.message || errMsg;
+            }
         } catch(err) {}
         throw new Error(errMsg);
     }
@@ -109,6 +113,8 @@ async function syncData() {
         if (document.getElementById('page-invoices')) renderInvoices();
         if (document.getElementById('page-pos')) renderPOS();
         if (document.getElementById('page-dashboard')) renderDashboard();
+        if (document.getElementById('page-expenses')) renderExpenses();
+        if (document.getElementById('page-purchase-orders')) renderPurchaseOrders();
 
     } catch(e) {
         console.error('Critical sync failure', e);
@@ -129,10 +135,13 @@ function navigate(page) { window.location.href = '/' + page; }
 
 function renderPage(page) {
   const r = {
-    dashboard: renderDashboard,
-    pos: renderPOS,
-    invoices: renderInvoices,
-    sales: renderSales,
+    'dashboard': renderDashboard,
+    'products': renderProducts,
+    'pos': renderPOS,
+    'sales': renderSales,
+    'expenses': renderExpenses,
+    'purchase-orders': renderPurchaseOrders,
+    'reports': renderReports,
     medicines: renderProducts, // keeping the route backward compatible for now or rename to products
     products: renderProducts,
     categories: renderCategories,
@@ -141,6 +150,126 @@ function renderPage(page) {
     alerts: renderAlerts,
   };
   if (r[page]) r[page]();
+}
+
+// ============================================================
+// REPORTS
+// ============================================================
+async function generateReport() {
+    const sDate = document.getElementById('reportStartDate').value;
+    const eDate = document.getElementById('reportEndDate').value;
+
+    try {
+        const res = await api('/shop/api/reports/generate', 'POST', { start_date: sDate, end_date: eDate });
+        
+        document.getElementById('repTotalSales').textContent = fmtCur(res.total_sales);
+        document.getElementById('repTotalPurchases').textContent = fmtCur(res.total_purchases);
+        document.getElementById('repTotalExpenses').textContent = fmtCur(res.total_expenses);
+        document.getElementById('repProfit').textContent = fmtCur(res.profit);
+        
+        const netProfitEl = document.getElementById('repNetProfit');
+        netProfitEl.textContent = fmtCur(res.net_profit);
+        if (res.net_profit < 0) {
+            netProfitEl.style.color = 'var(--danger)';
+        } else {
+            netProfitEl.style.color = '#111827';
+        }
+
+        const tbody = document.getElementById('repTopProductsTbody');
+        if (res.top_products && res.top_products.length > 0) {
+            tbody.innerHTML = res.top_products.map(p => `
+                <tr>
+                    <td>
+                        <div style="font-weight:500">${p.name}</div>
+                        ${p.imei ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">IMEI: ${p.imei}</div>` : ''}
+                    </td>
+                    <td class="text-right">${p.total_qty}</td>
+                    <td class="text-right" style="font-weight:600">${fmtCur(p.total_revenue)}</td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No sales found in this period</td></tr>';
+        }
+
+        const expTbody = document.getElementById('repExpensesTbody');
+        if (res.expenses_list && res.expenses_list.length > 0) {
+            expTbody.innerHTML = res.expenses_list.map(e => `
+                <tr>
+                    <td>${e.title}</td>
+                    <td>${e.description || '-'}</td>
+                    <td class="text-right" style="font-weight:600; color:var(--danger)">${fmtCur(e.amount)}</td>
+                </tr>
+            `).join('');
+        } else {
+            expTbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No expenses found in this period</td></tr>';
+        }
+
+        const poTbody = document.getElementById('repPurchaseOrdersTbody');
+        if (res.purchase_orders_list && res.purchase_orders_list.length > 0) {
+            poTbody.innerHTML = res.purchase_orders_list.map(po => `
+                <tr>
+                    <td>PO-${po.id}</td>
+                    <td>${po.supplier_name || 'Unknown'}</td>
+                    <td style="text-transform: capitalize;">
+                        ${po.payment_status}
+                        ${po.payment_status === 'partial' ? `<br><small style="color:var(--text-muted); text-transform:none;">Rem: ${fmtCur(po.remaining_amount)}</small>` : ''}
+                    </td>
+                    <td class="text-right" style="font-weight:600;">${fmtCur(po.amount)}</td>
+                </tr>
+            `).join('');
+        } else {
+            poTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No purchase orders found in this period</td></tr>';
+        }
+
+        // Set print date range title
+        let printRange = 'All Time';
+        if (sDate && eDate) {
+            printRange = `From: ${fmtDate(sDate)} To: ${fmtDate(eDate)}`;
+        } else if (sDate) {
+            printRange = `From: ${fmtDate(sDate)} To: Now`;
+        } else if (eDate) {
+            printRange = `From: Beginning To: ${fmtDate(eDate)}`;
+        }
+        document.getElementById('printDateRange').textContent = printRange;
+
+    } catch (err) {
+        console.error(err);
+        toast('Failed to generate report', 'danger');
+    }
+}
+
+function printReport() {
+    const sDate = document.getElementById('reportStartDate').value;
+    const eDate = document.getElementById('reportEndDate').value;
+    const printUrl = `/shop/reports/print?start_date=${sDate}&end_date=${eDate}`;
+    
+    let printFrame = document.getElementById('printFrame');
+    if (!printFrame) {
+        printFrame = document.createElement('iframe');
+        printFrame.id = 'printFrame';
+        printFrame.style.position = 'absolute';
+        printFrame.style.width = '0px';
+        printFrame.style.height = '0px';
+        printFrame.style.border = 'none';
+        document.body.appendChild(printFrame);
+    }
+    
+    printFrame.onload = function() {
+        printFrame.contentWindow.focus();
+        printFrame.contentWindow.print();
+    };
+    
+    printFrame.src = printUrl;
+}
+
+function renderReports() {
+    if (document.getElementById('reportStartDate')) {
+        document.getElementById('reportStartDate').value = '';
+        document.getElementById('reportEndDate').value = '';
+        
+        // Automatically generate for all time
+        generateReport();
+    }
 }
 
 // ============================================================
@@ -208,7 +337,7 @@ function closeConfirmModal() { document.getElementById('confirmModal').classList
 // ============================================================
 function fmtCur(n) { return 'PKR ' + Number(n).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtDate(d) { if (!d) return '-'; return new Date(d).toLocaleDateString('en-GB'); }
-function fmtDateTime(d) { if (!d) return '-'; return new Date(d).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+function fmtDateTime(d) { if (!d) return '-'; return new Date(d).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }); }
 function daysDiff(dateStr) { return Math.ceil((new Date(dateStr) - new Date()) / 86400000); }
 function isExpired(d) { return new Date(d) < new Date(); }
 function isLowStock(m) { return m.stock <= m.lowStock; }
@@ -228,6 +357,7 @@ function svgIcon(path, size = 13) { return `<svg width="${size}" height="${size}
 const EDIT_SVG = svgIcon('<path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>');
 const DEL_SVG = svgIcon('<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/>');
 const VIEW_SVG = svgIcon('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>');
+const REFUND_SVG = svgIcon('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>');
 
 // ============================================================
 // ALERT BADGE UPDATE
@@ -243,36 +373,86 @@ function updateAlertBadge() {
 // ============================================================
 // DASHBOARD
 // ============================================================
-function renderDashboard() {
+async function renderDashboard() {
   const prods = store.get('products') || [];
-  const sales = store.get('invoices') || [];
   
-  if (document.getElementById('dashTotalProds')) {
-      document.getElementById('dashTotalProds').textContent = prods.length;
-      
-      const totalVal = prods.reduce((sum, p) => sum + (Number(p.sale) || 0), 0);
-      document.getElementById('dashTotalValue').textContent = fmtCur(totalVal);
-      
-      document.getElementById('dashTotalSales').textContent = sales.length;
+  if (document.getElementById('dashTotalEarning')) {
+      try {
+          const stats = await api('/shop/api/dashboard-stats');
+          document.getElementById('dashTotalEarning').textContent = fmtCur(stats.total_earning);
+          document.getElementById('dashTotalExpense').textContent = fmtCur(stats.total_expense);
+          document.getElementById('dashActualEarning').textContent = fmtCur(stats.actual_earning);
+          document.getElementById('dashStockValue').textContent = fmtCur(stats.stock_value);
+
+          // Populate Top Selling Products
+          const topTbody = document.getElementById('dashTopProductsTbody');
+          if (topTbody) {
+              if (stats.top_products && stats.top_products.length > 0) {
+                  topTbody.innerHTML = stats.top_products.map(p => `
+                      <tr>
+                          <td>
+                              <div style="font-weight:500">${p.name}</div>
+                              ${p.imei ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">IMEI: ${p.imei}</div>` : ''}
+                          </td>
+                          <td class="text-right">${p.total_qty}</td>
+                          <td class="text-right" style="font-weight:600">${fmtCur(p.total_revenue)}</td>
+                      </tr>
+                  `).join('');
+              } else {
+                  topTbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No sales data available</td></tr>';
+              }
+          }
+
+          // Populate Recent Sales
+          const salesTbody = document.getElementById('dashRecentSalesTbody');
+          if (salesTbody) {
+              if (stats.recent_sales && stats.recent_sales.length > 0) {
+                  salesTbody.innerHTML = stats.recent_sales.map(s => {
+                      let statusBadge = '';
+                      if (s.payment_status === 'paid') statusBadge = '<span class="badge badge-success">PAID</span>';
+                      else if (s.payment_status === 'partial') statusBadge = '<span class="badge badge-warning">PARTIAL</span>';
+                      else if (s.payment_status === 'refunded') statusBadge = '<span class="badge badge-danger">REFUNDED</span>';
+                      else statusBadge = '<span class="badge badge-danger">UNPAID</span>';
+                      
+                      return `
+                      <tr>
+                          <td>#${s.id}</td>
+                          <td>${s.buyer ? s.buyer.name : 'Walk-in'}</td>
+                          <td class="text-right" style="font-weight:600">${fmtCur(s.total)}</td>
+                          <td class="text-right">${statusBadge}</td>
+                      </tr>
+                      `;
+                  }).join('');
+              } else {
+                  salesTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No recent sales</td></tr>';
+              }
+          }
+
+      } catch (e) {
+          console.error('Failed to load dashboard stats', e);
+      }
       
       // Get 5 most recent products
       const recent = [...prods].reverse().slice(0, 5);
       
-      document.getElementById('dashRecentProdsTbody').innerHTML = recent.length ?
-        recent.map(p => `
-          <tr>
-            <td>
-              <div style="font-weight:500">${p.name}</div>
-              ${p.imei ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">IMEI/SN: ${p.imei}</div>` : ''}
-            </td>
-            <td style="text-transform:capitalize">${p.type}</td>
-            <td style="text-transform:capitalize">${p.condition}</td>
-            <td style="font-weight:600">${fmtCur(p.sale)}</td>
-            <td>
-              ${getProdBadge(p)}
-            </td>
-          </tr>
-        `).join('') : '<tr><td colspan="5" class="empty-cell">No products added yet</td></tr>';
+      const recentTbody = document.getElementById('dashRecentProdsTbody');
+      if (recentTbody) {
+          recentTbody.innerHTML = recent.length ?
+            recent.map(p => `
+              <tr>
+                <td>
+                  <div style="font-weight:500">${p.name}</div>
+                  ${p.imei ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">IMEI/SN: ${p.imei}</div>` : ''}
+                </td>
+                <td style="text-transform:capitalize">${p.type}</td>
+                <td style="text-transform:capitalize">${p.condition}</td>
+                <td class="text-right" style="font-weight:600">${fmtCur(p.sale)}</td>
+                <td class="text-right">
+                  ${getProdBadge(p)}
+                </td>
+              </tr>
+            `).join('') : '<tr><td colspan="5" class="empty-cell">No products added yet</td></tr>';
+      }
   }
 }
 
@@ -308,10 +488,86 @@ function renderPOS() {
 
   renderProdGrid();
   renderCart();
+
+  setTimeout(loadEditOrderIfAny, 100);
+}
+
+async function loadEditOrderIfAny() {
+    const editId = localStorage.getItem('mp_edit_order_id');
+    if (!editId) return;
+    
+    localStorage.removeItem('mp_edit_order_id');
+
+    try {
+        const res = await api(`/shop/api/orders/${editId}`);
+        const order = res; 
+        
+        window.editingOrderId = order.id;
+        cart = [];
+        
+        const allProducts = store.get('products');
+        order.items.forEach(item => {
+            const prod = item.product || allProducts.find(p => p.id === item.product_id);
+            if (prod) {
+                const p = parseFloat(item.sell_price || item.price || prod.sale);
+                const q = parseInt(item.qty);
+                cart.push({
+                    prodId: prod.id,
+                    name: prod.name,
+                    price: p,
+                    qty: q,
+                    sub: p * q,
+                    maxStock: prod.stock + q
+                });
+            }
+        });
+
+        const custField = document.getElementById('posCustomer');
+        if (custField) custField.value = order.buyer_id || '';
+        
+        const sub = parseFloat(order.subtotal);
+        let discPct = 0, taxPct = 0;
+        if (sub > 0) {
+            discPct = (parseFloat(order.discount) / sub) * 100;
+            taxPct = (parseFloat(order.tax) / sub) * 100;
+        }
+        
+        const discField = document.getElementById('posDiscount');
+        if (discField) discField.value = discPct.toFixed(2);
+        
+        const taxField = document.getElementById('posTax');
+        if (taxField) taxField.value = taxPct.toFixed(2);
+        
+        const paidField = document.getElementById('posPaid');
+        if (paidField) {
+            // Use net paid amount to properly handle previous change given
+            const netPaid = Math.min(parseFloat(order.paid_amount), parseFloat(order.total));
+            paidField.value = netPaid;
+        }
+        
+        const methodField = document.getElementById('posPayment');
+        if (methodField) methodField.value = order.payment_method;
+
+        const btn = document.getElementById('checkoutBtn');
+        if (btn) btn.innerHTML = '<span>Update Order</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+
+        renderCart();
+        renderProdGrid();
+        
+        toast('Order loaded for editing!', 'info');
+    } catch(e) {
+        toast('Error loading order for editing', 'danger');
+        console.error(e);
+    }
 }
 
 // State for POS filters
-let posFilter = { q: '', catId: '', view: 'grid', showImage: true };
+let posFilter = {
+  view: 'list',
+  showImage: true,
+  q: '',
+  catId: ''
+};
 
 function filterPosCat(btn, catId) {
   posFilter.catId = catId;
@@ -381,13 +637,15 @@ function renderProdGrid() {
 }
 
 function buildProdCard(p) {
-  const oos = p.stock <= 0 || p.status === 'defective' || p.status === 'in_repair';
   const inCart = cart.find(c => c.prodId == p.id);
   const cartQty = inCart ? inCart.qty : 0;
+  const availStock = p.stock - cartQty;
+  
+  const oos = availStock <= 0 || p.status === 'defective' || p.status === 'in_repair';
 
-  let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + p.stock + ')';
+  let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + availStock + ')';
   if (oos) { stockBg = '#fee2e2'; stockColor = '#991b1b'; stockText = 'Out of Stock'; }
-  else if (p.stock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + p.stock + ')'; }
+  else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + availStock + ')'; }
 
   return `<div class="med-card${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})" style="position:relative; overflow:hidden;">
     ${(posFilter.showImage && p.image) ? `<img src="/storage/${p.image}" alt="${p.name}" style="width:calc(100% + 24px); height:80px; object-fit:cover; margin:-12px -12px 12px -12px; display:block;">` : ''}
@@ -408,17 +666,24 @@ function buildProdCard(p) {
 }
 
 function buildProdRow(p) {
-  const oos = p.status === 'sold' || p.status === 'defective';
   const inCart = cart.find(c => c.prodId == p.id);
+  const cartQty = inCart ? inCart.qty : 0;
+  const availStock = p.stock - cartQty;
+
+  const oos = availStock <= 0 || p.status === 'defective' || p.status === 'in_repair';
+
+  let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + availStock + ')';
+  if (oos) { stockBg = '#fee2e2'; stockColor = '#991b1b'; stockText = 'Out of Stock'; }
+  else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + availStock + ')'; }
 
   return `<div class="med-row${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})">
     <div class="med-row-info">
       <div class="med-row-name">${p.name} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart ✕${inCart.qty}</span>` : ''}
       </div>
-      <div class="med-row-meta">
-        ${p.storage ? p.storage + ' Â· ' : ''}
-        ${p.color ? p.color + ' Â· ' : ''}
-        Status: <strong>${p.status.replace('_', ' ').toUpperCase()}</strong>
+      <div class="med-row-meta" style="margin-top: 4px;">
+        ${p.storage ? p.storage + ' · ' : ''}
+        ${p.color ? p.color + ' · ' : ''}
+        <span style="font-size:10px; font-weight:600; padding:2px 6px; border-radius:10px; background:${stockBg}; color:${stockColor};">${stockText}</span>
       </div>
     </div>
     <div class="med-row-price">${fmtCur(p.sale)}</div>
@@ -456,6 +721,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('input', renderCartSummary);
   });
+
+  // Fetch Store Settings Defaults
+  if (document.getElementById('posDiscount')) {
+      fetch('/shop/api/settings')
+        .then(res => res.json())
+        .then(data => {
+            window.globalStoreSettings = data;
+            const d = document.getElementById('posDiscount');
+            const t = document.getElementById('posTax');
+            if (d && (!d.value || d.value == 0)) d.value = data.discount || 0;
+            if (t && (!t.value || t.value == 0)) t.value = data.tax || 0;
+            renderCartSummary();
+        })
+        .catch(console.error);
+  }
 });
 
 function addToCart(prodId) {
@@ -510,8 +790,8 @@ function clearCart() {
   cart = [];
   renderCart();
   renderProdGrid();
-  const d = document.getElementById('posDiscount'); if(d) d.value = 0;
-  const t = document.getElementById('posTax'); if(t) t.value = 0;
+  const d = document.getElementById('posDiscount'); if(d) d.value = window.globalStoreSettings?.discount || 0;
+  const t = document.getElementById('posTax'); if(t) t.value = window.globalStoreSettings?.tax || 0;
   const p = document.getElementById('posPaid'); if(p) p.value = 0;
   const n = document.getElementById('posNotes'); if(n) n.value = '';
 }
@@ -519,6 +799,7 @@ function clearCart() {
 function renderCart() {
     const tbody = document.getElementById('cartTbody');
     const badge = document.getElementById('cartBadge');
+    const mobileBadge = document.getElementById('mobileCartBadge');
     
     let sumSub = 0, totalItems = 0;
     cart.forEach(item => {
@@ -527,6 +808,7 @@ function renderCart() {
     });
     
     if (badge) badge.textContent = totalItems + ' item' + (totalItems !== 1 ? 's' : '');
+    if (mobileBadge) mobileBadge.textContent = totalItems;
     if(document.getElementById('sumItems')) document.getElementById('sumItems').textContent = totalItems;
     if(document.getElementById('sumSubtotal')) document.getElementById('sumSubtotal').textContent = fmtCur(sumSub);
     
@@ -576,8 +858,27 @@ function renderCartSummary() {
   const elItems = document.getElementById('sumItems'); if(elItems) elItems.textContent = cart.reduce((s, c) => s + c.qty, 0);
   const elSub = document.getElementById('sumSubtotal'); if(elSub) elSub.textContent = fmtCur(subtotal);
   const elGrand = document.getElementById('sumGrandTotal'); if(elGrand) elGrand.textContent = fmtCur(grand);
+  
+  const elRet = document.getElementById('sumReturn'); 
+  const elRetLabel = document.querySelector('.change-row .sum-label');
+  const changeRow = document.querySelector('.change-row');
+
+  if(elRet && elRetLabel && changeRow) {
+      if (due > 0) {
+          elRetLabel.textContent = "Amount Due";
+          elRet.textContent = fmtCur(due);
+          changeRow.style.backgroundColor = "var(--danger-light, #ffebee)";
+          elRet.style.color = "var(--danger, #d32f2f)";
+      } else {
+          elRetLabel.textContent = "Change Due";
+          elRet.textContent = fmtCur(ret);
+          changeRow.style.backgroundColor = "var(--success-light, #e8f5e9)";
+          elRet.style.color = "var(--success, #2e7d32)";
+      }
+  }
+
+  // Fallback for billing blade which might have sumDue
   const elDue = document.getElementById('sumDue'); if(elDue) elDue.textContent = fmtCur(due);
-  const elRet = document.getElementById('sumReturn'); if(elRet) elRet.textContent = fmtCur(ret);
 }
 
 async function checkout() {
@@ -622,19 +923,30 @@ async function checkout() {
         btn.innerHTML = 'Processing...';
         btn.disabled = true;
   
-        const response = await api('/shop/api/orders', 'POST', payload);
+        const isEditing = window.editingOrderId;
+        const url = isEditing ? `/shop/api/orders/${window.editingOrderId}` : '/shop/api/orders';
+        const method = isEditing ? 'PUT' : 'POST';
+
+        const response = await api(url, method, payload);
         
         clearCart();
-        await syncData(); // Refresh product grid
         
-        toast(`Order generated successfully!`, 'success');
+        if (isEditing) {
+            window.editingOrderId = null;
+            btn.innerHTML = '<span>Pay Now</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+            toast(`Order updated successfully!`, 'success');
+        } else {
+            toast(`Order generated successfully!`, 'success');
+        }
+
+        await syncData(); // Refresh product grid
         
         // Open Invoice in new tab or popup
         if (response.order_id) {
             window.open(`/shop/orders/${response.order_id}/invoice`, 'InvoicePopup', 'width=400,height=600');
         }
   
-        btn.innerHTML = origText;
+        if (!isEditing) btn.innerHTML = origText;
         btn.disabled = false;
     } catch(e) {
         toast(e.message || 'Error occurred', 'danger');
@@ -896,31 +1208,142 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 // SALES PAGE
 // ============================================================
-function renderSales() {
-  const q = (document.getElementById('salesSearch')?.value || '').toLowerCase();
-  const dateFilter = document.getElementById('salesDateFilter')?.value;
-  let list = store.get('invoices');
-  if (q) list = list.filter(i => i.custName.toLowerCase().includes(q));
-  if (dateFilter) list = list.filter(i => i.date.startsWith(dateFilter));
-  list.sort((a, b) => new Date(b.date) - new Date(a.date));
+window.salesPaymentStatus = '';
 
-  document.getElementById('salesTbody').innerHTML = list.length ?
-    list.map(i => `<tr>
-      <td><span class="badge badge-primary" style="font-family:var(--mono)">${i.id}</span></td>
-      <td>${i.custName}</td>
-      <td>${i.items.reduce((s, x) => s + x.qty, 0)}</td>
-      <td>${fmtCur(i.subtotal)}</td>
-      <td>${i.discount}%</td>
-      <td>${i.tax}%</td>
-      <td style="font-weight:700;color:var(--primary)">${fmtCur(i.grand)}</td>
-      <td>${fmtCur(i.paid)}</td>
-      <td><span class="badge badge-gray" style="text-transform:capitalize">${i.payment}</span></td>
-      <td>${fmtDateTime(i.date)}</td>
-      <td>
-        <button class="action-btn view" onclick="viewInvoice('${i.id}')">${VIEW_SVG}</button>
-      </td>
-    </tr>`).join('') :
-    '<tr><td colspan="11" class="empty-cell">No sales found</td></tr>';
+function setSalesStatusFilter(status, btn) {
+    if (window.salesPaymentStatus === status) {
+        window.salesPaymentStatus = '';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline');
+    } else {
+        window.salesPaymentStatus = status;
+        document.querySelectorAll('.status-filter').forEach(b => {
+            b.classList.remove('btn-primary');
+            b.classList.add('btn-outline');
+        });
+        btn.classList.remove('btn-outline');
+        btn.classList.add('btn-primary');
+    }
+    renderSales();
+}
+
+async function renderSales(page = 1) {
+  const q = (document.getElementById('salesSearch')?.value || '').toLowerCase();
+  const sDate = document.getElementById('salesStartDate')?.value || '';
+  const eDate = document.getElementById('salesEndDate')?.value || '';
+  const status = window.salesPaymentStatus || '';
+  
+  try {
+      const tbody = document.getElementById('salesTbody');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="11" class="text-center" style="padding:20px;">Loading sales...</td></tr>';
+      
+      const res = await api(`/shop/api/orders?page=${page}&search=${q}&start_date=${sDate}&end_date=${eDate}&payment_status=${status}`);
+      const list = res.data;
+      
+      if (res.totals) {
+          const elGrandTotal = document.getElementById('salesGrandTotal');
+          const elTotalPaid = document.getElementById('salesTotalPaid');
+          const elTotalDue = document.getElementById('salesTotalDue');
+          if (elGrandTotal) elGrandTotal.textContent = fmtCur(res.totals.grand_total);
+          if (elTotalPaid) elTotalPaid.textContent = fmtCur(res.totals.total_paid);
+          if (elTotalDue) elTotalDue.textContent = fmtCur(res.totals.total_due);
+      }
+      
+      window.currentSalesList = list;
+
+      tbody.innerHTML = list.length ?
+        list.map(i => `<tr>
+          <td><span class="badge badge-primary" style="font-family:var(--mono)">${i.id}</span></td>
+          <td>${i.buyer ? i.buyer.name : 'Walk-in'}</td>
+          <td>${i.items.reduce((s, x) => s + parseInt(x.qty), 0)}</td>
+          <td>${fmtCur(i.subtotal)}</td>
+          <td>${fmtCur(i.discount)}</td>
+          <td>${fmtCur(i.tax)}</td>
+          <td style="font-weight:700;color:var(--primary)">${fmtCur(i.total)}</td>
+          <td>${fmtCur(i.paid_amount)}</td>
+          <td>
+            <span class="badge ${i.payment_status === 'paid' ? 'badge-success' : (i.payment_status === 'refunded' ? 'badge-gray' : (i.payment_status === 'partial' ? 'badge-warning' : 'badge-danger'))}" style="text-transform:capitalize">${i.payment_status}</span>
+          </td>
+          <td><span class="badge badge-gray" style="text-transform:capitalize">${i.payment_method}</span></td>
+          <td>${fmtDateTime(i.created_at)}</td>
+          <td style="display:flex; gap:5px;">
+            <button class="action-btn view" onclick="window.open('/shop/orders/${i.id}/invoice', 'InvoicePopup', 'width=400,height=600')" title="View Invoice">${VIEW_SVG}</button>
+            <button class="action-btn edit" onclick="editOrderInPos(${i.id})" title="Edit Order">${EDIT_SVG}</button>
+            <button class="action-btn view" onclick="refundOrder(${i.id})" title="Refund" style="color:var(--warning)">${REFUND_SVG}</button>
+            <button class="action-btn delete" onclick="deleteOrder(${i.id})" title="Delete">${DEL_SVG}</button>
+          </td>
+        </tr>`).join('') :
+        '<tr><td colspan="12" class="empty-cell">No sales found</td></tr>';
+
+      renderSalesPagination(res);
+  } catch(e) {
+      console.error(e);
+      document.getElementById('salesTbody').innerHTML = '<tr><td colspan="11" class="empty-cell text-danger">Failed to load sales</td></tr>';
+  }
+}
+
+function renderSalesPagination(res) {
+    let paginationHtml = '<div class="pagination-wrapper" style="display:flex; justify-content:center; gap:5px; margin-top:15px; padding-bottom:15px;">';
+    
+    if (res.prev_page_url) {
+        paginationHtml += `<button class="btn btn-sm btn-outline" onclick="renderSales(${res.current_page - 1})">Prev</button>`;
+    }
+    
+    for (let i = 1; i <= res.last_page; i++) {
+        if (i === 1 || i === res.last_page || (i >= res.current_page - 2 && i <= res.current_page + 2)) {
+            paginationHtml += `<button class="btn btn-sm ${i === res.current_page ? 'btn-primary' : 'btn-outline'}" onclick="renderSales(${i})">${i}</button>`;
+        } else if (i === res.current_page - 3 || i === res.current_page + 3) {
+            paginationHtml += `<span style="padding:4px 8px;">...</span>`;
+        }
+    }
+
+    if (res.next_page_url) {
+        paginationHtml += `<button class="btn btn-sm btn-outline" onclick="renderSales(${res.current_page + 1})">Next</button>`;
+    }
+    paginationHtml += '</div>';
+    
+    const wrap = document.querySelector('#page-sales .table-wrap');
+    const existing = document.getElementById('salesPagination');
+    if (existing) existing.remove();
+    
+    if (res.last_page > 1) {
+        const pageDiv = document.createElement('div');
+        pageDiv.id = 'salesPagination';
+        pageDiv.innerHTML = paginationHtml;
+        wrap.appendChild(pageDiv);
+    }
+}
+
+function editOrderInPos(id) {
+    localStorage.setItem('mp_edit_order_id', id);
+    window.location.href = '/shop/pos';
+}
+
+function refundOrder(id) {
+    confirmDelete('Are you sure you want to refund this order? This will restore stock.', async () => {
+        try {
+            await api(`/shop/api/orders/${id}/refund`, 'POST');
+            toast('Order refunded successfully', 'success');
+            renderSales();
+        } catch(e) {
+            toast('Error refunding order', 'danger');
+            console.error(e);
+        }
+    });
+}
+
+function deleteOrder(id) {
+    confirmDelete('Are you sure you want to delete this order? This will restore stock and remove the record permanently.', async () => {
+        try {
+            await api(`/shop/api/orders/${id}`, 'DELETE');
+            toast('Order deleted successfully', 'success');
+            renderSales();
+        } catch(e) {
+            toast('Error deleting order', 'danger');
+            console.error(e);
+        }
+    });
 }
 
 function exportSalesCSV() {
@@ -1066,7 +1489,7 @@ async function saveProduct() {
       }
       closeProductModal();
       await syncData();
-  } catch(e) { toast('Error saving product', 'danger'); }
+  } catch(e) { toast(e.message || 'Error saving product', 'danger'); }
 }
 
 function deleteProduct(id) {
@@ -1146,8 +1569,15 @@ async function saveCategory() {
           await api('/shop/api/categories/' + editId, 'PUT', data);
           toast('Category updated!', 'success');
       } else {
-          await api('/shop/api/categories', 'POST', data);
+          const res = await api('/shop/api/categories', 'POST', data);
           toast('Category added!', 'success');
+          if (res && res.id && !document.getElementById('prodModal').classList.contains('hidden')) {
+              const select = document.getElementById('prodCategory');
+              if(select) {
+                  select.appendChild(new Option(data.name, res.id));
+                  select.value = res.id;
+              }
+          }
       }
       closeCatModal();
       await syncData();
@@ -1328,6 +1758,13 @@ async function saveCustomer() {
           const res = await api('/shop/api/customers', 'POST', formData);
           if (res && res.id) window.lastCreatedCustomerId = res.id;
           toast('Customer added!', 'success');
+          if (res && res.id && !document.getElementById('prodModal').classList.contains('hidden')) {
+              const select = document.getElementById('prodBuyer');
+              if(select) {
+                  select.appendChild(new Option(`${name} (${phone || ''})`, res.id));
+                  select.value = res.id;
+              }
+          }
       }
       closeCustModal();
       await syncData();
@@ -1390,6 +1827,488 @@ function renderAlerts() {
       <td>${(getSupplier(m.supplierId) || {}).name || '-'}</td>
     </tr>`).join('') :
     '<tr><td colspan="5" class="empty-cell">No low stock medicines</td></tr>';
+}
+
+// ============================================================
+// EXPENSES
+// ============================================================
+async function renderExpenses() {
+  try {
+      const sDate = document.getElementById('expStartDate')?.value || '';
+      const eDate = document.getElementById('expEndDate')?.value || '';
+      const expenses = await api(`/shop/api/expenses?start_date=${sDate}&end_date=${eDate}`);
+      const tbody = document.getElementById('expensesTbody');
+      if (!tbody) return;
+      
+      if (!expenses || !expenses.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No expenses found</td></tr>';
+          return;
+      }
+      
+      tbody.innerHTML = expenses.map(e => `
+          <tr>
+              <td>${fmtDateTime(e.expense_date)}</td>
+              <td style="font-weight: 500">${e.title}</td>
+              <td style="color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${e.description || ''}">${e.description || '-'}</td>
+              <td style="font-weight: 600">${fmtCur(e.amount)}</td>
+              <td>${e.user ? e.user.name : '-'}</td>
+              <td class="text-right">
+                  <button class="btn btn-ghost" onclick='editExpense(${JSON.stringify(e).replace(/'/g, "&apos;")})'>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  </button>
+                  <button class="btn btn-ghost" style="color:var(--danger)" onclick="deleteExpense(${e.id})">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </button>
+              </td>
+          </tr>
+      `).join('');
+  } catch (err) {
+      console.error(err);
+      toast('Failed to load expenses', 'danger');
+  }
+}
+
+function openExpenseModal() {
+  document.getElementById('expenseId').value = '';
+  document.getElementById('expenseTitle').value = '';
+  document.getElementById('expenseAmount').value = '';
+  document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('expenseDescription').value = '';
+  
+  document.getElementById('expenseModalTitle').textContent = 'Add Expense';
+  document.getElementById('expenseModal').classList.remove('hidden');
+}
+
+function editExpense(exp) {
+  document.getElementById('expenseId').value = exp.id;
+  document.getElementById('expenseTitle').value = exp.title;
+  document.getElementById('expenseAmount').value = exp.amount;
+  document.getElementById('expenseDate').value = exp.expense_date;
+  document.getElementById('expenseDescription').value = exp.description || '';
+  
+  document.getElementById('expenseModalTitle').textContent = 'Edit Expense';
+  document.getElementById('expenseModal').classList.remove('hidden');
+}
+
+function closeExpenseModal() {
+  document.getElementById('expenseModal').classList.add('hidden');
+}
+
+async function saveExpense() {
+  const id = document.getElementById('expenseId').value;
+  const data = {
+      title: document.getElementById('expenseTitle').value,
+      amount: parseFloat(document.getElementById('expenseAmount').value) || 0,
+      expense_date: document.getElementById('expenseDate').value,
+      description: document.getElementById('expenseDescription').value
+  };
+  
+  if(!data.title || !data.amount || !data.expense_date) return toast('Please fill required fields', 'warning');
+  
+  try {
+      const url = id ? `/shop/api/expenses/${id}` : '/shop/api/expenses';
+      const method = id ? 'PUT' : 'POST';
+      
+      const res = await api(url, method, data);
+      
+      toast(res.message);
+      closeExpenseModal();
+      renderExpenses();
+  } catch (err) {
+      toast(err.message, 'danger');
+  }
+}
+
+async function deleteExpense(id) {
+  if(!confirm('Delete this expense?')) return;
+  try {
+      const res = await api(`/shop/api/expenses/${id}`, 'DELETE');
+      toast('Expense deleted');
+      renderExpenses();
+  } catch(err) {
+      toast(err.message, 'danger');
+  }
+}
+
+// ============================================================
+// PURCHASE ORDERS
+// ============================================================
+let currentPOItems = [];
+window.poPaymentStatus = '';
+
+function setPOStatusFilter(status, btn) {
+    if (window.poPaymentStatus === status) {
+        window.poPaymentStatus = '';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline');
+    } else {
+        window.poPaymentStatus = status;
+        document.querySelectorAll('.po-status-filter').forEach(b => {
+            b.classList.remove('btn-primary');
+            b.classList.add('btn-outline');
+        });
+        btn.classList.remove('btn-outline');
+        btn.classList.add('btn-primary');
+    }
+    renderPurchaseOrders();
+}
+
+async function renderPurchaseOrders() {
+  try {
+      const sDate = document.getElementById('poStartDate')?.value || '';
+      const eDate = document.getElementById('poEndDate')?.value || '';
+      const status = window.poPaymentStatus || '';
+      const res = await api(`/shop/api/purchase-orders?start_date=${sDate}&end_date=${eDate}&payment_status=${status}`);
+      // Fallback to res if it's an array (old API) or res.data if it's the new format
+      const pos = Array.isArray(res) ? res : res.data;
+      
+      if (res.totals) {
+          const elGrandTotal = document.getElementById('poGrandTotal');
+          const elTotalPaid = document.getElementById('poTotalPaid');
+          const elTotalDue = document.getElementById('poTotalDue');
+          if (elGrandTotal) elGrandTotal.textContent = fmtCur(res.totals.grand_total);
+          if (elTotalPaid) elTotalPaid.textContent = fmtCur(res.totals.total_paid);
+          if (elTotalDue) elTotalDue.textContent = fmtCur(res.totals.total_due);
+      }
+
+      const tbody = document.getElementById('poTbody');
+      if (!tbody) return;
+      
+      if (!pos || !pos.length) {
+          tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">No purchase orders found</td></tr>';
+          return;
+      }
+      
+      tbody.innerHTML = pos.map(po => `
+          <tr>
+              <td>#PO-${po.id}</td>
+              <td>${fmtDateTime(po.created_at)}</td>
+              <td style="font-weight: 500">${po.supplier_name || '-'}</td>
+              <td>${po.items ? po.items.length : 0} items</td>
+              <td style="font-weight: 600">${fmtCur(po.amount)}</td>
+              <td style="color:var(--success)">${fmtCur(po.paid_amount)}</td>
+              <td style="color:var(--danger)">${fmtCur(po.remaining_amount)}</td>
+              <td>
+                <span class="badge ${po.payment_status === 'paid' ? 'badge-success' : (po.payment_status === 'partial' ? 'badge-warning' : 'badge-danger')}">
+                  ${po.payment_status.toUpperCase()}
+                </span>
+              </td>
+              <td class="text-right">
+                  <button class="btn btn-ghost" onclick='viewPO(${JSON.stringify(po).replace(/'/g, "&apos;")})'>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  </button>
+                  <button class="btn btn-ghost" onclick='editPO(${JSON.stringify(po).replace(/'/g, "&apos;")})'>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  </button>
+                  <button class="btn btn-ghost" style="color:var(--danger)" onclick="deletePO(${po.id})">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  </button>
+              </td>
+          </tr>
+      `).join('');
+  } catch (err) {
+      console.error(err);
+      toast('Failed to load purchase orders', 'danger');
+  }
+}
+
+let currentViewedPO = null;
+
+function viewPO(po) {
+  currentViewedPO = po;
+  document.getElementById('viewPoSupplier').textContent = po.supplier_name || '-';
+  document.getElementById('viewPoDate').textContent = fmtDateTime(po.created_at);
+  
+  const tbody = document.getElementById('viewPoItemsTbody');
+  if (po.items && po.items.length > 0) {
+      tbody.innerHTML = po.items.map(item => `
+          <tr>
+              <td>${item.product ? item.product.name : 'Unknown Product'}</td>
+              <td>${item.qty}</td>
+              <td>${fmtCur(item.price)}</td>
+              <td>${fmtCur(item.amount)}</td>
+          </tr>
+      `).join('');
+  } else {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No items</td></tr>';
+  }
+
+  document.getElementById('viewPoTotalAmount').textContent = fmtCur(po.amount);
+  document.getElementById('viewPoPaidAmount').textContent = fmtCur(po.paid_amount);
+  document.getElementById('viewPoRemainingAmount').textContent = fmtCur(po.remaining_amount);
+
+  document.getElementById('viewPoModal').classList.remove('hidden');
+}
+
+function closeViewPOModal() {
+  document.getElementById('viewPoModal').classList.add('hidden');
+  currentViewedPO = null;
+}
+
+function printPO() {
+    if (!currentViewedPO) return;
+    const po = currentViewedPO;
+
+    let itemsHtml = '';
+    if (po.items && po.items.length > 0) {
+        itemsHtml = po.items.map(item => `
+            <tr>
+                <td>${item.product ? item.product.name : 'Unknown Product'}</td>
+                <td>${item.qty}</td>
+                <td>${fmtCur(item.price)}</td>
+                <td style="text-align: right;">${fmtCur(item.amount)}</td>
+            </tr>
+        `).join('');
+    } else {
+        itemsHtml = '<tr><td colspan="4" style="text-align: center;">No items</td></tr>';
+    }
+
+    const printHtml = `
+    <html>
+    <head>
+        <title>Purchase Order #${po.id}</title>
+        <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; color: #333; }
+            .header { text-align: center; margin-bottom: 40px; }
+            .header h1 { margin: 0; font-size: 24px; }
+            .info-table { width: 100%; margin-bottom: 30px; border-collapse: collapse; }
+            .info-table td { padding: 8px 0; border-bottom: 1px solid #eee; }
+            .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            .items-table th { padding: 8px 0; border-bottom: 2px solid #333; text-align: left; }
+            .items-table td { padding: 8px 0; border-bottom: 1px solid #eee; }
+            .totals-section { width: 100%; margin-top: 15px; }
+            .totals-section table { width: 100%; border-collapse: collapse; }
+            .totals-section td { padding: 8px 0; border-bottom: 1px solid #eee; }
+            .totals-section .total-row { font-weight: bold; font-size: 1.1em; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>PURCHASE ORDER</h1>
+            <p>Order #${po.id} | Date: ${fmtDateTime(po.created_at)}</p>
+        </div>
+        
+        <table class="info-table">
+            <tr>
+                <td style="font-weight: bold;">Supplier:</td>
+                <td style="text-align: right;">${po.supplier_name || '-'}</td>
+            </tr>
+            <tr>
+                <td style="font-weight: bold;">Status:</td>
+                <td style="text-align: right;">${po.payment_status.toUpperCase()}</td>
+            </tr>
+        </table>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Price/Unit</th>
+                    <th style="text-align: right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${itemsHtml}
+            </tbody>
+        </table>
+
+        <div class="totals-section">
+            <table>
+                <tr>
+                    <td>Subtotal:</td>
+                    <td style="text-align: right;">${fmtCur(po.amount)}</td>
+                </tr>
+                <tr>
+                    <td>Paid Amount:</td>
+                    <td style="text-align: right; color: green;">${fmtCur(po.paid_amount)}</td>
+                </tr>
+                <tr class="total-row">
+                    <td>Balance Due:</td>
+                    <td style="text-align: right; color: red;">${fmtCur(po.remaining_amount)}</td>
+                </tr>
+            </table>
+        </div>
+    </body>
+    </html>
+    `;
+    
+    let printFrame = document.getElementById('poPrintFrame');
+    if (!printFrame) {
+        printFrame = document.createElement('iframe');
+        printFrame.id = 'poPrintFrame';
+        printFrame.style.position = 'absolute';
+        printFrame.style.width = '0px';
+        printFrame.style.height = '0px';
+        printFrame.style.border = 'none';
+        document.body.appendChild(printFrame);
+    }
+
+    const doc = printFrame.contentWindow.document;
+    doc.open();
+    // Remove the script that tries to call window.close() since we're in an iframe now
+    doc.write(printHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''));
+    doc.close();
+
+    setTimeout(() => {
+        printFrame.contentWindow.focus();
+        printFrame.contentWindow.print();
+    }, 250);
+}
+
+function openPOModal() {
+  currentPOItems = [];
+  document.getElementById('poId').value = '';
+  document.getElementById('poSupplier').value = '';
+  document.getElementById('poTotalAmount').value = '0';
+  document.getElementById('poPaidAmount').value = '0';
+  
+  // Populate products dropdown
+  const prods = store.get('products') || [];
+  const select = document.getElementById('poProductSelect');
+  select.innerHTML = '<option value="">Select a product...</option>' + 
+      prods.map(p => `<option value="${p.id}" data-price="${p.purchase_price || 0}">${p.name} - ${p.imei || ''} (${fmtCur(p.purchase_price)})</option>`).join('');
+
+  document.getElementById('poModalTitle').textContent = 'Add to Purchase';
+  renderPOItemsTable();
+  document.getElementById('poModal').classList.remove('hidden');
+}
+
+function editPO(po) {
+  document.getElementById('poId').value = po.id;
+  document.getElementById('poSupplier').value = po.supplier_name || '';
+  document.getElementById('poPaidAmount').value = po.paid_amount || '0';
+  
+  currentPOItems = po.items ? po.items.map(item => ({
+      product_id: item.product_id,
+      name: item.product ? item.product.name : 'Unknown Product',
+      qty: item.qty,
+      price: item.price
+  })) : [];
+
+  // Populate products dropdown
+  const prods = store.get('products') || [];
+  const select = document.getElementById('poProductSelect');
+  select.innerHTML = '<option value="">Select a product...</option>' + 
+      prods.map(p => `<option value="${p.id}" data-price="${p.purchase_price || 0}">${p.name} - ${p.imei || ''} (${fmtCur(p.purchase_price)})</option>`).join('');
+
+  document.getElementById('poModalTitle').textContent = 'Edit Purchase Order';
+  renderPOItemsTable();
+  document.getElementById('poModal').classList.remove('hidden');
+}
+
+function closePOModal() {
+  document.getElementById('poModal').classList.add('hidden');
+}
+
+function addProdToPO() {
+  const select = document.getElementById('poProductSelect');
+  if(!select.value) return toast('Please select a product', 'warning');
+  
+  const prodId = parseInt(select.value);
+  const name = select.options[select.selectedIndex].text.split(' - ')[0];
+  const price = parseFloat(select.options[select.selectedIndex].dataset.price) || 0;
+  
+  // Check if already added
+  const existing = currentPOItems.find(i => i.product_id === prodId);
+  if (existing) {
+      existing.qty += 1;
+  } else {
+      currentPOItems.push({ product_id: prodId, name: name, qty: 1, price: price });
+  }
+  
+  renderPOItemsTable();
+}
+
+function removeProdFromPO(index) {
+  currentPOItems.splice(index, 1);
+  renderPOItemsTable();
+}
+
+function updatePOItemQty(index, qty) {
+  currentPOItems[index].qty = parseInt(qty) || 1;
+  renderPOItemsTable();
+}
+
+function updatePOItemPrice(index, price) {
+  currentPOItems[index].price = parseFloat(price) || 0;
+  renderPOItemsTable();
+}
+
+function renderPOItemsTable() {
+  const tbody = document.getElementById('poItemsTbody');
+  if (!currentPOItems.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No products added yet</td></tr>';
+      document.getElementById('poTotalAmount').value = '0';
+      return;
+  }
+  
+  let total = 0;
+  tbody.innerHTML = currentPOItems.map((item, index) => {
+      const amount = item.qty * item.price;
+      total += amount;
+      return `
+      <tr>
+        <td>${item.name}</td>
+        <td><input type="number" class="input" style="padding:4px; height:auto" min="1" value="${item.qty}" onchange="updatePOItemQty(${index}, this.value)"></td>
+        <td><input type="number" class="input" style="padding:4px; height:auto" min="0" value="${item.price}" onchange="updatePOItemPrice(${index}, this.value)"></td>
+        <td>${fmtCur(amount)}</td>
+        <td class="text-right">
+          <button class="btn btn-ghost" style="color:var(--danger); padding:4px;" onclick="removeProdFromPO(${index})">✕</button>
+        </td>
+      </tr>
+      `;
+  }).join('');
+  
+  document.getElementById('poTotalAmount').value = total;
+}
+
+function calcPOTotal() {
+  // Can be used if additional logic is needed on paid amount change, e.g. validating it doesn't exceed total
+}
+
+async function savePO() {
+  if (!currentPOItems.length) return toast('Please add at least one product', 'warning');
+  
+  const id = document.getElementById('poId').value;
+  const data = {
+      supplier_name: document.getElementById('poSupplier').value,
+      paid_amount: parseFloat(document.getElementById('poPaidAmount').value) || 0,
+      items: currentPOItems.map(i => ({
+          product_id: i.product_id,
+          qty: i.qty,
+          price: i.price
+      }))
+  };
+  
+  try {
+      const url = id ? `/shop/api/purchase-orders/${id}` : '/shop/api/purchase-orders';
+      const method = id ? 'PUT' : 'POST';
+
+      const res = await api(url, method, data);
+      toast(res.message);
+      closePOModal();
+      
+      // Since stock changed, re-sync data
+      await syncData();
+      if(document.getElementById('page-purchase-orders')) renderPurchaseOrders();
+  } catch (err) {
+      toast(err.message, 'danger');
+  }
+}
+
+async function deletePO(id) {
+  if(!confirm('Delete this purchase order? This will revert the stock levels.')) return;
+  try {
+      const res = await api(`/shop/api/purchase-orders/${id}`, 'DELETE');
+      toast(res.message);
+      
+      // Since stock reverted, re-sync data
+      await syncData();
+      if(document.getElementById('page-purchase-orders')) renderPurchaseOrders();
+  } catch(err) {
+      toast(err.message, 'danger');
+  }
 }
 
 // ============================================================

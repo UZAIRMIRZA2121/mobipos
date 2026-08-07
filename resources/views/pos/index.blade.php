@@ -52,13 +52,7 @@
             <div class="pos-med-header" style="border-bottom: none; padding-bottom: 4px;">
               <span id="posProdCount" class="pos-med-count">All products</span>
               <div class="pos-view-toggle">
-                <button class="view-btn active" id="viewImageToggle" onclick="togglePosImage()" title="Toggle Images">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                </button>
-                <button class="view-btn active" id="viewGrid" onclick="setPosView('grid')" title="Grid view">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                </button>
-                <button class="view-btn" id="viewList" onclick="setPosView('list')" title="List view">
+                <button class="view-btn active" id="viewList" onclick="setPosView('list')" title="List view" style="cursor:default;">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                 </button>
               </div>
@@ -68,31 +62,40 @@
 
         </div>
 
-        <!-- RIGHT: Cart & Checkout -->
-        <div class="pos-premium-right glass-panel">
+        <!-- RIGHT: Cart & Checkout (Sidebar) -->
+        <div class="pos-premium-right" id="posSidebar">
           
-          <!-- Cart Header -->
-          <div class="cart-premium-header">
-            <h3>Current Order</h3>
-            <span id="cartBadge" class="cart-pulse-badge">0 items</span>
+          <!-- Cart Items Panel -->
+          <div class="pos-premium-cart glass-panel">
+            <!-- Cart Header -->
+            <div class="cart-premium-header">
+              <h3>Current Order</h3>
+              <div style="display:flex; align-items:center; gap:10px;">
+                  <span id="cartBadge" class="cart-pulse-badge">0 items</span>
+                  <button class="mobile-cart-close" onclick="toggleMobileCart()" title="Close Cart">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+              </div>
+            </div>
+
+            <!-- Cart Items -->
+            <div class="cart-premium-items-wrap scrollbar-thin">
+              <table class="table cart-premium-table" id="cartTable">
+                <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th></th></tr></thead>
+                <tbody id="cartTbody">
+                  <tr><td colspan="4" class="empty-cart-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                    <p>Cart is empty</p>
+                    <span>Scan or click items to add</span>
+                  </td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <!-- Cart Items -->
-          <div class="cart-premium-items-wrap scrollbar-thin">
-            <table class="table cart-premium-table" id="cartTable">
-              <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th></th></tr></thead>
-              <tbody id="cartTbody">
-                <tr><td colspan="4" class="empty-cart-state">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                  <p>Cart is empty</p>
-                  <span>Scan or click items to add</span>
-                </td></tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Checkout Controls -->
-          <div class="checkout-premium-controls">
+          <!-- Checkout Controls Panel -->
+          <div class="pos-premium-checkout glass-panel">
+            <div class="checkout-premium-controls" style="flex:1; display:flex; flex-direction:column; border-top:none; border-radius:16px;">
             
             <div class="checkout-inputs">
                 <div class="form-group">
@@ -141,17 +144,24 @@
                 </div>
             </div>
 
-            <button class="btn btn-primary btn-checkout" id="checkoutBtn" onclick="checkout()">
+            <button class="btn btn-primary btn-checkout" id="checkoutBtn" onclick="checkout()" style="margin-top:auto;">
                 <span>Pay Now</span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </button>
             
+          </div>
           </div>
 
         </div>
 
       </div>
     </div>
+
+    <!-- Floating Cart Button (Mobile Only) -->
+    <button class="mobile-cart-toggle" onclick="toggleMobileCart()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        <span id="mobileCartBadge" class="mobile-cart-badge">0</span>
+    </button>
 
     <!-- INVOICES HAVE BEEN MOVED TO THEIR OWN FILE -->
 </main>
@@ -165,6 +175,11 @@
         } else {
             document.exitFullscreen();
         }
+    }
+
+    function toggleMobileCart() {
+        const cartPanel = document.querySelector('.pos-premium-right');
+        if(cartPanel) cartPanel.classList.toggle('mobile-open');
     }
 
     setInterval(() => {

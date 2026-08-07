@@ -78,6 +78,19 @@
             color: #333;
         }
 
+        .item-imei {
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+            background: #f0f0f0;
+            padding: 3px 5px;
+            border: 1px dashed #000;
+            display: inline-block;
+            margin-top: 3px;
+            margin-bottom: 2px;
+            border-radius: 2px;
+        }
+
         .totals {
             margin-top: 10px;
         }
@@ -134,10 +147,24 @@
 
 <div class="receipt-container">
     <div class="header text-center">
-        <h1>MobiPOS</h1>
-        <p>Your Trusted Mobile Shop</p>
-        <p>123 Main Street, City</p>
-        <p>Tel: +92 300 1234567</p>
+        <h1>{{ $invoiceSettings->store_name ?? 'MobiPOS' }}</h1>
+        @if(isset($invoiceSettings) && $invoiceSettings->header_text)
+            <p>{!! nl2br(e($invoiceSettings->header_text)) !!}</p>
+        @elseif(!isset($invoiceSettings) || !$invoiceSettings->header_text)
+            <p>Your Trusted Mobile Shop</p>
+        @endif
+        
+        @if(isset($invoiceSettings) && $invoiceSettings->address)
+            <p>{!! nl2br(e($invoiceSettings->address)) !!}</p>
+        @elseif(!isset($invoiceSettings) || !$invoiceSettings->address)
+            <p>123 Main Street, City</p>
+        @endif
+        
+        @if(isset($invoiceSettings) && $invoiceSettings->phone)
+            <p>Tel: {{ $invoiceSettings->phone }}</p>
+        @elseif(!isset($invoiceSettings) || !$invoiceSettings->phone)
+            <p>Tel: +92 300 1234567</p>
+        @endif
     </div>
 
     <div class="divider"></div>
@@ -175,7 +202,7 @@
                 <td style="width: 60%">
                     <span class="item-name">{{ $item->product ? $item->product->name : 'Unknown Product' }}</span>
                     @if($item->product && $item->product->imei_serial)
-                        <span class="item-meta">IMEI: {{ $item->product->imei_serial }}</span>
+                        <div class="item-imei">IMEI: {{ $item->product->imei_serial }}</div>
                     @endif
                     <div class="item-meta">@ PKR {{ number_format($item->sell_price) }}</div>
                 </td>
@@ -228,7 +255,11 @@
     <div class="divider"></div>
 
     <div class="footer">
-        <p class="bold" style="margin-bottom: 10px; text-align: center;">THANK YOU FOR YOUR SHOPPING!</p>
+        @if(isset($invoiceSettings) && $invoiceSettings->footer_text)
+            <p class="bold" style="margin-bottom: 10px; text-align: center;">{!! nl2br(e($invoiceSettings->footer_text)) !!}</p>
+        @else
+            <p class="bold" style="margin-bottom: 10px; text-align: center;">THANK YOU FOR YOUR SHOPPING!</p>
+        @endif
        <p class="mb-0 text-center">
     © 2026 All Rights Reserved |
     Developed with <span class="text-danger">❤</span> by

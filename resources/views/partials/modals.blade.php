@@ -1,3 +1,144 @@
+<!-- Purchase Order Modal -->
+<div class="modal-overlay hidden" id="poModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="poModalTitle">Add to Purchase</h3>
+      <button class="modal-close" onclick="closePOModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="poId"/>
+      <div class="form-grid">
+        <div class="form-group" style="grid-column: span 2;">
+          <label>Supplier Name</label>
+          <input type="text" id="poSupplier" class="input" placeholder="e.g. Ali Traders"/>
+        </div>
+        <div class="form-group" style="grid-column: span 2;">
+          <label>Select Product to Add</label>
+          <div style="display:flex; gap:10px;">
+            <select id="poProductSelect" class="input" style="flex:1;">
+              <option value="">Select a product...</option>
+            </select>
+            <button class="btn btn-secondary" onclick="addProdToPO()">Add</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="table-wrap" style="margin-top:20px;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th width="100">Qty</th>
+              <th width="150">Price/Unit</th>
+              <th width="150">Amount</th>
+              <th width="60" class="text-right">✕</th>
+            </tr>
+          </thead>
+          <tbody id="poItemsTbody">
+            <!-- Items added here -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="form-grid" style="margin-top:20px;">
+        <div class="form-group">
+          <label>Total Amount (PKR)</label>
+          <input type="number" id="poTotalAmount" class="input" readonly value="0"/>
+        </div>
+        <div class="form-group">
+          <label>Paid Amount (PKR) *</label>
+          <input type="number" id="poPaidAmount" class="input" min="0" value="0" oninput="calcPOTotal()"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closePOModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePO()">Save Purchase Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Purchase Order Modal -->
+<div class="modal-overlay hidden" id="viewPoModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>Purchase Order Details</h3>
+      <button class="modal-close" onclick="closeViewPOModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+        <div>
+          <p class="text-sm text-gray">Supplier Name</p>
+          <p id="viewPoSupplier" style="font-weight: 500; font-size: 16px;"></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray">Date</p>
+          <p id="viewPoDate" style="font-weight: 500; font-size: 16px;"></p>
+        </div>
+      </div>
+      
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th width="100">Qty</th>
+              <th width="150">Price/Unit</th>
+              <th width="150">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="viewPoItemsTbody">
+            <!-- Items added here -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+        <div>
+          <p class="text-sm text-gray">Total Amount</p>
+          <p id="viewPoTotalAmount" style="font-weight: 600; font-size: 18px;"></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray">Paid Amount</p>
+          <p id="viewPoPaidAmount" style="font-weight: 600; font-size: 18px; color: var(--success);"></p>
+        </div>
+        <div>
+          <p class="text-sm text-gray">Remaining Amount</p>
+          <p id="viewPoRemainingAmount" style="font-weight: 600; font-size: 18px; color: var(--danger);"></p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content: space-between;">
+      <button class="btn btn-secondary" onclick="printPO()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px; vertical-align:middle;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        Print
+      </button>
+      <button class="btn" onclick="closeViewPOModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Expense Modal -->
+<div class="modal-overlay hidden" id="expenseModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="expenseModalTitle">Add Expense</h3>
+      <button class="modal-close" onclick="closeExpenseModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="expenseId"/>
+      <div class="form-group"><label>Title *</label><input type="text" id="expenseTitle" class="input" placeholder="e.g. Electricity Bill" required/></div>
+      <div class="form-group"><label>Amount (PKR) *</label><input type="number" id="expenseAmount" class="input" min="0" step="0.01" required/></div>
+      <div class="form-group"><label>Date *</label><input type="date" id="expenseDate" class="input" required/></div>
+      <div class="form-group"><label>Description</label><textarea id="expenseDescription" class="input" rows="3" placeholder="Optional details..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeExpenseModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveExpense()">Save Expense</button>
+    </div>
+  </div>
+</div>
+
 <!-- Product Modal -->
 <div class="modal-overlay hidden" id="prodModal">
   <div class="modal modal-lg">
@@ -17,8 +158,20 @@
         <div class="form-group"><label>Purchase Price (PKR)</label><input type="number" id="prodPurchase" class="input" min="0" step="0.01"/></div>
         <div class="form-group"><label>Sale Price (PKR) *</label><input type="number" id="prodSale" class="input" min="0" step="0.01"/></div>
         <div class="form-group"><label>Status *</label><select id="prodStatus" class="input"><option value="in_stock">In Stock</option><option value="sold">Sold</option><option value="in_repair">In Repair</option></select></div>
-        <div class="form-group"><label>Category</label><select id="prodCategory" class="input"><option value="">Select category</option></select></div>
-        <div class="form-group"><label>Sourced From (Buyer)</label><select id="prodBuyer" class="input"><option value="">Select Customer (Optional)</option></select></div>
+        <div class="form-group">
+          <label>Category</label>
+          <div style="display: flex; gap: 8px;">
+            <select id="prodCategory" class="input" style="flex: 1;"><option value="">Select category</option></select>
+            <button type="button" class="btn btn-outline" style="padding: 0 12px; font-size: 18px;" onclick="openCatModal()" title="Add Category">+</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Sourced From (Buyer)</label>
+          <div style="display: flex; gap: 8px;">
+            <select id="prodBuyer" class="input" style="flex: 1;"><option value="">Select Customer (Optional)</option></select>
+            <button type="button" class="btn btn-outline" style="padding: 0 12px; font-size: 18px;" onclick="openCustModal()" title="Add Customer">+</button>
+          </div>
+        </div>
         <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" class="input" min="0" value="1"/></div>
         <div class="form-group"><label>Product Image</label><input type="file" id="prodImage" class="input" accept="image/*"/></div>
       </div>
