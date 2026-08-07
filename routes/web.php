@@ -39,7 +39,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/wallets', function() { return 'Wallets UI Pending'; })->name('wallets.index');
 });
 
-Route::middleware(['auth', 'role:shop'])->prefix('shop')->name('shop.')->group(function () {
+Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop')->name('shop.')->group(function () {
     // API Routes for frontend JS
     Route::get('/api/products', [ProductController::class, 'apiIndex'])->name('api.products.index');
     Route::post('/api/products', [ProductController::class, 'store'])->name('api.products.store');
@@ -87,8 +87,16 @@ Route::middleware(['auth', 'role:shop'])->prefix('shop')->name('shop.')->group(f
     Route::get('/dashboard', function () {
         return view('shop.dashboard');
     })->name('dashboard');
+
+    Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'shopEdit'])->name('profile');
+    Route::post('/profile', [App\Http\Controllers\ProfileController::class, 'shopUpdate'])->name('profile.update');
+
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::get('/invoices', function() { return 'Invoices UI Pending'; })->name('invoices.index');
+    
+    Route::resource('/staff', App\Http\Controllers\StaffController::class)->except(['show']);
+    Route::post('/staff/{staff}/generate-otp', [App\Http\Controllers\StaffController::class, 'generateOtp'])->name('staff.generate-otp');
+    Route::post('/staff/{staff}/force-offline', [App\Http\Controllers\StaffController::class, 'forceOffline'])->name('staff.force-offline');
     Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
     Route::get('/expenses', [App\Http\Controllers\ExpenseController::class, 'index'])->name('expenses.index');
     Route::get('/reports', [App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
@@ -116,5 +124,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// Staff Authentication Routes
+Route::get('/staff/login', [App\Http\Controllers\StaffAuthController::class, 'showLoginForm'])->name('staff.login');
+Route::post('/staff/login', [App\Http\Controllers\StaffAuthController::class, 'login'])->name('staff.login.post');
+Route::post('/staff/logout', [App\Http\Controllers\StaffAuthController::class, 'logout'])->name('staff.logout');
 
 require __DIR__.'/auth.php';

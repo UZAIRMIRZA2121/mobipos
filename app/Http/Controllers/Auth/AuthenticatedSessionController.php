@@ -36,6 +36,14 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        if (session()->has('staff_id')) {
+            $staff = \App\Models\Staff::find(session('staff_id'));
+            if ($staff) {
+                $staff->is_online = false;
+                $staff->save();
+            }
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

@@ -58,6 +58,30 @@ class User extends Authenticatable
         return $this->hasMany(Supplier::class);
     }
 
+    public function privileges()
+    {
+        return $this->belongsToMany(Privilege::class, 'user_privileges');
+    }
+
+    public function hasPrivilege($routeName)
+    {
+        if (session()->has('staff_id')) {
+            $staff = \App\Models\Staff::find(session('staff_id'));
+            if ($staff && $staff->privileges) {
+                $staffPrivileges = explode(',', $staff->privileges);
+                $privilege = \App\Models\Privilege::where('route_name', $routeName)->first();
+                return $privilege && in_array($privilege->id, $staffPrivileges);
+            }
+            return false;
+        }
+
+        if (in_array($this->type, ['admin', 'shop', 'seller'])) {
+            return true;
+        }
+
+        return $this->privileges()->where('route_name', $routeName)->exists();
+    }
+
     public function customers()
     {
         return $this->hasMany(Customer::class);

@@ -57,4 +57,36 @@ class ProfileController extends Controller
 
         return Redirect::to('/');
     }
+
+    /**
+     * Display the shop profile settings form.
+     */
+    public function shopEdit(Request $request): View
+    {
+        return view('shop.profile', [
+            'user' => $request->user(),
+        ]);
+    }
+
+    /**
+     * Update the shop profile and password.
+     */
+    public function shopUpdate(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+        $user->name = $request->input('name');
+        
+        if ($request->filled('password')) {
+            $user->password = \Illuminate\Support\Facades\Hash::make($request->input('password'));
+        }
+
+        $user->save();
+
+        return Redirect::route('shop.profile')->with('success', 'Profile updated successfully.');
+    }
 }
