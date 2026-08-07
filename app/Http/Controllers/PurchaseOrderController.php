@@ -19,7 +19,7 @@ class PurchaseOrderController extends Controller
 
     public function apiIndex(Request $request)
     {
-        $query = PurchaseOrder::with(['items.product', 'user'])->orderBy('created_at', 'desc');
+        $query = PurchaseOrder::where('user_id', Auth::id())->with(['items.product', 'user'])->orderBy('created_at', 'desc');
         
         if ($request->has('start_date') && $request->start_date != '') {
             $query->whereDate('created_at', '>=', $request->start_date);

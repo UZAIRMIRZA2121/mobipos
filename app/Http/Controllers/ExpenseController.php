@@ -16,7 +16,7 @@ class ExpenseController extends Controller
 
     public function apiIndex(Request $request)
     {
-        $query = Expense::with('user')->orderBy('expense_date', 'desc');
+        $query = Expense::where('user_id', Auth::id())->with('user')->orderBy('expense_date', 'desc');
         
         if ($request->has('start_date') && $request->start_date != '') {
             $query->whereDate('expense_date', '>=', $request->start_date);

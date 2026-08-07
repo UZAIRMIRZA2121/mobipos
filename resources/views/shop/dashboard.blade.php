@@ -12,7 +12,7 @@
           </div>
           <div>
             <div id="dashTotalEarning" style="font-size: 20px; font-weight: 700; color: #111827; line-height: 1.2;">PKR 0.00</div>
-            <div style="color: #6b7280; font-size: 13px; font-weight: 500; margin-top: 4px;">Total Earning</div>
+            <div style="color: #6b7280; font-size: 13px; font-weight: 500; margin-top: 4px;">Total Sales</div>
           </div>
         </div>
         
@@ -34,7 +34,7 @@
           </div>
           <div>
             <div id="dashActualEarning" style="font-size: 20px; font-weight: 700; color: #111827; line-height: 1.2;">PKR 0.00</div>
-            <div style="color: #6b7280; font-size: 13px; font-weight: 500; margin-top: 4px;">Actual Earning</div>
+            <div style="color: #6b7280; font-size: 13px; font-weight: 500; margin-top: 4px;">Actual Sales</div>
           </div>
         </div>
 
@@ -51,7 +51,7 @@
       </div>
       </div>
 
-      <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
         <div class="card" style="margin-bottom: 0;">
           <div class="card-header" style="padding-bottom: 15px;">
             <h3 style="font-size: 16px; font-weight: 600; color: #111827;">Top Selling Products (Performance)</h3>

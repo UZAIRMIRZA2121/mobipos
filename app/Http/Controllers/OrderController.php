@@ -13,7 +13,7 @@ class OrderController extends Controller
 {
     public function apiIndex(Request $request)
     {
-        $query = Order::with(['items.product', 'buyer'])->orderBy('created_at', 'desc');
+        $query = Order::where('user_id', Auth::id())->with(['items.product', 'buyer'])->orderBy('created_at', 'desc');
         
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
@@ -51,7 +51,7 @@ class OrderController extends Controller
 
     public function dashboardStats()
     {
-        $totalEarning = Order::where('payment_status', '!=', 'refunded')->sum('total');
+        $totalEarning = Order::where('user_id', Auth::id())->where('payment_status', '!=', 'refunded')->sum('total');
         
         // Sum of buy_price * qty for all non-refunded orders
         // Note: order_items buy_price might not exist if they don't store it, 
@@ -64,19 +64,23 @@ class OrderController extends Controller
         $actualEarning = $totalEarning - $totalExpense;
         
         $stockValue = DB::table('products')
+            ->where('user_id', Auth::id())
             ->where('status', 'in_stock')
             ->sum(DB::raw('purchase_price * stock'));
 
         // Recent Sales
-        $recentSales = Order::with(['items.product', 'buyer'])
+        $recentSales = Order::where('user_id', Auth::id())
+            ->with(['items.product', 'buyer'])
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
 
         // Top Selling Products (Performance)
         $topProducts = DB::table('order_items')
-            ->select('product_id', DB::raw('SUM(qty) as total_qty'), DB::raw('SUM(sell_price * qty) as total_revenue'))
-            ->groupBy('product_id')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->select('order_items.product_id', DB::raw('SUM(order_items.qty) as total_qty'), DB::raw('SUM(order_items.sell_price * order_items.qty) as total_revenue'))
+            ->where('orders.user_id', Auth::id())
+            ->groupBy('order_items.product_id')
             ->orderBy('total_qty', 'desc')
             ->take(5)
             ->get();
@@ -100,7 +104,7 @@ class OrderController extends Controller
 
     public function apiShow($id)
     {
-        $order = Order::with(['items.product', 'buyer'])->findOrFail($id);
+        $order = Order::where('user_id', Auth::id())->with(['items.product', 'buyer'])->findOrFail($id);
         return response()->json($order);
     }
 

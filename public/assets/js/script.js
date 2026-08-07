@@ -622,7 +622,12 @@ function renderProdGrid() {
 
   if (!prods.length) {
     grid.innerHTML = `<div class="pos-no-results">
-      <div class="pos-no-results-icon">ðŸ” </div>
+      <div class="pos-no-results-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </div>
       <div style="font-weight:600;margin-bottom:4px">No products found</div>
       <div style="font-size:12px">Try a different search</div>
     </div>`;

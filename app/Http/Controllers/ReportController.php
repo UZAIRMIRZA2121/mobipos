@@ -8,7 +8,7 @@ use App\Models\Order;
 use App\Models\PurchaseOrder;
 use App\Models\Expense;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Auth;
 class ReportController extends Controller
 {
     public function index()
@@ -38,16 +38,19 @@ class ReportController extends Controller
         $startDateTime = $startDate . ' 00:00:00';
 
         // 1. Total Sales (excluding refunded)
-        $totalSales = Order::whereBetween('created_at', [$startDateTime, $endDateTime])
+        $totalSales = Order::where('user_id', Auth::id())
+            ->whereBetween('created_at', [$startDateTime, $endDateTime])
             ->where('payment_status', '!=', 'refunded')
             ->sum('total');
 
         // 2. Total Purchases
-        $totalPurchases = PurchaseOrder::whereBetween('created_at', [$startDateTime, $endDateTime])
+        $totalPurchases = PurchaseOrder::where('user_id', Auth::id())
+            ->whereBetween('created_at', [$startDateTime, $endDateTime])
             ->sum('amount');
 
         // 3. Total Expenses
-        $totalExpenses = Expense::whereBetween('expense_date', [$startDateTime, $endDateTime])
+        $totalExpenses = Expense::where('user_id', Auth::id())
+            ->whereBetween('expense_date', [$startDateTime, $endDateTime])
             ->sum('amount');
 
         // 4. Current Profit (Sales - Purchases - Expenses)
@@ -56,18 +59,21 @@ class ReportController extends Controller
         // 5. Cost of Goods Sold (buy_price * qty of sold items)
         $totalCogs = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->where('orders.user_id', Auth::id())
             ->whereBetween('orders.created_at', [$startDateTime, $endDateTime])
             ->where('orders.payment_status', '!=', 'refunded')
             ->sum(DB::raw('order_items.buy_price * order_items.qty'));
 
-        // 6. True Net Profit
-        $netProfit = $profit - $totalCogs;
+        // 6. True Net Profit (Sales - COGS - Expenses)
+        $netProfit = $totalSales - $totalCogs - $totalExpenses;
 
         // 7. Top Selling Products
         $topProducts = DB::table('order_items')
-            ->select('product_id', DB::raw('SUM(qty) as total_qty'), DB::raw('SUM(sell_price * qty) as total_revenue'))
-            ->whereBetween('created_at', [$startDateTime, $endDateTime])
-            ->groupBy('product_id')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->select('order_items.product_id', DB::raw('SUM(order_items.qty) as total_qty'), DB::raw('SUM(order_items.sell_price * order_items.qty) as total_revenue'))
+            ->where('orders.user_id', Auth::id())
+            ->whereBetween('orders.created_at', [$startDateTime, $endDateTime])
+            ->groupBy('order_items.product_id')
             ->orderBy('total_qty', 'desc')
             ->take(10)
             ->get();
@@ -79,12 +85,14 @@ class ReportController extends Controller
         }
 
         // 8. Expense List
-        $expensesList = Expense::whereBetween('expense_date', [$startDateTime, $endDateTime])
+        $expensesList = Expense::where('user_id', Auth::id())
+            ->whereBetween('expense_date', [$startDateTime, $endDateTime])
             ->orderBy('expense_date', 'desc')
             ->get();
 
         // 9. Purchase Orders List
-        $purchaseOrdersList = PurchaseOrder::whereBetween('created_at', [$startDateTime, $endDateTime])
+        $purchaseOrdersList = PurchaseOrder::where('user_id', Auth::id())
+            ->whereBetween('created_at', [$startDateTime, $endDateTime])
             ->orderBy('created_at', 'desc')
             ->get();
 
