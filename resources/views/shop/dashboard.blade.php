@@ -51,6 +51,21 @@
       </div>
       </div>
 
+      <!-- Daily Sales Chart -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header" style="padding-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+          <h3 id="dailySalesTitle" style="font-size: 16px; font-weight: 600; color: #111827;">Daily Sales</h3>
+          <div class="btn-group" style="display: flex; gap: 8px;">
+              <button onclick="renderDashboard('week')" class="btn btn-outline btn-sm">This Week</button>
+              <button onclick="renderDashboard('month')" class="btn btn-outline btn-sm">This Month</button>
+              <button onclick="renderDashboard('year')" class="btn btn-outline btn-sm">This Year</button>
+          </div>
+        </div>
+        <div class="card-body" style="padding: 10px;">
+          <div id="dailySalesChart"></div>
+        </div>
+      </div>
+
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
         <div class="card" style="margin-bottom: 0;">
           <div class="card-header" style="padding-bottom: 15px;">

@@ -373,12 +373,19 @@ function updateAlertBadge() {
 // ============================================================
 // DASHBOARD
 // ============================================================
-async function renderDashboard() {
+async function renderDashboard(period = 'week') {
   const prods = store.get('products') || [];
   
   if (document.getElementById('dashTotalEarning')) {
       try {
-          const stats = await api('/shop/api/dashboard-stats');
+          const stats = await api('/shop/api/dashboard-stats?period=' + period);
+          
+          let titleSuffix = '(Last 7 Days)';
+          if (period === 'month') titleSuffix = '(Last 30 Days)';
+          if (period === 'year') titleSuffix = '(Last 12 Months)';
+          const titleEl = document.getElementById('dailySalesTitle');
+          if (titleEl) titleEl.textContent = 'Daily Sales ' + titleSuffix;
+
           document.getElementById('dashTotalEarning').textContent = fmtCur(stats.total_earning);
           document.getElementById('dashTotalExpense').textContent = fmtCur(stats.total_expense);
           document.getElementById('dashActualEarning').textContent = fmtCur(stats.actual_earning);
@@ -426,6 +433,55 @@ async function renderDashboard() {
               } else {
                   salesTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No recent sales</td></tr>';
               }
+          }
+          
+          // Render Daily Sales Chart
+          if (document.getElementById('dailySalesChart') && stats.daily_sales) {
+              const dates = stats.daily_sales.map(s => s.date);
+              const totals = stats.daily_sales.map(s => parseFloat(s.total_sales));
+              const profits = stats.daily_sales.map(s => parseFloat(s.net_profit || 0));
+              
+              var options = {
+                  series: [{
+                      name: 'Total Sales',
+                      data: totals
+                  }, {
+                      name: 'Net Profit',
+                      data: profits
+                  }],
+                  chart: {
+                      height: 350,
+                      type: 'area',
+                      fontFamily: 'inherit',
+                      toolbar: { show: false }
+                  },
+                  dataLabels: { enabled: false },
+                  stroke: { curve: 'smooth', width: 2 },
+                  xaxis: {
+                      categories: dates,
+                      type: 'datetime'
+                  },
+                  yaxis: {
+                      labels: {
+                          formatter: function (value) {
+                              return "PKR " + value.toLocaleString();
+                          }
+                      }
+                  },
+                  tooltip: { x: { format: 'dd MMM yyyy' } },
+                  fill: {
+                      type: 'gradient',
+                      gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.9, stops: [0, 90, 100] }
+                  },
+                  colors: ['#0f172a', '#10b981']
+              };
+
+              var chartEl = document.querySelector("#dailySalesChart");
+              if (window.dailySalesApexChart) {
+                  window.dailySalesApexChart.destroy();
+              }
+              window.dailySalesApexChart = new ApexCharts(chartEl, options);
+              window.dailySalesApexChart.render();
           }
 
       } catch (e) {

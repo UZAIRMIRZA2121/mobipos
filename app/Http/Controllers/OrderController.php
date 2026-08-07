@@ -49,7 +49,7 @@ class OrderController extends Controller
         return response()->json($orders);
     }
 
-    public function dashboardStats()
+    public function dashboardStats(\Illuminate\Http\Request $request)
     {
         $totalEarning = Order::where('user_id', Auth::id())->where('payment_status', '!=', 'refunded')->sum('total');
         
@@ -92,6 +92,58 @@ class OrderController extends Controller
             $tp->imei = $prod ? $prod->imei_serial : '';
         }
 
+        // Determine period
+        $period = $request->input('period', 'week'); // 'week', 'month', 'year'
+        if ($period === 'year') {
+            $startDate = \Carbon\Carbon::now()->subMonths(11)->startOfMonth();
+        } else if ($period === 'month') {
+            $startDate = \Carbon\Carbon::now()->subDays(29)->startOfDay();
+        } else {
+            $startDate = \Carbon\Carbon::now()->subDays(6)->startOfDay(); // Default 'week'
+        }
+        
+        $dailySalesQuery = DB::table('orders')
+            ->where('user_id', Auth::id())
+            ->where('payment_status', '!=', 'refunded')
+            ->where('created_at', '>=', $startDate);
+
+        $dailyExpensesQuery = DB::table('expenses')
+            ->where('user_id', Auth::id())
+            ->where('expense_date', '>=', $startDate);
+
+        if ($period === 'year') {
+            // Group by month
+            $dailySales = $dailySalesQuery
+                ->select(DB::raw('DATE_FORMAT(created_at, "%Y-%m-01") as date'), DB::raw('SUM(total) as total_sales'))
+                ->groupBy('date')
+                ->orderBy('date', 'asc')
+                ->get();
+
+            $dailyExpenses = $dailyExpensesQuery
+                ->select(DB::raw('DATE_FORMAT(expense_date, "%Y-%m-01") as date'), DB::raw('SUM(amount) as total_expense'))
+                ->groupBy('date')
+                ->get()
+                ->keyBy('date');
+        } else {
+            // Group by day
+            $dailySales = $dailySalesQuery
+                ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total) as total_sales'))
+                ->groupBy('date')
+                ->orderBy('date', 'asc')
+                ->get();
+
+            $dailyExpenses = $dailyExpensesQuery
+                ->select(DB::raw('DATE(expense_date) as date'), DB::raw('SUM(amount) as total_expense'))
+                ->groupBy('date')
+                ->get()
+                ->keyBy('date');
+        }
+
+        foreach ($dailySales as $ds) {
+            $expense = isset($dailyExpenses[$ds->date]) ? $dailyExpenses[$ds->date]->total_expense : 0;
+            $ds->net_profit = $ds->total_sales - $expense;
+        }
+
         return response()->json([
             'total_earning' => $totalEarning,
             'total_expense' => $totalExpense,
@@ -99,6 +151,7 @@ class OrderController extends Controller
             'stock_value' => $stockValue,
             'recent_sales' => $recentSales,
             'top_products' => $topProducts,
+            'daily_sales' => $dailySales,
         ]);
     }
 
