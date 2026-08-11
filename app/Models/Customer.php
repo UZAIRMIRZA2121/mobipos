@@ -16,6 +16,14 @@ class Customer extends Model
         'cnic_back',
     ];
 
+    protected $appends = ['balance'];
+
+    public function getBalanceAttribute()
+    {
+        $lastLedger = $this->ledgers()->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
+        return $lastLedger ? (float) $lastLedger->balance : 0;
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -24,5 +32,15 @@ class Customer extends Model
     public function sales()
     {
         return $this->hasMany(Sale::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function ledgers()
+    {
+        return $this->hasMany(CustomerLedger::class);
     }
 }

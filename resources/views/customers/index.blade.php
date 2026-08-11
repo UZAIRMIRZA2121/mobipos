@@ -15,7 +15,7 @@
         </div>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Name</th><th>Phone</th><th>CNIC Number</th><th>Address</th><th>CNIC Scans</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Phone</th><th>CNIC Number</th><th>Address</th><th>CNIC Scans</th><th>Balance</th><th>Actions</th></tr></thead>
             <tbody id="custTbody"></tbody>
           </table>
         </div>

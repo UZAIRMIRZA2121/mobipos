@@ -19,6 +19,8 @@ Route::get('/dashboard', function () {
     return redirect()->route('shop.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::post('/api/settings/backup/import-public', [App\Http\Controllers\BackupController::class, 'importPublic'])->name('api.settings.backup.import_public');
+
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', function () {
         return view('admin.dashboard', [
@@ -45,6 +47,7 @@ Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop'
     Route::post('/api/products', [ProductController::class, 'store'])->name('api.products.store');
     Route::put('/api/products/{product}', [ProductController::class, 'update'])->name('api.products.update');
     Route::delete('/api/products/{product}', [ProductController::class, 'destroy'])->name('api.products.destroy');
+    Route::get('/api/products/{product}/sales', [ProductController::class, 'salesHistory'])->name('api.products.sales');
 
     Route::get('/api/categories', [CategoryController::class, 'apiIndex'])->name('api.categories.index');
     Route::post('/api/categories', [CategoryController::class, 'store'])->name('api.categories.store');
@@ -56,13 +59,22 @@ Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop'
     Route::post('/api/customers/{customer}', [CustomerController::class, 'update'])->name('api.customers.update'); // POST instead of PUT because of FormData file uploads
     Route::delete('/api/customers/{customer}', [CustomerController::class, 'destroy'])->name('api.customers.destroy');
 
-    Route::get('/api/expenses', [App\Http\Controllers\ExpenseController::class, 'apiIndex'])->name('api.expenses.index');
-    Route::post('/api/expenses', [App\Http\Controllers\ExpenseController::class, 'store'])->name('api.expenses.store');
-    Route::put('/api/expenses/{expense}', [App\Http\Controllers\ExpenseController::class, 'update'])->name('api.expenses.update');
-    Route::delete('/api/expenses/{expense}', [App\Http\Controllers\ExpenseController::class, 'destroy'])->name('api.expenses.destroy');
+    // Expenses
+    Route::get('/api/expenses', [App\Http\Controllers\ExpenseController::class, 'apiIndex']);
+    Route::post('/api/expenses', [App\Http\Controllers\ExpenseController::class, 'store']);
+    Route::put('/api/expenses/{expense}', [App\Http\Controllers\ExpenseController::class, 'update']);
+    Route::delete('/api/expenses/{expense}', [App\Http\Controllers\ExpenseController::class, 'destroy']);
+
+    // Customer Ledger
+    Route::get('/api/customers/{customer}/ledger', [App\Http\Controllers\CustomerLedgerController::class, 'apiIndex']);
+    Route::post('/api/customers/{customer}/ledger', [App\Http\Controllers\CustomerLedgerController::class, 'store']);
+    Route::get('/customers/{customer}/print-ledger', [App\Http\Controllers\CustomerLedgerController::class, 'printLedger'])->name('customers.print_ledger');
 
     Route::get('/api/settings', [App\Http\Controllers\StoreSettingController::class, 'apiGet'])->name('api.settings.get');
     Route::post('/api/settings', [App\Http\Controllers\StoreSettingController::class, 'apiUpdate'])->name('api.settings.update');
+
+    Route::get('/api/settings/backup/export', [App\Http\Controllers\BackupController::class, 'export'])->name('api.settings.backup.export');
+    Route::post('/api/settings/backup/import', [App\Http\Controllers\BackupController::class, 'import'])->name('api.settings.backup.import');
 
     Route::get('/api/settings/print', [App\Http\Controllers\InvoiceSettingController::class, 'apiGet'])->name('api.settings.print.get');
     Route::post('/api/settings/print', [App\Http\Controllers\InvoiceSettingController::class, 'apiUpdate'])->name('api.settings.print.update');

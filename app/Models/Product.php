@@ -10,6 +10,8 @@ class Product extends Model
         'name',
         'type',
         'condition',
+        'code',
+        'barcode',
         'imei_serial',
         'color',
         'storage',

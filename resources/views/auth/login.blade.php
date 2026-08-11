@@ -43,9 +43,52 @@
                 {{ __('Staff Login') }}
             </a>
 
+            <button type="button" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 ms-3" onclick="document.getElementById('publicBackupFile').click()">
+                {{ __('Restore Backup') }}
+            </button>
+            <input type="file" id="publicBackupFile" style="display: none;" accept=".json" onchange="importPublicBackup(this)">
+
             <x-primary-button class="ms-3">
                 {{ __('Log in') }}
             </x-primary-button>
         </div>
     </form>
+
+    <script>
+    async function importPublicBackup(input) {
+        if (!input.files || input.files.length === 0) return;
+        const file = input.files[0];
+        
+        if (!confirm('Are you sure you want to restore this backup? If a user with this email already exists, their data will be overwritten.')) {
+            input.value = '';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('backup_file', file);
+
+        try {
+            const res = await fetch('{{ route('api.settings.backup.import_public') }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: formData
+            });
+            
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                window.location.href = '/dashboard';
+            } else {
+                alert(data.message || 'Error restoring backup');
+            }
+        } catch(err) {
+            console.error(err);
+            alert('Error connecting to server');
+        } finally {
+            input.value = '';
+        }
+    }
+    </script>
 </x-guest-layout>

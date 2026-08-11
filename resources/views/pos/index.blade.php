@@ -142,6 +142,12 @@
                     <span class="sum-label">Change Due</span>
                     <span id="sumReturn" class="sum-val due">PKR 0.00</span>
                 </div>
+                <div class="sum-row" id="posLedgerRow" style="display:none; justify-content: space-between; align-items: center; padding-top: 10px; margin-top: 5px; border-top: 1px dashed var(--border-color);">
+                    <label style="display:flex; align-items:center; gap:5px; font-size:13px; font-weight:500; cursor:pointer; margin:0;">
+                        <input type="checkbox" id="posSaveToLedger"> Save to Ledger
+                    </label>
+                    <span id="posLedgerText" style="font-size:12px; font-weight:600; color:var(--text-muted);"></span>
+                </div>
             </div>
 
             <button class="btn btn-primary btn-checkout" id="checkoutBtn" onclick="checkout()" style="margin-top:auto;">

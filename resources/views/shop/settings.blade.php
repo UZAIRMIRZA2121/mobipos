@@ -31,6 +31,40 @@
                 </div>
             </div>
         </div>
+        <div class="card" style="max-width: 600px; margin: 24px auto;">
+            <div class="card-header">
+                <h3>Backup & Restore</h3>
+            </div>
+            
+            <div class="card-body" style="padding: 24px;">
+                <div style="margin-bottom: 24px;">
+                    <h4 style="margin-bottom: 8px;">Export Store Data</h4>
+                    <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">Download a complete backup of your store's data including products, sales, customers, and settings.</p>
+                    <a href="{{ route('shop.api.settings.backup.export') }}" class="btn btn-outline" target="_blank" style="display: inline-flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Take Backup
+                    </a>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 24px 0;">
+
+                <div>
+                    <h4 style="margin-bottom: 8px;">Restore Store Data</h4>
+                    <p style="color: var(--danger); font-size: 13px; margin-bottom: 12px;"><strong>Warning:</strong> Restoring a backup will erase all your current store data and replace it with the data from the backup file.</p>
+                    
+                    <form id="backupImportForm" onsubmit="importBackup(event)" style="display: flex; gap: 12px; align-items: flex-end;">
+                        <div class="form-group" style="flex: 1; margin: 0;">
+                            <label style="display: block; font-weight: 500; margin-bottom: 8px; color: var(--text-dark);">Upload Backup File (.json)</label>
+                            <input type="file" id="backupFile" class="input" accept=".json" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="btnImportBackup">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px; vertical-align: text-bottom;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Restore Backup
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 
@@ -80,6 +114,52 @@ async function saveStoreSettings() {
         console.error(err);
         if (typeof toast !== 'undefined') toast('Error connecting to server', 'danger');
     }
+}
+
+function importBackup(e) {
+    e.preventDefault();
+    
+    const fileInput = document.getElementById('backupFile');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    confirmDelete('Are you sure you want to restore this backup? This will erase all current data and cannot be undone!', async () => {
+        const btn = document.getElementById('btnImportBackup');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = 'Restoring...';
+        btn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('backup_file', file);
+
+        try {
+            const res = await fetch('/shop/api/settings/backup/import', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: formData
+            });
+            
+            const data = await res.json();
+            if (res.ok) {
+                if (typeof toast !== 'undefined') toast(data.message, 'success');
+                else alert(data.message);
+                fileInput.value = '';
+                
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                if (typeof toast !== 'undefined') toast(data.message || 'Error restoring backup', 'danger');
+                else alert(data.message || 'Error restoring backup');
+            }
+        } catch(err) {
+            console.error(err);
+            if (typeof toast !== 'undefined') toast('Error connecting to server', 'danger');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
 }
 </script>
 @endsection

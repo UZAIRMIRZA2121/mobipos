@@ -26,6 +26,8 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|in:mobile,tablet,laptop,accessory',
             'condition' => 'required|in:new,used,refurbished',
+            'code' => 'nullable|string|max:255|unique:products',
+            'barcode' => 'nullable|string|max:255|unique:products',
             'imei_serial' => 'nullable|string|max:255|unique:products',
             'color' => 'nullable|string|max:255',
             'storage' => 'nullable|string|max:255',
@@ -35,6 +37,7 @@ class ProductController extends Controller
             'stock' => 'nullable|integer|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'buyer_id' => 'nullable|exists:customers,id',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
         $validated['user_id'] = Auth::id();
@@ -58,6 +61,8 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|in:mobile,tablet,laptop,accessory',
             'condition' => 'required|in:new,used,refurbished',
+            'code' => 'nullable|string|max:255|unique:products,code,' . $product->id,
+            'barcode' => 'nullable|string|max:255|unique:products,barcode,' . $product->id,
             'imei_serial' => 'nullable|string|max:255|unique:products,imei_serial,' . $product->id,
             'color' => 'nullable|string|max:255',
             'storage' => 'nullable|string|max:255',
@@ -67,6 +72,7 @@ class ProductController extends Controller
             'stock' => 'nullable|integer|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'buyer_id' => 'nullable|exists:customers,id',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
 
         if ($request->hasFile('image')) {
@@ -93,5 +99,31 @@ class ProductController extends Controller
         $product->delete();
 
         return response()->json(['message' => 'Product deleted successfully']);
+    }
+
+    public function salesHistory(Product $product)
+    {
+        if ($product->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $sales = \App\Models\OrderItem::where('product_id', $product->id)
+            ->whereHas('order', function($q) {
+                $q->where('user_id', Auth::id());
+            })
+            ->with(['order', 'order.buyer'])
+            ->get()
+            ->map(function($item) {
+                return [
+                    'date' => $item->order->created_at->format('Y-m-d H:i:s'),
+                    'order_id' => $item->order_id,
+                    'customer' => $item->order->buyer ? $item->order->buyer->name : 'Walk-in',
+                    'qty' => $item->qty,
+                    'price' => $item->sell_price,
+                    'total' => $item->qty * $item->sell_price
+                ];
+            });
+
+        return response()->json($sales);
     }
 }

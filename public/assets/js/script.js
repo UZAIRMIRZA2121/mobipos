@@ -41,85 +41,85 @@ function seedDemoData() {
 
 
 async function api(url, method = 'GET', body = null) {
-    const opts = {
-        method,
-        cache: 'no-store',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Accept': 'application/json'
-        }
-    };
-    if (body) {
-        if (body instanceof FormData) {
-            opts.body = body;
-        } else {
-            opts.headers['Content-Type'] = 'application/json';
-            opts.body = JSON.stringify(body);
-        }
+  const opts = {
+    method,
+    cache: 'no-store',
+    headers: {
+      'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+      'Accept': 'application/json'
     }
-    const res = await fetch(url, opts);
-    if (!res.ok) {
-        let errMsg = 'API Error';
-        try {
-            const errData = await res.json();
-            if (errData.errors) {
-                errMsg = Object.values(errData.errors).flat().join('<br>');
-            } else {
-                errMsg = errData.message || errMsg;
-            }
-        } catch(err) {}
-        throw new Error(errMsg);
+  };
+  if (body) {
+    if (body instanceof FormData) {
+      opts.body = body;
+    } else {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
     }
-    if (method !== 'DELETE') return await res.json();
-    return true;
+  }
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    let errMsg = 'API Error';
+    try {
+      const errData = await res.json();
+      if (errData.errors) {
+        errMsg = Object.values(errData.errors).flat().join('<br>');
+      } else {
+        errMsg = errData.message || errMsg;
+      }
+    } catch (err) { }
+    throw new Error(errMsg);
+  }
+  if (method !== 'DELETE') return await res.json();
+  return true;
 }
 
 async function syncData() {
-    // Helper to safely fetch so one missing endpoint doesn't crash everything
-    const safeFetch = async (url, fallback) => {
-        try {
-            return await api(url);
-        } catch(e) {
-            console.warn(`Failed to fetch ${url}, using fallback.`);
-            return store.get(fallback);
-        }
-    };
-
+  // Helper to safely fetch so one missing endpoint doesn't crash everything
+  const safeFetch = async (url, fallback) => {
     try {
-        const cats = await safeFetch('/shop/api/categories', 'categories') || [];
-        const prods = await safeFetch('/shop/api/products', 'products') || [];
-        // Force suppliers to empty array if API fails, so we don't load old offline mocks that violate DB Foreign Keys
-        const custs = await safeFetch('/shop/api/customers', 'customers') || [];
-        const sales = store.get('invoices') || [];
-        
-        // Map DB columns to frontend expected fields if necessary
-        const mappedProds = Array.isArray(prods) ? prods.map(p => ({
-            ...p, 
-            sale: p.sale_price, 
-            purchase: p.purchase_price, 
-            imei: p.imei_serial 
-        })) : [];
-        
-        store.set('categories', cats);
-        store.set('products', mappedProds);
-        store.set('customers', custs);
-        store.set('invoices', sales);
-        
-        if (document.getElementById('page-categories')) renderCategories();
-        if (document.getElementById('page-products')) renderProducts();
-        if (document.getElementById('page-customers')) renderCustomers();
-        if (document.getElementById('page-alerts')) renderAlerts();
-        if (document.getElementById('page-sales')) renderSales();
-        if (document.getElementById('page-invoices')) renderInvoices();
-        if (document.getElementById('page-pos')) renderPOS();
-        if (document.getElementById('page-dashboard')) renderDashboard();
-        if (document.getElementById('page-expenses')) renderExpenses();
-        if (document.getElementById('page-purchase-orders')) renderPurchaseOrders();
-
-    } catch(e) {
-        console.error('Critical sync failure', e);
-        toast('Data sync error', 'danger');
+      return await api(url);
+    } catch (e) {
+      console.warn(`Failed to fetch ${url}, using fallback.`);
+      return store.get(fallback);
     }
+  };
+
+  try {
+    const cats = await safeFetch('/shop/api/categories', 'categories') || [];
+    const prods = await safeFetch('/shop/api/products', 'products') || [];
+    // Force suppliers to empty array if API fails, so we don't load old offline mocks that violate DB Foreign Keys
+    const custs = await safeFetch('/shop/api/customers', 'customers') || [];
+    const sales = store.get('invoices') || [];
+
+    // Map DB columns to frontend expected fields if necessary
+    const mappedProds = Array.isArray(prods) ? prods.map(p => ({
+      ...p,
+      sale: p.sale_price,
+      purchase: p.purchase_price,
+      imei: p.imei_serial
+    })) : [];
+
+    store.set('categories', cats);
+    store.set('products', mappedProds);
+    store.set('customers', custs);
+    store.set('invoices', sales);
+
+    if (document.getElementById('page-categories')) renderCategories();
+    if (document.getElementById('page-products')) renderProducts();
+    if (document.getElementById('page-customers')) renderCustomers();
+    if (document.getElementById('page-alerts')) renderAlerts();
+    if (document.getElementById('page-sales')) renderSales();
+    if (document.getElementById('page-invoices')) renderInvoices();
+    if (document.getElementById('page-pos')) renderPOS();
+    if (document.getElementById('page-dashboard')) renderDashboard();
+    if (document.getElementById('page-expenses')) renderExpenses();
+    if (document.getElementById('page-purchase-orders')) renderPurchaseOrders();
+
+  } catch (e) {
+    console.error('Critical sync failure', e);
+    toast('Data sync error', 'danger');
+  }
 }
 
 // ============================================================
@@ -156,28 +156,28 @@ function renderPage(page) {
 // REPORTS
 // ============================================================
 async function generateReport() {
-    const sDate = document.getElementById('reportStartDate').value;
-    const eDate = document.getElementById('reportEndDate').value;
+  const sDate = document.getElementById('reportStartDate').value;
+  const eDate = document.getElementById('reportEndDate').value;
 
-    try {
-        const res = await api('/shop/api/reports/generate', 'POST', { start_date: sDate, end_date: eDate });
-        
-        document.getElementById('repTotalSales').textContent = fmtCur(res.total_sales);
-        document.getElementById('repTotalPurchases').textContent = fmtCur(res.total_purchases);
-        document.getElementById('repTotalExpenses').textContent = fmtCur(res.total_expenses);
-        document.getElementById('repProfit').textContent = fmtCur(res.profit);
-        
-        const netProfitEl = document.getElementById('repNetProfit');
-        netProfitEl.textContent = fmtCur(res.net_profit);
-        if (res.net_profit < 0) {
-            netProfitEl.style.color = 'var(--danger)';
-        } else {
-            netProfitEl.style.color = '#111827';
-        }
+  try {
+    const res = await api('/shop/api/reports/generate', 'POST', { start_date: sDate, end_date: eDate });
 
-        const tbody = document.getElementById('repTopProductsTbody');
-        if (res.top_products && res.top_products.length > 0) {
-            tbody.innerHTML = res.top_products.map(p => `
+    document.getElementById('repTotalSales').textContent = fmtCur(res.total_sales);
+    document.getElementById('repTotalPurchases').textContent = fmtCur(res.total_purchases);
+    document.getElementById('repTotalExpenses').textContent = fmtCur(res.total_expenses);
+    document.getElementById('repProfit').textContent = fmtCur(res.profit);
+
+    const netProfitEl = document.getElementById('repNetProfit');
+    netProfitEl.textContent = fmtCur(res.net_profit);
+    if (res.net_profit < 0) {
+      netProfitEl.style.color = 'var(--danger)';
+    } else {
+      netProfitEl.style.color = '#111827';
+    }
+
+    const tbody = document.getElementById('repTopProductsTbody');
+    if (res.top_products && res.top_products.length > 0) {
+      tbody.innerHTML = res.top_products.map(p => `
                 <tr>
                     <td>
                         <div style="font-weight:500">${p.name}</div>
@@ -187,26 +187,26 @@ async function generateReport() {
                     <td class="text-right" style="font-weight:600">${fmtCur(p.total_revenue)}</td>
                 </tr>
             `).join('');
-        } else {
-            tbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No sales found in this period</td></tr>';
-        }
+    } else {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No sales found in this period</td></tr>';
+    }
 
-        const expTbody = document.getElementById('repExpensesTbody');
-        if (res.expenses_list && res.expenses_list.length > 0) {
-            expTbody.innerHTML = res.expenses_list.map(e => `
+    const expTbody = document.getElementById('repExpensesTbody');
+    if (res.expenses_list && res.expenses_list.length > 0) {
+      expTbody.innerHTML = res.expenses_list.map(e => `
                 <tr>
                     <td>${e.title}</td>
                     <td>${e.description || '-'}</td>
                     <td class="text-right" style="font-weight:600; color:var(--danger)">${fmtCur(e.amount)}</td>
                 </tr>
             `).join('');
-        } else {
-            expTbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No expenses found in this period</td></tr>';
-        }
+    } else {
+      expTbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No expenses found in this period</td></tr>';
+    }
 
-        const poTbody = document.getElementById('repPurchaseOrdersTbody');
-        if (res.purchase_orders_list && res.purchase_orders_list.length > 0) {
-            poTbody.innerHTML = res.purchase_orders_list.map(po => `
+    const poTbody = document.getElementById('repPurchaseOrdersTbody');
+    if (res.purchase_orders_list && res.purchase_orders_list.length > 0) {
+      poTbody.innerHTML = res.purchase_orders_list.map(po => `
                 <tr>
                     <td>PO-${po.id}</td>
                     <td>${po.supplier_name || 'Unknown'}</td>
@@ -217,59 +217,59 @@ async function generateReport() {
                     <td class="text-right" style="font-weight:600;">${fmtCur(po.amount)}</td>
                 </tr>
             `).join('');
-        } else {
-            poTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No purchase orders found in this period</td></tr>';
-        }
-
-        // Set print date range title
-        let printRange = 'All Time';
-        if (sDate && eDate) {
-            printRange = `From: ${fmtDate(sDate)} To: ${fmtDate(eDate)}`;
-        } else if (sDate) {
-            printRange = `From: ${fmtDate(sDate)} To: Now`;
-        } else if (eDate) {
-            printRange = `From: Beginning To: ${fmtDate(eDate)}`;
-        }
-        document.getElementById('printDateRange').textContent = printRange;
-
-    } catch (err) {
-        console.error(err);
-        toast('Failed to generate report', 'danger');
+    } else {
+      poTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No purchase orders found in this period</td></tr>';
     }
+
+    // Set print date range title
+    let printRange = 'All Time';
+    if (sDate && eDate) {
+      printRange = `From: ${fmtDate(sDate)} To: ${fmtDate(eDate)}`;
+    } else if (sDate) {
+      printRange = `From: ${fmtDate(sDate)} To: Now`;
+    } else if (eDate) {
+      printRange = `From: Beginning To: ${fmtDate(eDate)}`;
+    }
+    document.getElementById('printDateRange').textContent = printRange;
+
+  } catch (err) {
+    console.error(err);
+    toast('Failed to generate report', 'danger');
+  }
 }
 
 function printReport() {
-    const sDate = document.getElementById('reportStartDate').value;
-    const eDate = document.getElementById('reportEndDate').value;
-    const printUrl = `/shop/reports/print?start_date=${sDate}&end_date=${eDate}`;
-    
-    let printFrame = document.getElementById('printFrame');
-    if (!printFrame) {
-        printFrame = document.createElement('iframe');
-        printFrame.id = 'printFrame';
-        printFrame.style.position = 'absolute';
-        printFrame.style.width = '0px';
-        printFrame.style.height = '0px';
-        printFrame.style.border = 'none';
-        document.body.appendChild(printFrame);
-    }
-    
-    printFrame.onload = function() {
-        printFrame.contentWindow.focus();
-        printFrame.contentWindow.print();
-    };
-    
-    printFrame.src = printUrl;
+  const sDate = document.getElementById('reportStartDate').value;
+  const eDate = document.getElementById('reportEndDate').value;
+  const printUrl = `/shop/reports/print?start_date=${sDate}&end_date=${eDate}`;
+
+  let printFrame = document.getElementById('printFrame');
+  if (!printFrame) {
+    printFrame = document.createElement('iframe');
+    printFrame.id = 'printFrame';
+    printFrame.style.position = 'absolute';
+    printFrame.style.width = '0px';
+    printFrame.style.height = '0px';
+    printFrame.style.border = 'none';
+    document.body.appendChild(printFrame);
+  }
+
+  printFrame.onload = function () {
+    printFrame.contentWindow.focus();
+    printFrame.contentWindow.print();
+  };
+
+  printFrame.src = printUrl;
 }
 
 function renderReports() {
-    if (document.getElementById('reportStartDate')) {
-        document.getElementById('reportStartDate').value = '';
-        document.getElementById('reportEndDate').value = '';
-        
-        // Automatically generate for all time
-        generateReport();
-    }
+  if (document.getElementById('reportStartDate')) {
+    document.getElementById('reportStartDate').value = '';
+    document.getElementById('reportEndDate').value = '';
+
+    // Automatically generate for all time
+    generateReport();
+  }
 }
 
 // ============================================================
@@ -312,12 +312,12 @@ function updateThemeIcon(theme) {
 // TOAST
 // ============================================================
 function toast(msg, type = 'success') {
-    const icons = { success: '✓', warning: '⚠', danger: '✕', info: 'ℹ' };
-    const el = document.createElement('div');
-    el.className = `toast ${type}`;
-    el.innerHTML = `<span class="toast-icon">${icons[type] || '✓'}</span><span class="toast-msg">${msg}</span><button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
-    document.getElementById('toastContainer').appendChild(el);
-    setTimeout(() => { el.style.animation = 'fadeOut 0.3s ease forwards'; setTimeout(() => el.remove(), 300); }, 3500);
+  const icons = { success: '✓', warning: '⚠', danger: '✕', info: 'ℹ' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span class="toast-icon">${icons[type] || '✓'}</span><span class="toast-msg">${msg}</span><button class="toast-close" onclick="this.parentElement.remove()">✕</button>`;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => { el.style.animation = 'fadeOut 0.3s ease forwards'; setTimeout(() => el.remove(), 300); }, 3500);
 }
 
 // ============================================================
@@ -375,27 +375,27 @@ function updateAlertBadge() {
 // ============================================================
 async function renderDashboard(period = 'week') {
   const prods = store.get('products') || [];
-  
+
   if (document.getElementById('dashTotalEarning')) {
-      try {
-          const stats = await api('/shop/api/dashboard-stats?period=' + period);
-          
-          let titleSuffix = '(Last 7 Days)';
-          if (period === 'month') titleSuffix = '(Last 30 Days)';
-          if (period === 'year') titleSuffix = '(Last 12 Months)';
-          const titleEl = document.getElementById('dailySalesTitle');
-          if (titleEl) titleEl.textContent = 'Daily Sales ' + titleSuffix;
+    try {
+      const stats = await api('/shop/api/dashboard-stats?period=' + period);
 
-          document.getElementById('dashTotalEarning').textContent = fmtCur(stats.total_earning);
-          document.getElementById('dashTotalExpense').textContent = fmtCur(stats.total_expense);
-          document.getElementById('dashActualEarning').textContent = fmtCur(stats.actual_earning);
-          document.getElementById('dashStockValue').textContent = fmtCur(stats.stock_value);
+      let titleSuffix = '(Last 7 Days)';
+      if (period === 'month') titleSuffix = '(Last 30 Days)';
+      if (period === 'year') titleSuffix = '(Last 12 Months)';
+      const titleEl = document.getElementById('dailySalesTitle');
+      if (titleEl) titleEl.textContent = 'Daily Sales ' + titleSuffix;
 
-          // Populate Top Selling Products
-          const topTbody = document.getElementById('dashTopProductsTbody');
-          if (topTbody) {
-              if (stats.top_products && stats.top_products.length > 0) {
-                  topTbody.innerHTML = stats.top_products.map(p => `
+      document.getElementById('dashTotalEarning').textContent = fmtCur(stats.total_earning);
+      document.getElementById('dashTotalExpense').textContent = fmtCur(stats.total_expense);
+      document.getElementById('dashActualEarning').textContent = fmtCur(stats.actual_earning);
+      document.getElementById('dashStockValue').textContent = fmtCur(stats.stock_value);
+
+      // Populate Top Selling Products
+      const topTbody = document.getElementById('dashTopProductsTbody');
+      if (topTbody) {
+        if (stats.top_products && stats.top_products.length > 0) {
+          topTbody.innerHTML = stats.top_products.map(p => `
                       <tr>
                           <td>
                               <div style="font-weight:500">${p.name}</div>
@@ -405,23 +405,23 @@ async function renderDashboard(period = 'week') {
                           <td class="text-right" style="font-weight:600">${fmtCur(p.total_revenue)}</td>
                       </tr>
                   `).join('');
-              } else {
-                  topTbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No sales data available</td></tr>';
-              }
-          }
+        } else {
+          topTbody.innerHTML = '<tr><td colspan="3" class="empty-cell">No sales data available</td></tr>';
+        }
+      }
 
-          // Populate Recent Sales
-          const salesTbody = document.getElementById('dashRecentSalesTbody');
-          if (salesTbody) {
-              if (stats.recent_sales && stats.recent_sales.length > 0) {
-                  salesTbody.innerHTML = stats.recent_sales.map(s => {
-                      let statusBadge = '';
-                      if (s.payment_status === 'paid') statusBadge = '<span class="badge badge-success">PAID</span>';
-                      else if (s.payment_status === 'partial') statusBadge = '<span class="badge badge-warning">PARTIAL</span>';
-                      else if (s.payment_status === 'refunded') statusBadge = '<span class="badge badge-danger">REFUNDED</span>';
-                      else statusBadge = '<span class="badge badge-danger">UNPAID</span>';
-                      
-                      return `
+      // Populate Recent Sales
+      const salesTbody = document.getElementById('dashRecentSalesTbody');
+      if (salesTbody) {
+        if (stats.recent_sales && stats.recent_sales.length > 0) {
+          salesTbody.innerHTML = stats.recent_sales.map(s => {
+            let statusBadge = '';
+            if (s.payment_status === 'paid') statusBadge = '<span class="badge badge-success">PAID</span>';
+            else if (s.payment_status === 'partial') statusBadge = '<span class="badge badge-warning">PARTIAL</span>';
+            else if (s.payment_status === 'refunded') statusBadge = '<span class="badge badge-danger">REFUNDED</span>';
+            else statusBadge = '<span class="badge badge-danger">UNPAID</span>';
+
+            return `
                       <tr>
                           <td>#${s.id}</td>
                           <td>${s.buyer ? s.buyer.name : 'Walk-in'}</td>
@@ -429,72 +429,72 @@ async function renderDashboard(period = 'week') {
                           <td class="text-right">${statusBadge}</td>
                       </tr>
                       `;
-                  }).join('');
-              } else {
-                  salesTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No recent sales</td></tr>';
-              }
-          }
-          
-          // Render Daily Sales Chart
-          if (document.getElementById('dailySalesChart') && stats.daily_sales) {
-              const dates = stats.daily_sales.map(s => s.date);
-              const totals = stats.daily_sales.map(s => parseFloat(s.total_sales));
-              const profits = stats.daily_sales.map(s => parseFloat(s.net_profit || 0));
-              
-              var options = {
-                  series: [{
-                      name: 'Total Sales',
-                      data: totals
-                  }, {
-                      name: 'Net Profit',
-                      data: profits
-                  }],
-                  chart: {
-                      height: 350,
-                      type: 'area',
-                      fontFamily: 'inherit',
-                      toolbar: { show: false }
-                  },
-                  dataLabels: { enabled: false },
-                  stroke: { curve: 'smooth', width: 2 },
-                  xaxis: {
-                      categories: dates,
-                      type: 'datetime'
-                  },
-                  yaxis: {
-                      labels: {
-                          formatter: function (value) {
-                              return "PKR " + value.toLocaleString();
-                          }
-                      }
-                  },
-                  tooltip: { x: { format: 'dd MMM yyyy' } },
-                  fill: {
-                      type: 'gradient',
-                      gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.9, stops: [0, 90, 100] }
-                  },
-                  colors: ['#0f172a', '#10b981']
-              };
-
-              var chartEl = document.querySelector("#dailySalesChart");
-              if (window.dailySalesApexChart) {
-                  window.dailySalesApexChart.destroy();
-              }
-              window.dailySalesApexChart = new ApexCharts(chartEl, options);
-              window.dailySalesApexChart.render();
-          }
-
-      } catch (e) {
-          console.error('Failed to load dashboard stats', e);
+          }).join('');
+        } else {
+          salesTbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No recent sales</td></tr>';
+        }
       }
-      
-      // Get 5 most recent products
-      const recent = [...prods].reverse().slice(0, 5);
-      
-      const recentTbody = document.getElementById('dashRecentProdsTbody');
-      if (recentTbody) {
-          recentTbody.innerHTML = recent.length ?
-            recent.map(p => `
+
+      // Render Daily Sales Chart
+      if (document.getElementById('dailySalesChart') && stats.daily_sales) {
+        const dates = stats.daily_sales.map(s => s.date);
+        const totals = stats.daily_sales.map(s => parseFloat(s.total_sales));
+        const profits = stats.daily_sales.map(s => parseFloat(s.net_profit || 0));
+
+        var options = {
+          series: [{
+            name: 'Total Sales',
+            data: totals
+          }, {
+            name: 'Net Profit',
+            data: profits
+          }],
+          chart: {
+            height: 350,
+            type: 'area',
+            fontFamily: 'inherit',
+            toolbar: { show: false }
+          },
+          dataLabels: { enabled: false },
+          stroke: { curve: 'smooth', width: 2 },
+          xaxis: {
+            categories: dates,
+            type: 'datetime'
+          },
+          yaxis: {
+            labels: {
+              formatter: function (value) {
+                return "PKR " + value.toLocaleString();
+              }
+            }
+          },
+          tooltip: { x: { format: 'dd MMM yyyy' } },
+          fill: {
+            type: 'gradient',
+            gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.9, stops: [0, 90, 100] }
+          },
+          colors: ['#0f172a', '#10b981']
+        };
+
+        var chartEl = document.querySelector("#dailySalesChart");
+        if (window.dailySalesApexChart) {
+          window.dailySalesApexChart.destroy();
+        }
+        window.dailySalesApexChart = new ApexCharts(chartEl, options);
+        window.dailySalesApexChart.render();
+      }
+
+    } catch (e) {
+      console.error('Failed to load dashboard stats', e);
+    }
+
+    // Get 5 most recent products
+    const recent = [...prods].reverse().slice(0, 5);
+
+    const recentTbody = document.getElementById('dashRecentProdsTbody');
+    if (recentTbody) {
+      recentTbody.innerHTML = recent.length ?
+        recent.map(p => `
               <tr>
                 <td>
                   <div style="font-weight:500">${p.name}</div>
@@ -508,7 +508,7 @@ async function renderDashboard(period = 'week') {
                 </td>
               </tr>
             `).join('') : '<tr><td colspan="5" class="empty-cell">No products added yet</td></tr>';
-      }
+    }
   }
 }
 
@@ -516,18 +516,18 @@ async function renderDashboard(period = 'week') {
 // POS
 // ============================================================
 function renderPOS() {
-    // Populate customer select
-    const custSel = document.getElementById('posCustomer');
-    if (custSel) {
-        const currentCust = custSel.value;
-        custSel.innerHTML = '<option value="">Walk-in Customer</option>' +
-          store.get('customers').map(c => `<option value="${c.id}">${c.name} — ${c.phone}</option>`).join('');
-        if (currentCust) custSel.value = currentCust;
-        if (window.lastCreatedCustomerId) {
-            custSel.value = window.lastCreatedCustomerId;
-            window.lastCreatedCustomerId = null;
-        }
+  // Populate customer select
+  const custSel = document.getElementById('posCustomer');
+  if (custSel) {
+    const currentCust = custSel.value;
+    custSel.innerHTML = '<option value="">Walk-in Customer</option>' +
+      store.get('customers').map(c => `<option value="${c.id}">${c.name} — ${c.phone}</option>`).join('');
+    if (currentCust) custSel.value = currentCust;
+    if (window.lastCreatedCustomerId) {
+      custSel.value = window.lastCreatedCustomerId;
+      window.lastCreatedCustomerId = null;
     }
+  }
 
   // Populate category tabs (if exists)
   const cats = store.get('categories');
@@ -549,72 +549,72 @@ function renderPOS() {
 }
 
 async function loadEditOrderIfAny() {
-    const editId = localStorage.getItem('mp_edit_order_id');
-    if (!editId) return;
-    
-    localStorage.removeItem('mp_edit_order_id');
+  const editId = localStorage.getItem('mp_edit_order_id');
+  if (!editId) return;
 
-    try {
-        const res = await api(`/shop/api/orders/${editId}`);
-        const order = res; 
-        
-        window.editingOrderId = order.id;
-        cart = [];
-        
-        const allProducts = store.get('products');
-        order.items.forEach(item => {
-            const prod = item.product || allProducts.find(p => p.id === item.product_id);
-            if (prod) {
-                const p = parseFloat(item.sell_price || item.price || prod.sale);
-                const q = parseInt(item.qty);
-                cart.push({
-                    prodId: prod.id,
-                    name: prod.name,
-                    price: p,
-                    qty: q,
-                    sub: p * q,
-                    maxStock: prod.stock + q
-                });
-            }
+  localStorage.removeItem('mp_edit_order_id');
+
+  try {
+    const res = await api(`/shop/api/orders/${editId}`);
+    const order = res;
+
+    window.editingOrderId = order.id;
+    cart = [];
+
+    const allProducts = store.get('products');
+    order.items.forEach(item => {
+      const prod = item.product || allProducts.find(p => p.id === item.product_id);
+      if (prod) {
+        const p = parseFloat(item.sell_price || item.price || prod.sale);
+        const q = parseInt(item.qty);
+        cart.push({
+          prodId: prod.id,
+          name: prod.name,
+          price: p,
+          qty: q,
+          sub: p * q,
+          maxStock: prod.stock + q
         });
+      }
+    });
 
-        const custField = document.getElementById('posCustomer');
-        if (custField) custField.value = order.buyer_id || '';
-        
-        const sub = parseFloat(order.subtotal);
-        let discPct = 0, taxPct = 0;
-        if (sub > 0) {
-            discPct = (parseFloat(order.discount) / sub) * 100;
-            taxPct = (parseFloat(order.tax) / sub) * 100;
-        }
-        
-        const discField = document.getElementById('posDiscount');
-        if (discField) discField.value = discPct.toFixed(2);
-        
-        const taxField = document.getElementById('posTax');
-        if (taxField) taxField.value = taxPct.toFixed(2);
-        
-        const paidField = document.getElementById('posPaid');
-        if (paidField) {
-            // Use net paid amount to properly handle previous change given
-            const netPaid = Math.min(parseFloat(order.paid_amount), parseFloat(order.total));
-            paidField.value = netPaid;
-        }
-        
-        const methodField = document.getElementById('posPayment');
-        if (methodField) methodField.value = order.payment_method;
+    const custField = document.getElementById('posCustomer');
+    if (custField) custField.value = order.buyer_id || '';
 
-        const btn = document.getElementById('checkoutBtn');
-        if (btn) btn.innerHTML = '<span>Update Order</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
-
-        renderCart();
-        renderProdGrid();
-        
-        toast('Order loaded for editing!', 'info');
-    } catch(e) {
-        toast('Error loading order for editing', 'danger');
-        console.error(e);
+    const sub = parseFloat(order.subtotal);
+    let discPct = 0, taxPct = 0;
+    if (sub > 0) {
+      discPct = (parseFloat(order.discount) / sub) * 100;
+      taxPct = (parseFloat(order.tax) / sub) * 100;
     }
+
+    const discField = document.getElementById('posDiscount');
+    if (discField) discField.value = discPct.toFixed(2);
+
+    const taxField = document.getElementById('posTax');
+    if (taxField) taxField.value = taxPct.toFixed(2);
+
+    const paidField = document.getElementById('posPaid');
+    if (paidField) {
+      // Use net paid amount to properly handle previous change given
+      const netPaid = Math.min(parseFloat(order.paid_amount), parseFloat(order.total));
+      paidField.value = netPaid;
+    }
+
+    const methodField = document.getElementById('posPayment');
+    if (methodField) methodField.value = order.payment_method;
+
+    const btn = document.getElementById('checkoutBtn');
+    if (btn) btn.innerHTML = '<span>Update Order</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+
+    renderCart();
+    renderProdGrid();
+
+    toast('Order loaded for editing!', 'info');
+  } catch (e) {
+    toast('Error loading order for editing', 'danger');
+    console.error(e);
+  }
 }
 
 // State for POS filters
@@ -639,14 +639,14 @@ function setPosView(v) {
   document.getElementById('viewGrid').classList.toggle('active', v === 'grid');
   document.getElementById('viewList').classList.toggle('active', v === 'list');
   const grid = document.getElementById('posProdGrid');
-  if(grid) grid.classList.toggle('list-view', v === 'list');
+  if (grid) grid.classList.toggle('list-view', v === 'list');
   renderProdGrid();
 }
 
 function togglePosImage() {
   posFilter.showImage = !posFilter.showImage;
   const btn = document.getElementById('viewImageToggle');
-  if(btn) btn.classList.toggle('active', posFilter.showImage);
+  if (btn) btn.classList.toggle('active', posFilter.showImage);
   renderProdGrid();
 }
 
@@ -670,10 +670,10 @@ function renderProdGrid() {
   // if (posFilter.catId) prods = prods.filter(p => p.catId == posFilter.catId);
 
   const countEl = document.getElementById('posProdCount');
-  if(countEl) countEl.textContent = q ? `${prods.length} result${prods.length !== 1 ? 's' : ''}` : `${prods.length} products`;
+  if (countEl) countEl.textContent = q ? `${prods.length} result${prods.length !== 1 ? 's' : ''}` : `${prods.length} products`;
 
   const grid = document.getElementById('posProdGrid');
-  if(!grid) return;
+  if (!grid) return;
   grid.classList.toggle('list-view', posFilter.view === 'list');
 
   if (!prods.length) {
@@ -701,7 +701,7 @@ function buildProdCard(p) {
   const inCart = cart.find(c => c.prodId == p.id);
   const cartQty = inCart ? inCart.qty : 0;
   const availStock = p.stock - cartQty;
-  
+
   const oos = availStock <= 0 || p.status === 'defective' || p.status === 'in_repair';
 
   let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + availStock + ')';
@@ -765,9 +765,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const catSel = document.getElementById('posCatFilter');
+  const catSel = document.getElementById('posCategorySel');
   if (catSel) {
     catSel.addEventListener('change', function () {
+      filterPosCat(this, this.value);
+    });
+  }
+
+  const posCustSel = document.getElementById('posCustomer');
+  if (posCustSel) {
+    posCustSel.addEventListener('change', renderCartSummary);
+  }
+
+  const ledgerCheck = document.getElementById('posSaveToLedger');
+  if (ledgerCheck) {
+    ledgerCheck.addEventListener('change', renderCartSummary);
+  }
+
+  const catSelOrig = document.getElementById('posCatFilter');
+  if (catSelOrig) {
+    catSelOrig.addEventListener('change', function () {
       posFilter.catId = this.value;
       // Sync tab highlight
       document.querySelectorAll('.cat-tab').forEach(t => {
@@ -785,24 +802,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Fetch Store Settings Defaults
   if (document.getElementById('posDiscount')) {
-      fetch('/shop/api/settings')
-        .then(res => res.json())
-        .then(data => {
-            window.globalStoreSettings = data;
-            const d = document.getElementById('posDiscount');
-            const t = document.getElementById('posTax');
-            if (d && (!d.value || d.value == 0)) d.value = data.discount || 0;
-            if (t && (!t.value || t.value == 0)) t.value = data.tax || 0;
-            renderCartSummary();
-        })
-        .catch(console.error);
+    fetch('/shop/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        window.globalStoreSettings = data;
+        const d = document.getElementById('posDiscount');
+        const t = document.getElementById('posTax');
+        if (d && (!d.value || d.value == 0)) d.value = data.discount || 0;
+        if (t && (!t.value || t.value == 0)) t.value = data.tax || 0;
+        renderCartSummary();
+      })
+      .catch(console.error);
   }
 });
 
 function addToCart(prodId) {
   const p = store.get('products').find(m => m.id == prodId);
   if (!p) return;
-    if (p.stock <= 0 || p.status === 'defective' || p.status === 'in_repair') { toast('Product is unavailable!', 'danger'); return; }
+  if (p.stock <= 0 || p.status === 'defective' || p.status === 'in_repair') { toast('Product is unavailable!', 'danger'); return; }
 
   const existing = cart.find(c => c.prodId == prodId);
   if (existing) {
@@ -851,40 +868,40 @@ function clearCart() {
   cart = [];
   renderCart();
   renderProdGrid();
-  const d = document.getElementById('posDiscount'); if(d) d.value = window.globalStoreSettings?.discount || 0;
-  const t = document.getElementById('posTax'); if(t) t.value = window.globalStoreSettings?.tax || 0;
-  const p = document.getElementById('posPaid'); if(p) p.value = 0;
-  const n = document.getElementById('posNotes'); if(n) n.value = '';
+  const d = document.getElementById('posDiscount'); if (d) d.value = window.globalStoreSettings?.discount || 0;
+  const t = document.getElementById('posTax'); if (t) t.value = window.globalStoreSettings?.tax || 0;
+  const p = document.getElementById('posPaid'); if (p) p.value = 0;
+  const n = document.getElementById('posNotes'); if (n) n.value = '';
 }
 
 function renderCart() {
-    const tbody = document.getElementById('cartTbody');
-    const badge = document.getElementById('cartBadge');
-    const mobileBadge = document.getElementById('mobileCartBadge');
-    
-    let sumSub = 0, totalItems = 0;
-    cart.forEach(item => {
-      sumSub += item.price * item.qty;
-      totalItems += item.qty;
-    });
-    
-    if (badge) badge.textContent = totalItems + ' item' + (totalItems !== 1 ? 's' : '');
-    if (mobileBadge) mobileBadge.textContent = totalItems;
-    if(document.getElementById('sumItems')) document.getElementById('sumItems').textContent = totalItems;
-    if(document.getElementById('sumSubtotal')) document.getElementById('sumSubtotal').textContent = fmtCur(sumSub);
-    
-    if (!cart.length) {
-      if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="empty-cart-state">
+  const tbody = document.getElementById('cartTbody');
+  const badge = document.getElementById('cartBadge');
+  const mobileBadge = document.getElementById('mobileCartBadge');
+
+  let sumSub = 0, totalItems = 0;
+  cart.forEach(item => {
+    sumSub += item.price * item.qty;
+    totalItems += item.qty;
+  });
+
+  if (badge) badge.textContent = totalItems + ' item' + (totalItems !== 1 ? 's' : '');
+  if (mobileBadge) mobileBadge.textContent = totalItems;
+  if (document.getElementById('sumItems')) document.getElementById('sumItems').textContent = totalItems;
+  if (document.getElementById('sumSubtotal')) document.getElementById('sumSubtotal').textContent = fmtCur(sumSub);
+
+  if (!cart.length) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="empty-cart-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
         <p>Cart is empty</p>
         <span>Scan or click items to add</span>
       </td></tr>`;
-      renderCartSummary();
-      return;
-    }
-  
-    tbody.innerHTML = cart.map(item =>
-      `<tr>
+    renderCartSummary();
+    return;
+  }
+
+  tbody.innerHTML = cart.map(item =>
+    `<tr>
         <td>
           <div class="cart-item-name">${item.name}</div>
         </td>
@@ -900,8 +917,8 @@ function renderCart() {
           </td>
           <td style="text-align:right"><button class="action-btn del" style="width:24px;height:24px;padding:4px;" onclick="removeFromCart(${item.prodId})">${DEL_SVG}</button></td>
         </tr>`
-    ).join('');
-    renderCartSummary();
+  ).join('');
+  renderCartSummary();
 }
 
 function renderCartSummary() {
@@ -913,115 +930,193 @@ function renderCartSummary() {
   const discAmt = subtotal * discount / 100;
   const taxAmt = (subtotal - discAmt) * tax / 100;
   const grand = subtotal - discAmt + taxAmt;
-  const due = Math.max(0, grand - paid);
-  const ret = Math.max(0, paid - grand);
+  const due = grand - paid;
+  const absDue = Math.abs(due);
+  const elRet = document.getElementById('sumReturn');
 
-  const elItems = document.getElementById('sumItems'); if(elItems) elItems.textContent = cart.reduce((s, c) => s + c.qty, 0);
-  const elSub = document.getElementById('sumSubtotal'); if(elSub) elSub.textContent = fmtCur(subtotal);
-  const elGrand = document.getElementById('sumGrandTotal'); if(elGrand) elGrand.textContent = fmtCur(grand);
-  
-  const elRet = document.getElementById('sumReturn'); 
+  const elItems = document.getElementById('sumItems'); if (elItems) elItems.textContent = cart.reduce((s, c) => s + c.qty, 0);
+  const elSub = document.getElementById('sumSubtotal'); if (elSub) elSub.textContent = fmtCur(subtotal);
+  const elGrand = document.getElementById('sumGrandTotal'); if (elGrand) elGrand.textContent = fmtCur(grand);
+
   const elRetLabel = document.querySelector('.change-row .sum-label');
   const changeRow = document.querySelector('.change-row');
 
-  if(elRet && elRetLabel && changeRow) {
-      if (due > 0) {
-          elRetLabel.textContent = "Amount Due";
-          elRet.textContent = fmtCur(due);
-          changeRow.style.backgroundColor = "var(--danger-light, #ffebee)";
-          elRet.style.color = "var(--danger, #d32f2f)";
-      } else {
-          elRetLabel.textContent = "Change Due";
-          elRet.textContent = fmtCur(ret);
-          changeRow.style.backgroundColor = "var(--success-light, #e8f5e9)";
-          elRet.style.color = "var(--success, #2e7d32)";
+  const ledgerRow = document.getElementById('posLedgerRow');
+  const ledgerText = document.getElementById('posLedgerText');
+  const custId = document.getElementById('posCustomer')?.value;
+  let prevBal = 0;
+  if (custId) {
+    const custObj = store.get('customers').find(c => c.id == custId);
+    if (custObj) prevBal = parseFloat(custObj.balance) || 0;
+  }
+
+  if (elRet && elRetLabel && changeRow) {
+    if (due > 0) {
+      elRetLabel.textContent = "Amount Due";
+      elRet.textContent = fmtCur(due);
+      changeRow.style.backgroundColor = "var(--danger-light, #ffebee)";
+    } else if (due < 0) {
+      elRetLabel.textContent = "Change Due";
+      elRet.textContent = fmtCur(absDue);
+      changeRow.style.backgroundColor = "var(--success-light, #e8f5e9)";
+    } else {
+      elRetLabel.textContent = "Change Due";
+      elRet.textContent = fmtCur(0);
+      changeRow.style.backgroundColor = "var(--success-light, #e8f5e9)";
+    }
+
+    const ledgerCheck = document.getElementById('posSaveToLedger');
+    const isChecked = ledgerCheck ? ledgerCheck.checked : false;
+    let finalDue = isChecked ? (prevBal + due) : due;
+    let finalAbs = Math.abs(finalDue);
+
+    if (finalDue > 0) {
+      if (ledgerText) {
+        ledgerText.textContent = (isChecked ? "Net Customer will pay: " : "Customer will pay: ") + fmtCur(finalAbs);
+        ledgerText.style.color = "var(--danger)";
       }
+    } else if (finalDue < 0) {
+      if (ledgerText) {
+        ledgerText.textContent = (isChecked ? "Net Shop will pay: " : "Shop will pay: ") + fmtCur(finalAbs);
+        ledgerText.style.color = "var(--success)";
+      }
+    } else {
+      if (ledgerText) {
+        ledgerText.textContent = isChecked ? "Ledger will be Settled (0.00)" : "Settled (No Balance)";
+        ledgerText.style.color = "var(--text-muted)";
+      }
+    }
+
+    // Show ledger row only if customer selected (not walk-in)
+    if (ledgerRow) {
+      if (custId) {
+        ledgerRow.style.display = "flex";
+      } else {
+        ledgerRow.style.display = "none";
+        if (ledgerCheck) ledgerCheck.checked = false;
+      }
+    }
   }
 
   // Fallback for billing blade which might have sumDue
-  const elDue = document.getElementById('sumDue'); if(elDue) elDue.textContent = fmtCur(due);
+  const elDue = document.getElementById('sumDue'); if (elDue) elDue.textContent = fmtCur(due > 0 ? due : 0);
 }
 
 async function checkout() {
-    if (!cart.length) { toast('Cart is empty!', 'warning'); return; }
-  
-    const discount = parseFloat(document.getElementById('posDiscount')?.value || 0);
-    const tax = parseFloat(document.getElementById('posTax')?.value || 0);
-    const paid = parseFloat(document.getElementById('posPaid')?.value || 0);
-    const custId = document.getElementById('posCustomer')?.value || null;
-    const payment = document.getElementById('posPayment')?.value || 'Cash';
-    const notes = document.getElementById('posNotes')?.value || '';
-  
-    let subtotal = 0;
-    cart.forEach(c => { subtotal += c.qty * c.price; });
-    const taxAmt = subtotal * (tax / 100);
-    const discAmt = subtotal * (discount / 100);
-    const total = subtotal + taxAmt - discAmt;
+  if (!cart.length) { toast('Cart is empty!', 'warning'); return; }
 
-    const due = Math.abs(total - paid);
-    const paymentStatus = paid >= total ? 'paid' : (paid > 0 ? 'partial' : 'unpaid');
+  const discount = parseFloat(document.getElementById('posDiscount')?.value || 0);
+  const tax = parseFloat(document.getElementById('posTax')?.value || 0);
+  const paid = parseFloat(document.getElementById('posPaid')?.value || 0);
+  const custId = document.getElementById('posCustomer')?.value || null;
+  const payment = document.getElementById('posPayment')?.value || 'Cash';
+  const notes = document.getElementById('posNotes')?.value || '';
 
-    const payload = {
-        buyer_id: custId,
-        subtotal: subtotal,
-        tax: taxAmt,
-        discount: discAmt,
-        total: total,
-        paid_amount: paid,
-        due_amount: due,
-        payment_status: paymentStatus,
-        payment_method: payment,
-        items: cart.map(c => ({
-            product_id: c.prodId,
-            qty: c.qty,
-            price: c.price
-        }))
-    };
-  
-    try {
-        const btn = document.getElementById('checkoutBtn');
-        const origText = btn.innerHTML;
-        btn.innerHTML = 'Processing...';
-        btn.disabled = true;
-  
-        const isEditing = window.editingOrderId;
-        const url = isEditing ? `/shop/api/orders/${window.editingOrderId}` : '/shop/api/orders';
-        const method = isEditing ? 'PUT' : 'POST';
+  let subtotal = 0;
+  cart.forEach(c => { subtotal += c.qty * c.price; });
+  const taxAmt = subtotal * (tax / 100);
+  const discAmt = subtotal * (discount / 100);
+  const total = subtotal + taxAmt - discAmt;
 
-        const response = await api(url, method, payload);
-        
-        clearCart();
-        
-        if (isEditing) {
-            window.editingOrderId = null;
-            btn.innerHTML = '<span>Pay Now</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
-            toast(`Order updated successfully!`, 'success');
-        } else {
-            toast(`Order generated successfully!`, 'success');
-        }
+  const due = Math.abs(total - paid);
+  const isLedgerSaved = document.getElementById('posSaveToLedger')?.checked;
+  const paymentStatus = (isLedgerSaved || paid >= total) ? 'paid' : (paid > 0 ? 'partial' : 'unpaid');
 
-        await syncData(); // Refresh product grid
-        
-        // Open Invoice in new tab or popup
-        if (response.order_id) {
-            window.open(`/shop/orders/${response.order_id}/invoice`, 'InvoicePopup', 'width=400,height=600');
-        }
-  
-        if (!isEditing) btn.innerHTML = origText;
-        btn.disabled = false;
-    } catch(e) {
-        toast(e.message || 'Error occurred', 'danger');
-        const btn = document.getElementById('checkoutBtn');
-        btn.innerHTML = '<span>Pay Now</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
-        btn.disabled = false;
+  const payload = {
+    buyer_id: custId,
+    subtotal: subtotal,
+    tax: taxAmt,
+    discount: discAmt,
+    total: total,
+    paid_amount: paid,
+    due_amount: due,
+    payment_status: paymentStatus,
+    payment_method: payment,
+    save_to_ledger: (document.getElementById('posSaveToLedger') && document.getElementById('posSaveToLedger').checked) ? 1 : 0,
+    items: cart.map(c => ({
+      product_id: c.prodId,
+      qty: c.qty,
+      price: c.price
+    }))
+  };
+
+  try {
+    const btn = document.getElementById('checkoutBtn');
+    const origText = btn.innerHTML;
+    btn.innerHTML = 'Processing...';
+    btn.disabled = true;
+
+    const isEditing = window.editingOrderId;
+    const url = isEditing ? `/shop/api/orders/${window.editingOrderId}` : '/shop/api/orders';
+    const method = isEditing ? 'PUT' : 'POST';
+
+    const response = await api(url, method, payload);
+
+    clearCart();
+
+    if (isEditing) {
+      window.editingOrderId = null;
+      btn.innerHTML = '<span>Pay Now</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+      toast(`Order updated successfully!`, 'success');
+    } else {
+      toast(`Order generated successfully!`, 'success');
     }
+
+    await syncData(); // Refresh product grid
+
+    // Open Invoice in new tab or popup
+    if (response.order_id) {
+      window.open(`/shop/orders/${response.order_id}/invoice`, 'InvoicePopup', 'width=400,height=600');
+    }
+
+    if (!isEditing) btn.innerHTML = origText;
+    btn.disabled = false;
+  } catch (e) {
+    toast(e.message || 'Error occurred', 'danger');
+    const btn = document.getElementById('checkoutBtn');
+    btn.innerHTML = '<span>Pay Now</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+    btn.disabled = false;
+  }
 }
 
 // ============================================================
 // INVOICE MODAL
 // ============================================================
-function showInvoiceModal(invoice) {
-  document.getElementById('invoicePreview').innerHTML = buildInvoiceHTML(invoice);
+async function showInvoiceModal(invoice) {
+  let ledgerHtml = '';
+  if (invoice.custId) {
+    try {
+      const res = await api(`/shop/api/customers/${invoice.custId}/ledger`);
+      if (res && res.length > 0) {
+        const last3 = res.slice(-3);
+        ledgerHtml = `
+              <hr class="r-divider"/>
+              <div class="r-center" style="font-weight:bold; margin-bottom: 5px;">Recent Ledger</div>
+              <table class="r-items" style="font-size: 10px;">
+                  <thead>
+                      <tr>
+                          <th style="width:40%">Date</th>
+                          <th style="width:30%;text-align:right">Debit</th>
+                          <th style="width:30%;text-align:right">Credit</th>
+                      </tr>
+                  </thead>
+                  <tbody>
+                      ${last3.map(l => `<tr>
+                          <td>${l.date}</td>
+                          <td style="text-align:right">${l.debit > 0 ? parseFloat(l.debit).toFixed(2) : '-'}</td>
+                          <td style="text-align:right">${l.credit > 0 ? parseFloat(l.credit).toFixed(2) : '-'}</td>
+                      </tr>`).join('')}
+                  </tbody>
+              </table>
+              <div style="font-weight:bold; font-size:10px; margin-top:3px;">
+                  Current Balance: ${parseFloat(res[res.length - 1].balance).toFixed(2)}
+              </div>
+              `;
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  document.getElementById('invoicePreview').innerHTML = buildInvoiceHTML(invoice, ledgerHtml);
   document.getElementById('invoiceModal').classList.remove('hidden');
 }
 function closeInvoiceModal() { document.getElementById('invoiceModal').classList.add('hidden'); }
@@ -1112,7 +1207,7 @@ const THERMAL_CSS = `
   }
 `;
 
-function buildInvoiceHTML(inv) {
+function buildInvoiceHTML(inv, ledgerHtml = '') {
   // Build item rows â€” wrap long name to second line
   const itemRows = inv.items.map(it => `
     <tr>
@@ -1197,7 +1292,10 @@ function buildInvoiceHTML(inv) {
       <tr class="r-paid"><td>Paid (${inv.payment})</td><td>${fmtCur(inv.paid)}</td></tr>
       ${inv.due > 0 ? `<tr class="r-due"><td>Due Amount</td><td>${fmtCur(inv.due)}</td></tr>` : ''}
       ${inv.ret > 0 ? `<tr class="r-ret"><td>Return</td><td>${fmtCur(inv.ret)}</td></tr>` : ''}
+      ${inv.payment_status ? `<tr><td style="font-weight:bold">Status:</td><td style="font-weight:bold">${inv.payment_status.toUpperCase()}</td></tr>` : ''}
     </table>
+
+    ${ledgerHtml}
 
     ${inv.notes ? `<hr class="r-divider"/><div class="r-notes"><strong>Note:</strong> ${inv.notes}</div>` : ''}
 
@@ -1274,20 +1372,20 @@ document.addEventListener('DOMContentLoaded', () => {
 window.salesPaymentStatus = '';
 
 function setSalesStatusFilter(status, btn) {
-    if (window.salesPaymentStatus === status) {
-        window.salesPaymentStatus = '';
-        btn.classList.remove('btn-primary');
-        btn.classList.add('btn-outline');
-    } else {
-        window.salesPaymentStatus = status;
-        document.querySelectorAll('.status-filter').forEach(b => {
-            b.classList.remove('btn-primary');
-            b.classList.add('btn-outline');
-        });
-        btn.classList.remove('btn-outline');
-        btn.classList.add('btn-primary');
-    }
-    renderSales();
+  if (window.salesPaymentStatus === status) {
+    window.salesPaymentStatus = '';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-outline');
+  } else {
+    window.salesPaymentStatus = status;
+    document.querySelectorAll('.status-filter').forEach(b => {
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-outline');
+    });
+    btn.classList.remove('btn-outline');
+    btn.classList.add('btn-primary');
+  }
+  renderSales();
 }
 
 async function renderSales(page = 1) {
@@ -1295,28 +1393,28 @@ async function renderSales(page = 1) {
   const sDate = document.getElementById('salesStartDate')?.value || '';
   const eDate = document.getElementById('salesEndDate')?.value || '';
   const status = window.salesPaymentStatus || '';
-  
-  try {
-      const tbody = document.getElementById('salesTbody');
-      if (!tbody) return;
-      tbody.innerHTML = '<tr><td colspan="11" class="text-center" style="padding:20px;">Loading sales...</td></tr>';
-      
-      const res = await api(`/shop/api/orders?page=${page}&search=${q}&start_date=${sDate}&end_date=${eDate}&payment_status=${status}`);
-      const list = res.data;
-      
-      if (res.totals) {
-          const elGrandTotal = document.getElementById('salesGrandTotal');
-          const elTotalPaid = document.getElementById('salesTotalPaid');
-          const elTotalDue = document.getElementById('salesTotalDue');
-          if (elGrandTotal) elGrandTotal.textContent = fmtCur(res.totals.grand_total);
-          if (elTotalPaid) elTotalPaid.textContent = fmtCur(res.totals.total_paid);
-          if (elTotalDue) elTotalDue.textContent = fmtCur(res.totals.total_due);
-      }
-      
-      window.currentSalesList = list;
 
-      tbody.innerHTML = list.length ?
-        list.map(i => `<tr>
+  try {
+    const tbody = document.getElementById('salesTbody');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center" style="padding:20px;">Loading sales...</td></tr>';
+
+    const res = await api(`/shop/api/orders?page=${page}&search=${q}&start_date=${sDate}&end_date=${eDate}&payment_status=${status}`);
+    const list = res.data;
+
+    if (res.totals) {
+      const elGrandTotal = document.getElementById('salesGrandTotal');
+      const elTotalPaid = document.getElementById('salesTotalPaid');
+      const elTotalDue = document.getElementById('salesTotalDue');
+      if (elGrandTotal) elGrandTotal.textContent = fmtCur(res.totals.grand_total);
+      if (elTotalPaid) elTotalPaid.textContent = fmtCur(res.totals.total_paid);
+      if (elTotalDue) elTotalDue.textContent = fmtCur(res.totals.total_due);
+    }
+
+    window.currentSalesList = list;
+
+    tbody.innerHTML = list.length ?
+      list.map(i => `<tr>
           <td><span class="badge badge-primary" style="font-family:var(--mono)">${i.id}</span></td>
           <td>${i.buyer ? i.buyer.name : 'Walk-in'}</td>
           <td>${i.items.reduce((s, x) => s + parseInt(x.qty), 0)}</td>
@@ -1337,76 +1435,76 @@ async function renderSales(page = 1) {
             <button class="action-btn delete" onclick="deleteOrder(${i.id})" title="Delete">${DEL_SVG}</button>
           </td>
         </tr>`).join('') :
-        '<tr><td colspan="12" class="empty-cell">No sales found</td></tr>';
+      '<tr><td colspan="12" class="empty-cell">No sales found</td></tr>';
 
-      renderSalesPagination(res);
-  } catch(e) {
-      console.error(e);
-      document.getElementById('salesTbody').innerHTML = '<tr><td colspan="11" class="empty-cell text-danger">Failed to load sales</td></tr>';
+    renderSalesPagination(res);
+  } catch (e) {
+    console.error(e);
+    document.getElementById('salesTbody').innerHTML = '<tr><td colspan="11" class="empty-cell text-danger">Failed to load sales</td></tr>';
   }
 }
 
 function renderSalesPagination(res) {
-    let paginationHtml = '<div class="pagination-wrapper" style="display:flex; justify-content:center; gap:5px; margin-top:15px; padding-bottom:15px;">';
-    
-    if (res.prev_page_url) {
-        paginationHtml += `<button class="btn btn-sm btn-outline" onclick="renderSales(${res.current_page - 1})">Prev</button>`;
-    }
-    
-    for (let i = 1; i <= res.last_page; i++) {
-        if (i === 1 || i === res.last_page || (i >= res.current_page - 2 && i <= res.current_page + 2)) {
-            paginationHtml += `<button class="btn btn-sm ${i === res.current_page ? 'btn-primary' : 'btn-outline'}" onclick="renderSales(${i})">${i}</button>`;
-        } else if (i === res.current_page - 3 || i === res.current_page + 3) {
-            paginationHtml += `<span style="padding:4px 8px;">...</span>`;
-        }
-    }
+  let paginationHtml = '<div class="pagination-wrapper" style="display:flex; justify-content:center; gap:5px; margin-top:15px; padding-bottom:15px;">';
 
-    if (res.next_page_url) {
-        paginationHtml += `<button class="btn btn-sm btn-outline" onclick="renderSales(${res.current_page + 1})">Next</button>`;
+  if (res.prev_page_url) {
+    paginationHtml += `<button class="btn btn-sm btn-outline" onclick="renderSales(${res.current_page - 1})">Prev</button>`;
+  }
+
+  for (let i = 1; i <= res.last_page; i++) {
+    if (i === 1 || i === res.last_page || (i >= res.current_page - 2 && i <= res.current_page + 2)) {
+      paginationHtml += `<button class="btn btn-sm ${i === res.current_page ? 'btn-primary' : 'btn-outline'}" onclick="renderSales(${i})">${i}</button>`;
+    } else if (i === res.current_page - 3 || i === res.current_page + 3) {
+      paginationHtml += `<span style="padding:4px 8px;">...</span>`;
     }
-    paginationHtml += '</div>';
-    
-    const wrap = document.querySelector('#page-sales .table-wrap');
-    const existing = document.getElementById('salesPagination');
-    if (existing) existing.remove();
-    
-    if (res.last_page > 1) {
-        const pageDiv = document.createElement('div');
-        pageDiv.id = 'salesPagination';
-        pageDiv.innerHTML = paginationHtml;
-        wrap.appendChild(pageDiv);
-    }
+  }
+
+  if (res.next_page_url) {
+    paginationHtml += `<button class="btn btn-sm btn-outline" onclick="renderSales(${res.current_page + 1})">Next</button>`;
+  }
+  paginationHtml += '</div>';
+
+  const wrap = document.querySelector('#page-sales .table-wrap');
+  const existing = document.getElementById('salesPagination');
+  if (existing) existing.remove();
+
+  if (res.last_page > 1) {
+    const pageDiv = document.createElement('div');
+    pageDiv.id = 'salesPagination';
+    pageDiv.innerHTML = paginationHtml;
+    wrap.appendChild(pageDiv);
+  }
 }
 
 function editOrderInPos(id) {
-    localStorage.setItem('mp_edit_order_id', id);
-    window.location.href = '/shop/pos';
+  localStorage.setItem('mp_edit_order_id', id);
+  window.location.href = '/shop/pos';
 }
 
 function refundOrder(id) {
-    confirmDelete('Are you sure you want to refund this order? This will restore stock.', async () => {
-        try {
-            await api(`/shop/api/orders/${id}/refund`, 'POST');
-            toast('Order refunded successfully', 'success');
-            renderSales();
-        } catch(e) {
-            toast('Error refunding order', 'danger');
-            console.error(e);
-        }
-    });
+  confirmDelete('Are you sure you want to refund this order? This will restore stock.', async () => {
+    try {
+      await api(`/shop/api/orders/${id}/refund`, 'POST');
+      toast('Order refunded successfully', 'success');
+      renderSales();
+    } catch (e) {
+      toast('Error refunding order', 'danger');
+      console.error(e);
+    }
+  });
 }
 
 function deleteOrder(id) {
-    confirmDelete('Are you sure you want to delete this order? This will restore stock and remove the record permanently.', async () => {
-        try {
-            await api(`/shop/api/orders/${id}`, 'DELETE');
-            toast('Order deleted successfully', 'success');
-            renderSales();
-        } catch(e) {
-            toast('Error deleting order', 'danger');
-            console.error(e);
-        }
-    });
+  confirmDelete('Are you sure you want to delete this order? This will restore stock and remove the record permanently.', async () => {
+    try {
+      await api(`/shop/api/orders/${id}`, 'DELETE');
+      toast('Order deleted successfully', 'success');
+      renderSales();
+    } catch (e) {
+      toast('Error deleting order', 'danger');
+      console.error(e);
+    }
+  });
 }
 
 function exportSalesCSV() {
@@ -1433,9 +1531,14 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 function renderProducts() {
   const q = (document.getElementById('prodSearch')?.value || '').toLowerCase();
-  
+
   let prods = store.get('products');
-  if (q) prods = prods.filter(p => p.name.toLowerCase().includes(q) || (p.imei || '').toLowerCase().includes(q));
+  if (q) prods = prods.filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    (p.imei || '').toLowerCase().includes(q) ||
+    (p.code || '').toLowerCase().includes(q) ||
+    (p.barcode || '').toLowerCase().includes(q)
+  );
 
   document.getElementById('prodTbody').innerHTML = prods.length ?
     prods.map(p => {
@@ -1444,8 +1547,10 @@ function renderProducts() {
           ${p.image ? `<img src="/storage/${p.image}" alt="Product" style="width:40px; height:40px; border-radius:4px; object-fit:cover;">` : '<div style="width:40px; height:40px; background:#f3f4f6; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#9ca3af; font-size:10px;">No Img</div>'}
         </td>
         <td>
+          ${p.code ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-bottom:2px;">Code: ${p.code}</div>` : ''}
           <div style="font-weight:500">${p.name}</div>
           ${p.imei ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">IMEI/SN: ${p.imei}</div>` : ''}
+          ${p.barcode ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">Barcode: ${p.barcode}</div>` : ''}
         </td>
         <td style="text-transform:capitalize">${p.type}</td>
         <td style="text-transform:capitalize">${p.condition}</td>
@@ -1458,6 +1563,7 @@ function renderProducts() {
           ${p.category_id ? (store.get('categories').find(c => c.id == p.category_id)?.name || '-') : '-'}
         </td>
         <td>
+          <button class="action-btn" style="color:var(--primary)" onclick="openProdSalesModal(${p.id})" title="View Sales">${VIEW_SVG}</button>
           <button class="action-btn edit" onclick="openProductModal(${p.id})" title="Edit">${EDIT_SVG}</button>
           <button class="action-btn del" onclick="deleteProduct(${p.id})" title="Delete">${DEL_SVG}</button>
         </td>
@@ -1468,7 +1574,7 @@ function renderProducts() {
 
 function editProduct(id = null) {
   document.getElementById('prodId').value = id || '';
-  
+
   const cats = store.get('categories') || [];
   document.getElementById('prodCategory').innerHTML = '<option value="">Select category</option>' + cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 
@@ -1482,7 +1588,17 @@ function editProduct(id = null) {
     document.getElementById('prodName').value = p.name;
     document.getElementById('prodType').value = p.type;
     document.getElementById('prodCondition').value = p.condition;
-    document.getElementById('prodImei').value = p.imei_serial || '';
+    document.getElementById('prodCode').value = p.code || '';
+    document.getElementById('prodBarcode').value = p.barcode || '';
+
+    // Multiple IMEIs handling
+    const imeis = (p.imei_serial || '').split(',').map(s => s.trim()).filter(s => s);
+    document.getElementById('prodImei').value = imeis.length > 0 ? imeis[0] : '';
+    document.getElementById('additionalImeis').innerHTML = '';
+    for (let i = 1; i < imeis.length; i++) {
+      addImeiField(imeis[i]);
+    }
+
     document.getElementById('prodColor').value = p.color || '';
     document.getElementById('prodStorage').value = p.storage || '';
     document.getElementById('prodPurchase').value = p.purchase;
@@ -1494,7 +1610,8 @@ function editProduct(id = null) {
   } else {
     document.getElementById('prodModalTitle').textContent = 'Add Product';
     document.getElementById('prodId').value = '';
-    ['prodName','prodImei','prodColor','prodStorage','prodPurchase','prodSale','prodImage','prodBuyer'].forEach(id => document.getElementById(id).value = '');
+    ['prodName', 'prodCode', 'prodBarcode', 'prodImei', 'prodColor', 'prodStorage', 'prodPurchase', 'prodSale', 'prodImage', 'prodBuyer'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('additionalImeis').innerHTML = '';
     document.getElementById('prodType').value = 'mobile';
     document.getElementById('prodCondition').value = 'new';
     document.getElementById('prodStatus').value = 'in_stock';
@@ -1502,6 +1619,15 @@ function editProduct(id = null) {
     document.getElementById('prodCategory').value = '';
   }
   document.getElementById('prodModal').classList.remove('hidden');
+  toggleProductFields();
+}
+
+function toggleProductFields() {
+  const type = document.getElementById('prodType').value;
+  const groupImei = document.getElementById('groupImei');
+  const groupStorage = document.getElementById('groupStorage');
+  if (groupImei) groupImei.style.display = (type === 'accessory') ? 'none' : 'block';
+  if (groupStorage) groupStorage.style.display = (type === 'accessory') ? 'none' : 'block';
 }
 
 function openProductModal(id) {
@@ -1514,60 +1640,133 @@ async function saveProduct() {
   const type = document.getElementById('prodType').value;
   const condition = document.getElementById('prodCondition').value;
   const sale = document.getElementById('prodSale').value;
-  
+
   if (!name || !type || !condition || !sale) { toast('Name, Type, Condition and Sale Price required!', 'warning'); return; }
-  
+
   const editId = document.getElementById('prodId').value;
   const formData = new FormData();
   formData.append('name', name);
   formData.append('type', type);
   formData.append('condition', condition);
-  formData.append('imei_serial', document.getElementById('prodImei').value.trim());
+  formData.append('code', document.getElementById('prodCode').value.trim());
+  formData.append('barcode', document.getElementById('prodBarcode').value.trim());
+
+  const imeis = Array.from(document.querySelectorAll('.imei-input'))
+    .map(el => el.value.trim())
+    .filter(v => v)
+    .join(', ');
+  formData.append('imei_serial', imeis);
   formData.append('color', document.getElementById('prodColor').value.trim());
   formData.append('storage', document.getElementById('prodStorage').value.trim());
   formData.append('purchase_price', document.getElementById('prodPurchase').value || 0);
   formData.append('sale_price', sale);
   formData.append('status', document.getElementById('prodStatus').value);
   formData.append('stock', document.getElementById('prodStock').value || 1);
-  
+
   const catId = parseInt(document.getElementById('prodCategory').value);
   if (catId) formData.append('category_id', catId);
-  
+
   const buyerId = parseInt(document.getElementById('prodBuyer').value);
   if (buyerId) formData.append('buyer_id', buyerId);
-  
+
   const imgInput = document.getElementById('prodImage');
   if (imgInput.files.length > 0) {
-      formData.append('image', imgInput.files[0]);
+    formData.append('image', imgInput.files[0]);
   }
-  
+
   try {
-      if (editId) {
-          formData.append('_method', 'PUT');
-          await api('/shop/api/products/' + editId, 'POST', formData);
-          toast('Product updated!', 'success');
-      } else {
-          await api('/shop/api/products', 'POST', formData);
-          toast('Product added!', 'success');
-      }
-      closeProductModal();
-      await syncData();
-  } catch(e) { toast(e.message || 'Error saving product', 'danger'); }
+    if (editId) {
+      formData.append('_method', 'PUT');
+      await api('/shop/api/products/' + editId, 'POST', formData);
+      toast('Product updated!', 'success');
+    } else {
+      await api('/shop/api/products', 'POST', formData);
+      toast('Product added!', 'success');
+    }
+    closeProductModal();
+    await syncData();
+  } catch (e) { toast(e.message || 'Error saving product', 'danger'); }
 }
 
 function deleteProduct(id) {
   confirmDelete('Delete this product?', async () => {
     try {
-        await api('/shop/api/products/' + id, 'DELETE');
-        toast('Product deleted', 'danger');
-        await syncData();
-    } catch(e) { toast('Error deleting', 'danger'); }
+      await api('/shop/api/products/' + id, 'DELETE');
+      toast('Product deleted', 'danger');
+      await syncData();
+    } catch (e) { toast('Error deleting', 'danger'); }
   });
+}
+
+async function openProdSalesModal(id) {
+  const p = store.get('products').find(x => x.id == id);
+  if (!p) return;
+  
+  document.getElementById('prodSalesModalTitle').textContent = `Sales History: ${p.name}`;
+  document.getElementById('prodSalesTbody').innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 20px;">Loading...</td></tr>';
+  document.getElementById('prodSalesModal').classList.remove('hidden');
+  document.getElementById('prodSalesTfoot').innerHTML = '';
+
+  try {
+    const sales = await api('/shop/api/products/' + id + '/sales');
+    if (sales.length === 0) {
+      document.getElementById('prodSalesTbody').innerHTML = '<tr><td colspan="6" class="empty-cell">No sales found for this product.</td></tr>';
+      return;
+    }
+
+    let totalQty = 0;
+    let totalRevenue = 0;
+
+    document.getElementById('prodSalesTbody').innerHTML = sales.map(s => {
+      totalQty += Number(s.qty);
+      totalRevenue += Number(s.total);
+      return `
+      <tr>
+        <td>${fmtDateTime(s.date)}</td>
+        <td><a href="/shop/orders/${s.order_id}/invoice" target="_blank" style="color:var(--primary);text-decoration:underline;">#${s.order_id}</a></td>
+        <td>${s.customer}</td>
+        <td>${s.qty}</td>
+        <td class="text-right">${fmtCur(s.price)}</td>
+        <td class="text-right" style="font-weight:bold">${fmtCur(s.total)}</td>
+      </tr>
+      `;
+    }).join('');
+
+    document.getElementById('prodSalesTfoot').innerHTML = `
+      <tr>
+        <td colspan="3" class="text-right"><strong>Total:</strong></td>
+        <td><strong>${totalQty}</strong></td>
+        <td></td>
+        <td class="text-right" style="color: var(--primary);"><strong>${fmtCur(totalRevenue)}</strong></td>
+      </tr>
+    `;
+  } catch (err) {
+    document.getElementById('prodSalesTbody').innerHTML = '<tr><td colspan="6" style="color:red" class="text-center">Error loading sales data</td></tr>';
+  }
+}
+
+function closeProdSalesModal() {
+  document.getElementById('prodSalesModal').classList.add('hidden');
+}
+
+function addImeiField(value = '') {
+  const container = document.getElementById('additionalImeis');
+  const div = document.createElement('div');
+  div.style.display = 'flex';
+  div.style.gap = '8px';
+  div.innerHTML = `
+    <input type="text" class="input imei-input" style="flex: 1;" placeholder="Additional IMEI" value="${value}" />
+    <button type="button" class="btn btn-outline" style="padding: 0 12px; font-size: 18px; color: var(--danger); border-color: var(--danger);" onclick="this.parentElement.remove()" title="Remove IMEI">-</button>
+  `;
+  container.appendChild(div);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   const ps = document.getElementById('prodSearch');
   if (ps) ps.addEventListener('input', renderProducts);
+
+  const pt = document.getElementById('prodType');
+  if (pt) pt.addEventListener('change', toggleProductFields);
 });
 
 // ============================================================
@@ -1621,39 +1820,39 @@ async function saveCategory() {
   const name = document.getElementById('catName').value.trim();
   const desc = document.getElementById('catDesc').value.trim();
   const color = document.getElementById('catColor').value.trim();
-  
+
   if (!name) { toast('Category Name is required', 'warning'); return; }
-  
+
   const editId = document.getElementById('catId').value;
   const data = { name, desc, color };
-  
+
   try {
-      if (editId) {
-          await api('/shop/api/categories/' + editId, 'PUT', data);
-          toast('Category updated!', 'success');
-      } else {
-          const res = await api('/shop/api/categories', 'POST', data);
-          toast('Category added!', 'success');
-          if (res && res.id && !document.getElementById('prodModal').classList.contains('hidden')) {
-              const select = document.getElementById('prodCategory');
-              if(select) {
-                  select.appendChild(new Option(data.name, res.id));
-                  select.value = res.id;
-              }
-          }
+    if (editId) {
+      await api('/shop/api/categories/' + editId, 'PUT', data);
+      toast('Category updated!', 'success');
+    } else {
+      const res = await api('/shop/api/categories', 'POST', data);
+      toast('Category added!', 'success');
+      if (res && res.id && !document.getElementById('prodModal').classList.contains('hidden')) {
+        const select = document.getElementById('prodCategory');
+        if (select) {
+          select.appendChild(new Option(data.name, res.id));
+          select.value = res.id;
+        }
       }
-      closeCatModal();
-      await syncData();
-  } catch(e) { toast('Error saving category', 'danger'); }
+    }
+    closeCatModal();
+    await syncData();
+  } catch (e) { toast('Error saving category', 'danger'); }
 }
 
 function deleteCategory(id) {
   confirmDelete('Delete this category?', async () => {
     try {
-        await api('/shop/api/categories/' + id, 'DELETE');
-        toast('Category deleted', 'danger');
-        await syncData();
-    } catch(e) { toast('Error deleting', 'danger'); }
+      await api('/shop/api/categories/' + id, 'DELETE');
+      toast('Category deleted', 'danger');
+      await syncData();
+    } catch (e) { toast('Error deleting', 'danger'); }
   });
 }
 
@@ -1700,7 +1899,7 @@ function openSuppModal(id) {
   } else {
     document.getElementById('suppModalTitle').textContent = 'Add Supplier';
     document.getElementById('suppId').value = '';
-    ['suppName','suppCompany','suppPhone','suppEmail','suppAddress','suppNotes'].forEach(id => document.getElementById(id).value = '');
+    ['suppName', 'suppCompany', 'suppPhone', 'suppEmail', 'suppAddress', 'suppNotes'].forEach(id => document.getElementById(id).value = '');
   }
   document.getElementById('suppModal').classList.remove('hidden');
 }
@@ -1710,7 +1909,7 @@ async function saveSupplier() {
   const name = document.getElementById('suppName').value.trim();
   const phone = document.getElementById('suppPhone').value.trim();
   if (!name || !phone) { toast('Name and phone required!', 'warning'); return; }
-  
+
   const editId = document.getElementById('suppId').value;
   const data = {
     name, phone,
@@ -1719,27 +1918,27 @@ async function saveSupplier() {
     address: document.getElementById('suppAddress').value.trim(),
     notes: document.getElementById('suppNotes').value.trim(),
   };
-  
+
   try {
-      if (editId) {
-          await api('/suppliers/' + editId, 'PUT', data);
-          toast('Supplier updated!', 'success');
-      } else {
-          await api('/suppliers', 'POST', data);
-          toast('Supplier added!', 'success');
-      }
-      closeSuppModal();
-      await syncData();
-  } catch(e) { toast('Error saving supplier', 'danger'); }
+    if (editId) {
+      await api('/suppliers/' + editId, 'PUT', data);
+      toast('Supplier updated!', 'success');
+    } else {
+      await api('/suppliers', 'POST', data);
+      toast('Supplier added!', 'success');
+    }
+    closeSuppModal();
+    await syncData();
+  } catch (e) { toast('Error saving supplier', 'danger'); }
 }
 
 function deleteSupplier(id) {
   confirmDelete('Delete this supplier?', async () => {
     try {
-        await api('/suppliers/' + id, 'DELETE');
-        toast('Supplier deleted', 'danger');
-        await syncData();
-    } catch(e) { toast('Error deleting', 'danger'); }
+      await api('/suppliers/' + id, 'DELETE');
+      toast('Supplier deleted', 'danger');
+      await syncData();
+    } catch (e) { toast('Error deleting', 'danger'); }
   });
 }
 
@@ -1757,7 +1956,14 @@ function renderCustomers() {
   if (q) list = list.filter(c => c.name.toLowerCase().includes(q) || (c.phone || '').includes(q));
 
   document.getElementById('custTbody').innerHTML = list.length ?
-    list.map(c => `<tr>
+    list.map(c => {
+      let bal = parseFloat(c.balance || 0);
+      let balHtml = '';
+      if (bal > 0) balHtml = `<div style="color:var(--danger);font-weight:600;line-height:1.2;font-size:0.85rem">Customer will pay<br><span style="font-size:1rem">${fmtCur(bal)}</span></div>`;
+      else if (bal < 0) balHtml = `<div style="color:var(--success);font-weight:600;line-height:1.2;font-size:0.85rem">Shop will pay<br><span style="font-size:1rem">${fmtCur(Math.abs(bal))}</span></div>`;
+      else balHtml = `<span style="color:var(--text-muted);font-weight:600">0.00</span>`;
+
+      return `<tr>
       <td style="font-weight:500">${c.name}</td>
       <td>${c.phone || '-'}</td>
       <td>${c.cnic_number || '-'}</td>
@@ -1766,12 +1972,155 @@ function renderCustomers() {
         ${c.cnic_front ? `<a href="/storage/${c.cnic_front}" target="_blank" class="badge badge-success">Front</a>` : ''}
         ${c.cnic_back ? `<a href="/storage/${c.cnic_back}" target="_blank" class="badge badge-success">Back</a>` : ''}
       </td>
+      <td>${balHtml}</td>
       <td>
+        <button class="action-btn" title="Ledger" onclick="openLedgerModal(${c.id})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></button>
         <button class="action-btn edit" onclick="openCustModal(${c.id})">${EDIT_SVG}</button>
         <button class="action-btn del" onclick="deleteCustomer(${c.id})">${DEL_SVG}</button>
       </td>
-    </tr>`).join('') :
-    '<tr><td colspan="6" class="empty-cell">No customers found</td></tr>';
+    </tr>`;
+    }).join('') :
+    '<tr><td colspan="7" class="empty-cell">No customers found</td></tr>';
+}
+
+let currentLedgerCustomerId = null;
+
+async function openLedgerModal(id) {
+  currentLedgerCustomerId = id;
+  const c = store.get('customers').find(x => x.id == id);
+  if (!c) return;
+
+  document.getElementById('ledgerModalTitle').textContent = `Ledger: ${c.name}`;
+  document.getElementById('ledgerModal').classList.remove('hidden');
+
+  // Set default date and time
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('ledgerDate').value = now.toISOString().slice(0, 16);
+  document.getElementById('ledgerType').value = 'Payment';
+  document.getElementById('ledgerDebit').value = '';
+  document.getElementById('ledgerCredit').value = '';
+  document.getElementById('ledgerNote').value = '';
+
+  await loadCustomerLedger(id);
+}
+
+async function loadCustomerLedger(id) {
+  document.getElementById('ledgerTbody').innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+  const statusEl = document.getElementById('ledgerModalStatus');
+  if (statusEl) {
+    statusEl.textContent = '';
+    statusEl.className = '';
+    statusEl.style.color = '';
+    statusEl.style.backgroundColor = '';
+  }
+
+  try {
+    const res = await api(`/shop/api/customers/${id}/ledger`);
+    if (res.length === 0) {
+      document.getElementById('ledgerTbody').innerHTML = '<tr><td colspan="6" class="empty-cell">No ledger entries found.</td></tr>';
+      if (statusEl) {
+        statusEl.textContent = 'Settled (No Balance)';
+        statusEl.style.color = 'var(--text-muted)';
+      }
+      return;
+    }
+
+    document.getElementById('ledgerTbody').innerHTML = res.map(l => `
+            <tr>
+                <td>${fmtDateTime(l.date)}</td>
+                <td>${l.type}</td>
+                <td style="color:red">${l.debit > 0 ? parseFloat(l.debit).toFixed(2) : '-'}</td>
+                <td style="color:green">${l.credit > 0 ? parseFloat(l.credit).toFixed(2) : '-'}</td>
+                <td style="font-weight:bold">${parseFloat(l.balance).toFixed(2)}</td>
+                <td>${l.note || '-'}</td>
+            </tr>
+        `).join('');
+
+    const finalBalance = parseFloat(res[res.length - 1].balance);
+    if (statusEl) {
+      if (finalBalance > 0) {
+        statusEl.textContent = 'Customer will pay: ' + fmtCur(finalBalance);
+        statusEl.style.color = 'var(--danger)';
+        statusEl.style.backgroundColor = 'var(--danger-light, #ffebee)';
+      } else if (finalBalance < 0) {
+        statusEl.textContent = 'Shop will pay: ' + fmtCur(Math.abs(finalBalance));
+        statusEl.style.color = 'var(--success)';
+        statusEl.style.backgroundColor = 'var(--success-light, #e8f5e9)';
+      } else {
+        statusEl.textContent = 'Settled (0.00)';
+        statusEl.style.color = 'var(--text-muted)';
+        statusEl.style.backgroundColor = '#f3f4f6';
+      }
+    }
+  } catch (e) {
+    document.getElementById('ledgerTbody').innerHTML = '<tr><td colspan="6" style="color:red">Error loading ledger.</td></tr>';
+    console.error(e);
+  }
+}
+
+async function addLedgerEntry(e) {
+  e.preventDefault();
+  if (!currentLedgerCustomerId) return;
+
+  const data = {
+    date: document.getElementById('ledgerDate').value,
+    type: document.getElementById('ledgerType').value,
+    debit: document.getElementById('ledgerDebit').value || 0,
+    credit: document.getElementById('ledgerCredit').value || 0,
+    note: document.getElementById('ledgerNote').value
+  };
+
+  try {
+    const btn = document.getElementById('ledgerSubmitBtn');
+    const oldText = btn.textContent;
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    const res = await api(`/shop/api/customers/${currentLedgerCustomerId}/ledger`, 'POST', data);
+
+    btn.textContent = oldText;
+    btn.disabled = false;
+
+    if (res.ledger) {
+      toast('Entry added successfully');
+      document.getElementById('ledgerDebit').value = '';
+      document.getElementById('ledgerCredit').value = '';
+      document.getElementById('ledgerNote').value = '';
+      await loadCustomerLedger(currentLedgerCustomerId);
+    } else if (res.message) {
+      toast(res.message, 'danger');
+    }
+  } catch (err) {
+    toast('Error saving entry', 'danger');
+    document.getElementById('ledgerSubmitBtn').textContent = 'Add Entry';
+    document.getElementById('ledgerSubmitBtn').disabled = false;
+  }
+}
+
+function closeLedgerModal() {
+  document.getElementById('ledgerModal').classList.add('hidden');
+  currentLedgerCustomerId = null;
+}
+
+function printCustomerLedger() {
+    if (!currentLedgerCustomerId) return;
+    const printUrl = '/shop/customers/' + currentLedgerCustomerId + '/print-ledger';
+    
+    let printFrame = document.getElementById('printFrame');
+    if (!printFrame) {
+        printFrame = document.createElement('iframe');
+        printFrame.id = 'printFrame';
+        printFrame.style.position = 'absolute';
+        printFrame.style.width = '0px';
+        printFrame.style.height = '0px';
+        printFrame.style.border = 'none';
+        document.body.appendChild(printFrame);
+    }
+    
+    // In some browsers, print dialog for iframe works better when we don't rely on onload,
+    // but our views have window.print() on load anyway. So just loading the src is enough.
+    printFrame.src = printUrl;
 }
 
 function openCustModal(id) {
@@ -1787,8 +2136,8 @@ function openCustModal(id) {
   } else {
     document.getElementById('custModalTitle').textContent = 'Add Customer';
     document.getElementById('custId').value = '';
-    ['custName','custPhone','custCnicNumber','custAddress'].forEach(id => document.getElementById(id).value = '');
-    ['custCnicFront','custCnicBack'].forEach(id => document.getElementById(id).value = '');
+    ['custName', 'custPhone', 'custCnicNumber', 'custAddress'].forEach(id => document.getElementById(id).value = '');
+    ['custCnicFront', 'custCnicBack'].forEach(id => document.getElementById(id).value = '');
   }
   document.getElementById('custModal').classList.remove('hidden');
 }
@@ -1798,9 +2147,9 @@ async function saveCustomer() {
   const name = document.getElementById('custName').value.trim();
   const phone = document.getElementById('custPhone').value.trim();
   if (!name) { toast('Name is required!', 'warning'); return; }
-  
+
   const editId = document.getElementById('custId').value;
-  
+
   const formData = new FormData();
   formData.append('name', name);
   formData.append('phone', phone);
@@ -1812,35 +2161,35 @@ async function saveCustomer() {
 
   const cnicBack = document.getElementById('custCnicBack').files[0];
   if (cnicBack) formData.append('cnic_back', cnicBack);
-  
+
   try {
-      if (editId) {
-          await api('/shop/api/customers/' + editId, 'POST', formData);
-          toast('Customer updated!', 'success');
-      } else {
-          const res = await api('/shop/api/customers', 'POST', formData);
-          if (res && res.id) window.lastCreatedCustomerId = res.id;
-          toast('Customer added!', 'success');
-          if (res && res.id && !document.getElementById('prodModal').classList.contains('hidden')) {
-              const select = document.getElementById('prodBuyer');
-              if(select) {
-                  select.appendChild(new Option(`${name} (${phone || ''})`, res.id));
-                  select.value = res.id;
-              }
-          }
+    if (editId) {
+      await api('/shop/api/customers/' + editId, 'POST', formData);
+      toast('Customer updated!', 'success');
+    } else {
+      const res = await api('/shop/api/customers', 'POST', formData);
+      if (res && res.id) window.lastCreatedCustomerId = res.id;
+      toast('Customer added!', 'success');
+      if (res && res.id && !document.getElementById('prodModal').classList.contains('hidden')) {
+        const select = document.getElementById('prodBuyer');
+        if (select) {
+          select.appendChild(new Option(`${name} (${phone || ''})`, res.id));
+          select.value = res.id;
+        }
       }
-      closeCustModal();
-      await syncData();
-  } catch(e) { toast('Error saving customer', 'danger'); }
+    }
+    closeCustModal();
+    await syncData();
+  } catch (e) { toast('Error saving customer', 'danger'); }
 }
 
 function deleteCustomer(id) {
   confirmDelete('Delete this customer?', async () => {
     try {
-        await api('/shop/api/customers/' + id, 'DELETE');
-        toast('Customer deleted', 'danger');
-        await syncData();
-    } catch(e) { toast('Error deleting', 'danger'); }
+      await api('/shop/api/customers/' + id, 'DELETE');
+      toast('Customer deleted', 'danger');
+      await syncData();
+    } catch (e) { toast('Error deleting', 'danger'); }
   });
 }
 
@@ -1897,18 +2246,18 @@ function renderAlerts() {
 // ============================================================
 async function renderExpenses() {
   try {
-      const sDate = document.getElementById('expStartDate')?.value || '';
-      const eDate = document.getElementById('expEndDate')?.value || '';
-      const expenses = await api(`/shop/api/expenses?start_date=${sDate}&end_date=${eDate}`);
-      const tbody = document.getElementById('expensesTbody');
-      if (!tbody) return;
-      
-      if (!expenses || !expenses.length) {
-          tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No expenses found</td></tr>';
-          return;
-      }
-      
-      tbody.innerHTML = expenses.map(e => `
+    const sDate = document.getElementById('expStartDate')?.value || '';
+    const eDate = document.getElementById('expEndDate')?.value || '';
+    const expenses = await api(`/shop/api/expenses?start_date=${sDate}&end_date=${eDate}`);
+    const tbody = document.getElementById('expensesTbody');
+    if (!tbody) return;
+
+    if (!expenses || !expenses.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No expenses found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = expenses.map(e => `
           <tr>
               <td>${fmtDateTime(e.expense_date)}</td>
               <td style="font-weight: 500">${e.title}</td>
@@ -1926,8 +2275,8 @@ async function renderExpenses() {
           </tr>
       `).join('');
   } catch (err) {
-      console.error(err);
-      toast('Failed to load expenses', 'danger');
+    console.error(err);
+    toast('Failed to load expenses', 'danger');
   }
 }
 
@@ -1937,7 +2286,7 @@ function openExpenseModal() {
   document.getElementById('expenseAmount').value = '';
   document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('expenseDescription').value = '';
-  
+
   document.getElementById('expenseModalTitle').textContent = 'Add Expense';
   document.getElementById('expenseModal').classList.remove('hidden');
 }
@@ -1948,7 +2297,7 @@ function editExpense(exp) {
   document.getElementById('expenseAmount').value = exp.amount;
   document.getElementById('expenseDate').value = exp.expense_date;
   document.getElementById('expenseDescription').value = exp.description || '';
-  
+
   document.getElementById('expenseModalTitle').textContent = 'Edit Expense';
   document.getElementById('expenseModal').classList.remove('hidden');
 }
@@ -1960,36 +2309,36 @@ function closeExpenseModal() {
 async function saveExpense() {
   const id = document.getElementById('expenseId').value;
   const data = {
-      title: document.getElementById('expenseTitle').value,
-      amount: parseFloat(document.getElementById('expenseAmount').value) || 0,
-      expense_date: document.getElementById('expenseDate').value,
-      description: document.getElementById('expenseDescription').value
+    title: document.getElementById('expenseTitle').value,
+    amount: parseFloat(document.getElementById('expenseAmount').value) || 0,
+    expense_date: document.getElementById('expenseDate').value,
+    description: document.getElementById('expenseDescription').value
   };
-  
-  if(!data.title || !data.amount || !data.expense_date) return toast('Please fill required fields', 'warning');
-  
+
+  if (!data.title || !data.amount || !data.expense_date) return toast('Please fill required fields', 'warning');
+
   try {
-      const url = id ? `/shop/api/expenses/${id}` : '/shop/api/expenses';
-      const method = id ? 'PUT' : 'POST';
-      
-      const res = await api(url, method, data);
-      
-      toast(res.message);
-      closeExpenseModal();
-      renderExpenses();
+    const url = id ? `/shop/api/expenses/${id}` : '/shop/api/expenses';
+    const method = id ? 'PUT' : 'POST';
+
+    const res = await api(url, method, data);
+
+    toast(res.message);
+    closeExpenseModal();
+    renderExpenses();
   } catch (err) {
-      toast(err.message, 'danger');
+    toast(err.message, 'danger');
   }
 }
 
 async function deleteExpense(id) {
-  if(!confirm('Delete this expense?')) return;
+  if (!confirm('Delete this expense?')) return;
   try {
-      const res = await api(`/shop/api/expenses/${id}`, 'DELETE');
-      toast('Expense deleted');
-      renderExpenses();
-  } catch(err) {
-      toast(err.message, 'danger');
+    const res = await api(`/shop/api/expenses/${id}`, 'DELETE');
+    toast('Expense deleted');
+    renderExpenses();
+  } catch (err) {
+    toast(err.message, 'danger');
   }
 }
 
@@ -2000,49 +2349,49 @@ let currentPOItems = [];
 window.poPaymentStatus = '';
 
 function setPOStatusFilter(status, btn) {
-    if (window.poPaymentStatus === status) {
-        window.poPaymentStatus = '';
-        btn.classList.remove('btn-primary');
-        btn.classList.add('btn-outline');
-    } else {
-        window.poPaymentStatus = status;
-        document.querySelectorAll('.po-status-filter').forEach(b => {
-            b.classList.remove('btn-primary');
-            b.classList.add('btn-outline');
-        });
-        btn.classList.remove('btn-outline');
-        btn.classList.add('btn-primary');
-    }
-    renderPurchaseOrders();
+  if (window.poPaymentStatus === status) {
+    window.poPaymentStatus = '';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-outline');
+  } else {
+    window.poPaymentStatus = status;
+    document.querySelectorAll('.po-status-filter').forEach(b => {
+      b.classList.remove('btn-primary');
+      b.classList.add('btn-outline');
+    });
+    btn.classList.remove('btn-outline');
+    btn.classList.add('btn-primary');
+  }
+  renderPurchaseOrders();
 }
 
 async function renderPurchaseOrders() {
   try {
-      const sDate = document.getElementById('poStartDate')?.value || '';
-      const eDate = document.getElementById('poEndDate')?.value || '';
-      const status = window.poPaymentStatus || '';
-      const res = await api(`/shop/api/purchase-orders?start_date=${sDate}&end_date=${eDate}&payment_status=${status}`);
-      // Fallback to res if it's an array (old API) or res.data if it's the new format
-      const pos = Array.isArray(res) ? res : res.data;
-      
-      if (res.totals) {
-          const elGrandTotal = document.getElementById('poGrandTotal');
-          const elTotalPaid = document.getElementById('poTotalPaid');
-          const elTotalDue = document.getElementById('poTotalDue');
-          if (elGrandTotal) elGrandTotal.textContent = fmtCur(res.totals.grand_total);
-          if (elTotalPaid) elTotalPaid.textContent = fmtCur(res.totals.total_paid);
-          if (elTotalDue) elTotalDue.textContent = fmtCur(res.totals.total_due);
-      }
+    const sDate = document.getElementById('poStartDate')?.value || '';
+    const eDate = document.getElementById('poEndDate')?.value || '';
+    const status = window.poPaymentStatus || '';
+    const res = await api(`/shop/api/purchase-orders?start_date=${sDate}&end_date=${eDate}&payment_status=${status}`);
+    // Fallback to res if it's an array (old API) or res.data if it's the new format
+    const pos = Array.isArray(res) ? res : res.data;
 
-      const tbody = document.getElementById('poTbody');
-      if (!tbody) return;
-      
-      if (!pos || !pos.length) {
-          tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">No purchase orders found</td></tr>';
-          return;
-      }
-      
-      tbody.innerHTML = pos.map(po => `
+    if (res.totals) {
+      const elGrandTotal = document.getElementById('poGrandTotal');
+      const elTotalPaid = document.getElementById('poTotalPaid');
+      const elTotalDue = document.getElementById('poTotalDue');
+      if (elGrandTotal) elGrandTotal.textContent = fmtCur(res.totals.grand_total);
+      if (elTotalPaid) elTotalPaid.textContent = fmtCur(res.totals.total_paid);
+      if (elTotalDue) elTotalDue.textContent = fmtCur(res.totals.total_due);
+    }
+
+    const tbody = document.getElementById('poTbody');
+    if (!tbody) return;
+
+    if (!pos || !pos.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-cell">No purchase orders found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = pos.map(po => `
           <tr>
               <td>#PO-${po.id}</td>
               <td>${fmtDateTime(po.created_at)}</td>
@@ -2070,8 +2419,8 @@ async function renderPurchaseOrders() {
           </tr>
       `).join('');
   } catch (err) {
-      console.error(err);
-      toast('Failed to load purchase orders', 'danger');
+    console.error(err);
+    toast('Failed to load purchase orders', 'danger');
   }
 }
 
@@ -2081,10 +2430,10 @@ function viewPO(po) {
   currentViewedPO = po;
   document.getElementById('viewPoSupplier').textContent = po.supplier_name || '-';
   document.getElementById('viewPoDate').textContent = fmtDateTime(po.created_at);
-  
+
   const tbody = document.getElementById('viewPoItemsTbody');
   if (po.items && po.items.length > 0) {
-      tbody.innerHTML = po.items.map(item => `
+    tbody.innerHTML = po.items.map(item => `
           <tr>
               <td>${item.product ? item.product.name : 'Unknown Product'}</td>
               <td>${item.qty}</td>
@@ -2093,7 +2442,7 @@ function viewPO(po) {
           </tr>
       `).join('');
   } else {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No items</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-cell">No items</td></tr>';
   }
 
   document.getElementById('viewPoTotalAmount').textContent = fmtCur(po.amount);
@@ -2109,12 +2458,12 @@ function closeViewPOModal() {
 }
 
 function printPO() {
-    if (!currentViewedPO) return;
-    const po = currentViewedPO;
+  if (!currentViewedPO) return;
+  const po = currentViewedPO;
 
-    let itemsHtml = '';
-    if (po.items && po.items.length > 0) {
-        itemsHtml = po.items.map(item => `
+  let itemsHtml = '';
+  if (po.items && po.items.length > 0) {
+    itemsHtml = po.items.map(item => `
             <tr>
                 <td>${item.product ? item.product.name : 'Unknown Product'}</td>
                 <td>${item.qty}</td>
@@ -2122,11 +2471,11 @@ function printPO() {
                 <td style="text-align: right;">${fmtCur(item.amount)}</td>
             </tr>
         `).join('');
-    } else {
-        itemsHtml = '<tr><td colspan="4" style="text-align: center;">No items</td></tr>';
-    }
+  } else {
+    itemsHtml = '<tr><td colspan="4" style="text-align: center;">No items</td></tr>';
+  }
 
-    const printHtml = `
+  const printHtml = `
     <html>
     <head>
         <title>Purchase Order #${po.id}</title>
@@ -2195,28 +2544,28 @@ function printPO() {
     </body>
     </html>
     `;
-    
-    let printFrame = document.getElementById('poPrintFrame');
-    if (!printFrame) {
-        printFrame = document.createElement('iframe');
-        printFrame.id = 'poPrintFrame';
-        printFrame.style.position = 'absolute';
-        printFrame.style.width = '0px';
-        printFrame.style.height = '0px';
-        printFrame.style.border = 'none';
-        document.body.appendChild(printFrame);
-    }
 
-    const doc = printFrame.contentWindow.document;
-    doc.open();
-    // Remove the script that tries to call window.close() since we're in an iframe now
-    doc.write(printHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''));
-    doc.close();
+  let printFrame = document.getElementById('poPrintFrame');
+  if (!printFrame) {
+    printFrame = document.createElement('iframe');
+    printFrame.id = 'poPrintFrame';
+    printFrame.style.position = 'absolute';
+    printFrame.style.width = '0px';
+    printFrame.style.height = '0px';
+    printFrame.style.border = 'none';
+    document.body.appendChild(printFrame);
+  }
 
-    setTimeout(() => {
-        printFrame.contentWindow.focus();
-        printFrame.contentWindow.print();
-    }, 250);
+  const doc = printFrame.contentWindow.document;
+  doc.open();
+  // Remove the script that tries to call window.close() since we're in an iframe now
+  doc.write(printHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ''));
+  doc.close();
+
+  setTimeout(() => {
+    printFrame.contentWindow.focus();
+    printFrame.contentWindow.print();
+  }, 250);
 }
 
 function openPOModal() {
@@ -2225,12 +2574,12 @@ function openPOModal() {
   document.getElementById('poSupplier').value = '';
   document.getElementById('poTotalAmount').value = '0';
   document.getElementById('poPaidAmount').value = '0';
-  
+
   // Populate products dropdown
   const prods = store.get('products') || [];
   const select = document.getElementById('poProductSelect');
-  select.innerHTML = '<option value="">Select a product...</option>' + 
-      prods.map(p => `<option value="${p.id}" data-price="${p.purchase_price || 0}">${p.name} - ${p.imei || ''} (${fmtCur(p.purchase_price)})</option>`).join('');
+  select.innerHTML = '<option value="">Select a product...</option>' +
+    prods.map(p => `<option value="${p.id}" data-price="${p.purchase_price || 0}">${p.name} - ${p.imei || ''} (${fmtCur(p.purchase_price)})</option>`).join('');
 
   document.getElementById('poModalTitle').textContent = 'Add to Purchase';
   renderPOItemsTable();
@@ -2241,19 +2590,19 @@ function editPO(po) {
   document.getElementById('poId').value = po.id;
   document.getElementById('poSupplier').value = po.supplier_name || '';
   document.getElementById('poPaidAmount').value = po.paid_amount || '0';
-  
+
   currentPOItems = po.items ? po.items.map(item => ({
-      product_id: item.product_id,
-      name: item.product ? item.product.name : 'Unknown Product',
-      qty: item.qty,
-      price: item.price
+    product_id: item.product_id,
+    name: item.product ? item.product.name : 'Unknown Product',
+    qty: item.qty,
+    price: item.price
   })) : [];
 
   // Populate products dropdown
   const prods = store.get('products') || [];
   const select = document.getElementById('poProductSelect');
-  select.innerHTML = '<option value="">Select a product...</option>' + 
-      prods.map(p => `<option value="${p.id}" data-price="${p.purchase_price || 0}">${p.name} - ${p.imei || ''} (${fmtCur(p.purchase_price)})</option>`).join('');
+  select.innerHTML = '<option value="">Select a product...</option>' +
+    prods.map(p => `<option value="${p.id}" data-price="${p.purchase_price || 0}">${p.name} - ${p.imei || ''} (${fmtCur(p.purchase_price)})</option>`).join('');
 
   document.getElementById('poModalTitle').textContent = 'Edit Purchase Order';
   renderPOItemsTable();
@@ -2266,20 +2615,20 @@ function closePOModal() {
 
 function addProdToPO() {
   const select = document.getElementById('poProductSelect');
-  if(!select.value) return toast('Please select a product', 'warning');
-  
+  if (!select.value) return toast('Please select a product', 'warning');
+
   const prodId = parseInt(select.value);
   const name = select.options[select.selectedIndex].text.split(' - ')[0];
   const price = parseFloat(select.options[select.selectedIndex].dataset.price) || 0;
-  
+
   // Check if already added
   const existing = currentPOItems.find(i => i.product_id === prodId);
   if (existing) {
-      existing.qty += 1;
+    existing.qty += 1;
   } else {
-      currentPOItems.push({ product_id: prodId, name: name, qty: 1, price: price });
+    currentPOItems.push({ product_id: prodId, name: name, qty: 1, price: price });
   }
-  
+
   renderPOItemsTable();
 }
 
@@ -2301,16 +2650,16 @@ function updatePOItemPrice(index, price) {
 function renderPOItemsTable() {
   const tbody = document.getElementById('poItemsTbody');
   if (!currentPOItems.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No products added yet</td></tr>';
-      document.getElementById('poTotalAmount').value = '0';
-      return;
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No products added yet</td></tr>';
+    document.getElementById('poTotalAmount').value = '0';
+    return;
   }
-  
+
   let total = 0;
   tbody.innerHTML = currentPOItems.map((item, index) => {
-      const amount = item.qty * item.price;
-      total += amount;
-      return `
+    const amount = item.qty * item.price;
+    total += amount;
+    return `
       <tr>
         <td>${item.name}</td>
         <td><input type="number" class="input" style="padding:4px; height:auto" min="1" value="${item.qty}" onchange="updatePOItemQty(${index}, this.value)"></td>
@@ -2322,7 +2671,7 @@ function renderPOItemsTable() {
       </tr>
       `;
   }).join('');
-  
+
   document.getElementById('poTotalAmount').value = total;
 }
 
@@ -2332,45 +2681,45 @@ function calcPOTotal() {
 
 async function savePO() {
   if (!currentPOItems.length) return toast('Please add at least one product', 'warning');
-  
+
   const id = document.getElementById('poId').value;
   const data = {
-      supplier_name: document.getElementById('poSupplier').value,
-      paid_amount: parseFloat(document.getElementById('poPaidAmount').value) || 0,
-      items: currentPOItems.map(i => ({
-          product_id: i.product_id,
-          qty: i.qty,
-          price: i.price
-      }))
+    supplier_name: document.getElementById('poSupplier').value,
+    paid_amount: parseFloat(document.getElementById('poPaidAmount').value) || 0,
+    items: currentPOItems.map(i => ({
+      product_id: i.product_id,
+      qty: i.qty,
+      price: i.price
+    }))
   };
-  
-  try {
-      const url = id ? `/shop/api/purchase-orders/${id}` : '/shop/api/purchase-orders';
-      const method = id ? 'PUT' : 'POST';
 
-      const res = await api(url, method, data);
-      toast(res.message);
-      closePOModal();
-      
-      // Since stock changed, re-sync data
-      await syncData();
-      if(document.getElementById('page-purchase-orders')) renderPurchaseOrders();
+  try {
+    const url = id ? `/shop/api/purchase-orders/${id}` : '/shop/api/purchase-orders';
+    const method = id ? 'PUT' : 'POST';
+
+    const res = await api(url, method, data);
+    toast(res.message);
+    closePOModal();
+
+    // Since stock changed, re-sync data
+    await syncData();
+    if (document.getElementById('page-purchase-orders')) renderPurchaseOrders();
   } catch (err) {
-      toast(err.message, 'danger');
+    toast(err.message, 'danger');
   }
 }
 
 async function deletePO(id) {
-  if(!confirm('Delete this purchase order? This will revert the stock levels.')) return;
+  if (!confirm('Delete this purchase order? This will revert the stock levels.')) return;
   try {
-      const res = await api(`/shop/api/purchase-orders/${id}`, 'DELETE');
-      toast(res.message);
-      
-      // Since stock reverted, re-sync data
-      await syncData();
-      if(document.getElementById('page-purchase-orders')) renderPurchaseOrders();
-  } catch(err) {
-      toast(err.message, 'danger');
+    const res = await api(`/shop/api/purchase-orders/${id}`, 'DELETE');
+    toast(res.message);
+
+    // Since stock reverted, re-sync data
+    await syncData();
+    if (document.getElementById('page-purchase-orders')) renderPurchaseOrders();
+  } catch (err) {
+    toast(err.message, 'danger');
   }
 }
 

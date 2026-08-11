@@ -53,15 +53,15 @@ class OrderController extends Controller
     {
         $totalEarning = Order::where('user_id', Auth::id())->where('payment_status', '!=', 'refunded')->sum('total');
         
-        // Sum of buy_price * qty for all non-refunded orders
-        // Note: order_items buy_price might not exist if they don't store it, 
-        // wait, let's verify if 'buy_price' is actually stored in order_items. 
-        // We can just join products to get purchase_price if it's not.
-        // Actually, order_items table might not have buy_price column in DB despite it being fillable. Let's join products just in case.
-        $totalExpense = Expense::where('user_id',Auth::user()->id)->sum('amount');
-      
-            
-        $actualEarning = $totalEarning - $totalExpense;
+        $totalCostOfGoodsSold = DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->where('orders.user_id', Auth::id())
+            ->where('orders.payment_status', '!=', 'refunded')
+            ->sum(DB::raw('order_items.buy_price * order_items.qty'));
+
+        $totalExpense = Expense::where('user_id', Auth::user()->id)->sum('amount');
+
+        $actualEarning = $totalEarning - $totalCostOfGoodsSold - $totalExpense;
         
         $stockValue = DB::table('products')
             ->where('user_id', Auth::id())
@@ -111,6 +111,12 @@ class OrderController extends Controller
             ->where('user_id', Auth::id())
             ->where('expense_date', '>=', $startDate);
 
+        $dailyCostsQuery = DB::table('order_items')
+            ->join('orders', 'order_items.order_id', '=', 'orders.id')
+            ->where('orders.user_id', Auth::id())
+            ->where('orders.payment_status', '!=', 'refunded')
+            ->where('orders.created_at', '>=', $startDate);
+
         if ($period === 'year') {
             // Group by month
             $dailySales = $dailySalesQuery
@@ -121,6 +127,12 @@ class OrderController extends Controller
 
             $dailyExpenses = $dailyExpensesQuery
                 ->select(DB::raw('DATE_FORMAT(expense_date, "%Y-%m-01") as date'), DB::raw('SUM(amount) as total_expense'))
+                ->groupBy('date')
+                ->get()
+                ->keyBy('date');
+
+            $dailyCosts = $dailyCostsQuery
+                ->select(DB::raw('DATE_FORMAT(orders.created_at, "%Y-%m-01") as date'), DB::raw('SUM(order_items.buy_price * order_items.qty) as total_cost'))
                 ->groupBy('date')
                 ->get()
                 ->keyBy('date');
@@ -137,11 +149,18 @@ class OrderController extends Controller
                 ->groupBy('date')
                 ->get()
                 ->keyBy('date');
+
+            $dailyCosts = $dailyCostsQuery
+                ->select(DB::raw('DATE(orders.created_at) as date'), DB::raw('SUM(order_items.buy_price * order_items.qty) as total_cost'))
+                ->groupBy('date')
+                ->get()
+                ->keyBy('date');
         }
 
         foreach ($dailySales as $ds) {
             $expense = isset($dailyExpenses[$ds->date]) ? $dailyExpenses[$ds->date]->total_expense : 0;
-            $ds->net_profit = $ds->total_sales - $expense;
+            $cost = isset($dailyCosts[$ds->date]) ? $dailyCosts[$ds->date]->total_cost : 0;
+            $ds->net_profit = $ds->total_sales - $cost - $expense;
         }
 
         return response()->json([
@@ -218,14 +237,37 @@ class OrderController extends Controller
                 $product->stock -= $itemData['qty'];
                 
                 // Only mark as sold if it's a unique item with an IMEI
-                if (!empty($product->imei_serial) && $product->stock <= 0) {
-                    $product->status = 'sold';
-                }
-                
-                $product->save();
+            if (!empty($product->imei_serial) && $product->stock <= 0) {
+                $product->status = 'sold';
             }
+            
+            $product->save();
+        }
 
-            DB::commit();
+        // Save to Ledger if checked
+        if ($request->has('save_to_ledger') && $request->save_to_ledger == 1 && $request->buyer_id) {
+            $diff = $request->total - $request->paid_amount;
+            if ($diff != 0) {
+                $lastLedger = \App\Models\CustomerLedger::where('customer_id', $request->buyer_id)->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
+                $previousBalance = $lastLedger ? $lastLedger->balance : 0;
+                $debit = $diff > 0 ? $diff : 0;
+                $credit = $diff < 0 ? abs($diff) : 0;
+                $newBalance = $previousBalance + $debit - $credit;
+
+                \App\Models\CustomerLedger::create([
+                    'customer_id' => $request->buyer_id,
+                    'user_id' => \Illuminate\Support\Facades\Auth::id(),
+                    'date' => now()->format('Y-m-d'),
+                    'type' => 'Sale (Order #' . $order->id . ')',
+                    'debit' => $debit,
+                    'credit' => $credit,
+                    'balance' => $newBalance,
+                    'note' => 'Auto entry from POS'
+                ]);
+            }
+        }
+
+        DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -318,14 +360,37 @@ class OrderController extends Controller
                 
                 $product->stock -= $itemData['qty'];
                 
-                if (!empty($product->imei_serial) && $product->stock <= 0) {
-                    $product->status = 'sold';
-                }
-                
-                $product->save();
+            if (!empty($product->imei_serial) && $product->stock <= 0) {
+                $product->status = 'sold';
             }
+            
+            $product->save();
+        }
 
-            DB::commit();
+        // Save to Ledger if checked
+        if ($request->has('save_to_ledger') && $request->save_to_ledger == 1 && $request->buyer_id) {
+            $diff = $request->total - $request->paid_amount;
+            if ($diff != 0) {
+                $lastLedger = \App\Models\CustomerLedger::where('customer_id', $request->buyer_id)->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
+                $previousBalance = $lastLedger ? $lastLedger->balance : 0;
+                $debit = $diff > 0 ? $diff : 0;
+                $credit = $diff < 0 ? abs($diff) : 0;
+                $newBalance = $previousBalance + $debit - $credit;
+
+                \App\Models\CustomerLedger::create([
+                    'customer_id' => $request->buyer_id,
+                    'user_id' => \Illuminate\Support\Facades\Auth::id(),
+                    'date' => now()->format('Y-m-d'),
+                    'type' => 'Sale Update (Order #' . $order->id . ')',
+                    'debit' => $debit,
+                    'credit' => $credit,
+                    'balance' => $newBalance,
+                    'note' => 'Auto entry from POS Update'
+                ]);
+            }
+        }
+
+        DB::commit();
 
             return response()->json([
                 'success' => true,

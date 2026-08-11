@@ -152,9 +152,18 @@
         <div class="form-group"><label>Product Name *</label><input type="text" id="prodName" class="input" placeholder="e.g. iPhone 14 Pro Max"/></div>
         <div class="form-group"><label>Type *</label><select id="prodType" class="input"><option value="mobile">Mobile</option><option value="tablet">Tablet</option><option value="laptop">Laptop</option><option value="accessory">Accessory</option></select></div>
         <div class="form-group"><label>Condition *</label><select id="prodCondition" class="input"><option value="new">New</option><option value="used">Used</option><option value="refurbished">Refurbished</option></select></div>
-        <div class="form-group"><label>IMEI / Serial Number</label><input type="text" id="prodImei" class="input" placeholder="Unique identifier"/></div>
+        <div class="form-group"><label>Code</label><input type="text" id="prodCode" class="input" placeholder="Product Code (optional)"/></div>
+        <div class="form-group"><label>Barcode</label><input type="text" id="prodBarcode" class="input" placeholder="Barcode (optional)"/></div>
+        <div class="form-group" id="groupImei">
+          <label>IMEI / Serial Number</label>
+          <div style="display: flex; gap: 8px;" id="imeiContainerMain">
+            <input type="text" id="prodImei" class="input imei-input" style="flex: 1;" placeholder="Unique identifier"/>
+            <button type="button" class="btn btn-outline" style="padding: 0 12px; font-size: 18px;" onclick="addImeiField()" title="Add another IMEI">+</button>
+          </div>
+          <div id="additionalImeis" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
         <div class="form-group"><label>Color</label><input type="text" id="prodColor" class="input" placeholder="e.g. Space Black"/></div>
-        <div class="form-group"><label>Storage</label><input type="text" id="prodStorage" class="input" placeholder="e.g. 256GB"/></div>
+        <div class="form-group" id="groupStorage"><label>Storage</label><input type="text" id="prodStorage" class="input" placeholder="e.g. 256GB"/></div>
         <div class="form-group"><label>Purchase Price (PKR)</label><input type="number" id="prodPurchase" class="input" min="0" step="0.01"/></div>
         <div class="form-group"><label>Sale Price (PKR) *</label><input type="number" id="prodSale" class="input" min="0" step="0.01"/></div>
         <div class="form-group"><label>Status *</label><select id="prodStatus" class="input"><option value="in_stock">In Stock</option><option value="sold">Sold</option><option value="in_repair">In Repair</option></select></div>
@@ -254,6 +263,121 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeCatModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveCategory()">Save Category</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ledger Modal -->
+<div class="modal-overlay hidden" id="ledgerModal">
+  <div class="modal modal-lg">
+    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 15px;">
+          <h3 id="ledgerModalTitle" style="margin: 0;">Customer Ledger</h3>
+          <span id="ledgerModalStatus" style="font-size: 14px; font-weight: 600; padding: 4px 10px; border-radius: 4px;"></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button class="btn btn-secondary btn-sm" onclick="printCustomerLedger()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:5px; vertical-align:middle;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          Print Ledger
+        </button>
+        <button class="modal-close" onclick="closeLedgerModal()" style="position: static;">×</button>
+      </div>
+    </div>
+    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+      
+      <!-- Add Entry Form -->
+      <div class="card" style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border: 1px solid #e5e7eb;">
+        <h4 style="margin-bottom: 10px; font-size: 14px; font-weight: 600;">Add New Entry</h4>
+        <form onsubmit="addLedgerEntry(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; align-items: end;">
+            <div class="form-group mb-0">
+                <label>Date & Time</label>
+                <input type="datetime-local" id="ledgerDate" class="input input-sm" required>
+            </div>
+            <div class="form-group mb-0">
+                <label>Type</label>
+                <select id="ledgerType" class="input input-sm" required>
+                    <option value="Payment">Payment</option>
+                    <option value="Sale">Sale</option>
+                    <option value="Refund">Refund</option>
+                    <option value="Opening Balance">Opening Balance</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group mb-0">
+                <label>Debit (They Owe)</label>
+                <input type="number" id="ledgerDebit" class="input input-sm" step="0.01" min="0">
+            </div>
+            <div class="form-group mb-0">
+                <label>Credit (They Paid)</label>
+                <input type="number" id="ledgerCredit" class="input input-sm" step="0.01" min="0">
+            </div>
+            <div class="form-group mb-0" style="grid-column: span 2;">
+                <label>Note</label>
+                <input type="text" id="ledgerNote" class="input input-sm" placeholder="Optional notes">
+            </div>
+            <div class="form-group mb-0">
+                <button type="submit" id="ledgerSubmitBtn" class="btn btn-primary btn-sm" style="width:100%;">Add Entry</button>
+            </div>
+        </form>
+      </div>
+
+      <!-- Ledger Table -->
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Debit</th>
+              <th>Credit</th>
+              <th>Balance</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody id="ledgerTbody">
+            <!-- Entries loaded via JS -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeLedgerModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product Sales Modal -->
+<div class="modal-overlay hidden" id="prodSalesModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="prodSalesModalTitle">Product Sales History</h3>
+      <button class="modal-close" onclick="closeProdSalesModal()">×</button>
+    </div>
+    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Order #</th>
+              <th>Customer</th>
+              <th>Qty</th>
+              <th class="text-right">Price</th>
+              <th class="text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody id="prodSalesTbody">
+            <!-- Entries loaded via JS -->
+          </tbody>
+          <tfoot id="prodSalesTfoot" style="font-weight: bold; background: #f9fafb;">
+            <!-- Totals loaded via JS -->
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeProdSalesModal()">Close</button>
     </div>
   </div>
 </div>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt #{{ str_pad($order->id, 6, '0', STR_PAD_LEFT) }}</title>
+    <title>Ledger - {{ $customer->name }}</title>
     <style>
         /* Thermal Printer Optimized CSS */
         @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
@@ -76,36 +76,13 @@
         .item-meta {
             font-size: 10px;
             color: #333;
-        }
-
-        .item-imei {
-            font-size: 12px;
-            font-weight: bold;
-            color: #000;
-            background: #f0f0f0;
-            padding: 3px 5px;
-            border: 1px dashed #000;
-            display: inline-block;
-            margin-top: 3px;
-            margin-bottom: 2px;
-            border-radius: 2px;
+            display: block;
+            margin-top: 2px;
+            font-style: italic;
         }
 
         .totals {
             margin-top: 10px;
-        }
-
-        .totals .info-row {
-            font-size: 12px;
-        }
-
-        .grand-total {
-            font-size: 16px;
-            font-weight: bold;
-            border-top: 1px solid #000;
-            border-bottom: 1px solid #000;
-            padding: 5px 0;
-            margin-top: 5px;
         }
 
         .footer {
@@ -173,44 +150,53 @@
     <div class="divider"></div>
 
     <div class="info-row">
-        <span>Receipt #:</span>
-        <span>{{ str_pad($order->id, 6, '0', STR_PAD_LEFT) }}</span>
+        <span>Report:</span>
+        <span>Customer Ledger</span>
     </div>
     <div class="info-row">
         <span>Date:</span>
-        <span>{{ $order->created_at->format('d/m/Y h:i A') }}</span>
+        <span>{{ \Carbon\Carbon::now()->format('d/m/Y h:i A') }}</span>
     </div>
     <div class="info-row">
         <span>Customer:</span>
-        <span>{{ $order->buyer ? $order->buyer->name : 'Walk-in' }}</span>
+        <span>{{ $customer->name }}</span>
     </div>
+    @if($customer->phone)
     <div class="info-row">
-        <span>Payment:</span>
-        <span>{{ ucfirst($order->payment_method) }}</span>
+        <span>Phone:</span>
+        <span>{{ $customer->phone }}</span>
     </div>
+    @endif
 
     <div class="divider"></div>
 
     <table>
         <thead>
             <tr>
-                <th>Item</th>
-                <th class="text-center">Qty</th>
-                <th class="text-right">Total</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th class="text-right">Dr</th>
+                <th class="text-right">Cr</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($order->items as $item)
+            @foreach($ledgers as $ledger)
             <tr>
-                <td style="width: 60%">
-                    <span class="item-name">{{ $item->product ? $item->product->name : 'Unknown Product' }}</span>
-                    @if($item->product && $item->product->imei_serial)
-                        <div class="item-imei">IMEI: {{ $item->product->imei_serial }}</div>
-                    @endif
-                    <div class="item-meta">@ PKR {{ number_format($item->sell_price) }}</div>
+                <td style="width: 25%">
+                    {{ \Carbon\Carbon::parse($ledger->date)->format('d/m/y h:i A') }}
                 </td>
-                <td class="text-center" style="vertical-align: top;">{{ $item->qty }}</td>
-                <td class="text-right" style="vertical-align: top;">PKR {{ number_format($item->sell_price * $item->qty) }}</td>
+                <td style="width: 35%">
+                    <span class="item-name">{{ ucfirst($ledger->type) }}</span>
+                    @if($ledger->note)
+                        <span class="item-meta">{{ $ledger->note }}</span>
+                    @endif
+                </td>
+                <td class="text-right" style="vertical-align: top; width: 20%">
+                    {{ $ledger->debit > 0 ? number_format($ledger->debit) : '-' }}
+                </td>
+                <td class="text-right" style="vertical-align: top; width: 20%">
+                    {{ $ledger->credit > 0 ? number_format($ledger->credit) : '-' }}
+                </td>
             </tr>
             @endforeach
         </tbody>
@@ -219,83 +205,21 @@
     <div class="divider"></div>
 
     <div class="totals">
-        <div class="info-row">
-            <span>Subtotal:</span>
-            <span>PKR {{ number_format($order->subtotal) }}</span>
-        </div>
-        @if($order->discount > 0)
-        <div class="info-row">
-            <span>Discount:</span>
-            <span>- PKR {{ number_format($order->discount) }}</span>
-        </div>
-        @endif
-        @if($order->tax > 0)
-        <div class="info-row">
-            <span>Tax:</span>
-            <span>+ PKR {{ number_format($order->tax) }}</span>
-        </div>
-        @endif
-        
-        <div class="info-row grand-total">
-            <span>TOTAL:</span>
-            <span>PKR {{ number_format($order->total) }}</span>
-        </div>
-        
-        <div class="info-row" style="margin-top: 5px;">
-            <span>Paid:</span>
-            <span>PKR {{ number_format($order->payment_method === 'ledger' ? $order->total : $order->paid_amount) }}</span>
-        </div>
-        <div class="info-row">
-            <span>{{ ($order->payment_method === 'ledger' ? $order->total : $order->paid_amount) > $order->total ? 'Change:' : 'Due:' }}</span>
-            <span>PKR {{ number_format($order->payment_method === 'ledger' ? 0 : $order->due_amount) }}</span>
-        </div>
-        <div class="info-row" style="margin-top: 5px; font-weight: bold;">
-            <span>Status:</span>
-            <span style="text-transform: uppercase;">{{ $order->payment_status }}</span>
-        </div>
-    </div>
-
-    <div class="divider"></div>
-
-    @if($order->buyer && $order->buyer->ledgers->count() > 0)
-    <div class="customer-ledger" style="margin-top: 10px;">
-        <div class="text-center bold" style="margin-bottom: 5px; text-transform: uppercase;">Customer Ledger</div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th class="text-right">Dr</th>
-                    <th class="text-right">Cr</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($order->buyer->ledgers()->orderBy('date', 'desc')->orderBy('id', 'desc')->take(3)->get() as $ledger)
-                <tr>
-                    <td>{{ \Carbon\Carbon::parse($ledger->date)->format('d/m/y h:i A') }}</td>
-                    <td>{{ ucfirst($ledger->type) }}</td>
-                    <td class="text-right">{{ $ledger->debit > 0 ? number_format($ledger->debit) : '-' }}</td>
-                    <td class="text-right">{{ $ledger->credit > 0 ? number_format($ledger->credit) : '-' }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-        <div class="info-row bold" style="margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px;">
+        <div class="info-row bold" style="margin-top: 5px;">
             <span>
-                @if($order->buyer->balance > 0)
+                @if($customer->balance > 0)
                     Customer will pay:
-                @elseif($order->buyer->balance < 0)
+                @elseif($customer->balance < 0)
                     Shop will pay:
                 @else
                     Balance:
                 @endif
             </span>
-            <span>PKR {{ number_format(abs($order->buyer->balance)) }}</span>
+            <span>PKR {{ number_format(abs($customer->balance)) }}</span>
         </div>
     </div>
 
     <div class="divider"></div>
-    @endif
 
     <div class="footer">
         @if(isset($invoiceSettings) && $invoiceSettings->footer_text)
@@ -312,7 +236,7 @@
     </div>
     
 
-    <button class="btn-print" onclick="window.print()">Print Receipt</button>
+    <button class="btn-print" onclick="window.print()">Print Ledger</button>
 </div>
 
 <script>

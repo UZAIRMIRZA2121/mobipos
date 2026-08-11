@@ -1,0 +1,79 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Customer;
+use App\Models\CustomerLedger;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+
+class CustomerLedgerController extends Controller
+{
+    public function apiIndex(Customer $customer)
+    {
+        if ($customer->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $ledgers = $customer->ledgers()->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+        return response()->json($ledgers);
+    }
+
+    public function store(Request $request, Customer $customer)
+    {
+        if ($customer->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'date' => 'required|date',
+            'type' => 'required|string',
+            'debit' => 'required|numeric|min:0',
+            'credit' => 'required|numeric|min:0',
+            'note' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Get the last balance
+            $lastLedger = $customer->ledgers()->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
+            $previousBalance = $lastLedger ? $lastLedger->balance : 0;
+
+            $debit = $request->debit;
+            $credit = $request->credit;
+            
+            // Assuming balance = previousBalance + debit - credit
+            // Positive balance means customer owes us (Debit)
+            // Negative balance means we owe customer (Credit)
+            $newBalance = $previousBalance + $debit - $credit;
+
+            $ledger = $customer->ledgers()->create([
+                'user_id' => Auth::id(),
+                'date' => $request->date,
+                'type' => $request->type,
+                'debit' => $debit,
+                'credit' => $credit,
+                'balance' => $newBalance,
+                'note' => $request->note,
+            ]);
+
+            DB::commit();
+            return response()->json(['message' => 'Ledger entry added successfully', 'ledger' => $ledger]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error adding ledger entry: ' . $e->getMessage()], 500);
+        }
+    }
+    public function printLedger(Customer $customer)
+    {
+        if ($customer->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $ledgers = $customer->ledgers()->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+        $invoiceSettings = \App\Models\InvoiceSetting::where('user_id', Auth::id())->first();
+        
+        return view('pos.print_ledger', compact('customer', 'ledgers', 'invoiceSettings'));
+    }
+}

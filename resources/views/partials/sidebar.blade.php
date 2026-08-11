@@ -29,7 +29,7 @@
     </div>
     @elseif(Auth::check())
     <div class="nav-group">
-      <div class="nav-group-title">Insights</div>
+
       @if(Auth::user()->hasPrivilege('shop.dashboard'))
       <a class="nav-item" href="{{ route('shop.dashboard') }}" onclick="navigate('dashboard')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -70,6 +70,12 @@
       <a class="nav-item" href="{{ route('shop.products.index') }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
         Mobiles & Products
+      </a>
+      @endif
+      @if(Auth::user()->hasPrivilege('shop.categories.index'))
+      <a class="nav-item {{ request()->routeIs('shop.categories.index') ? 'active' : '' }}" href="{{ route('shop.categories.index') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+        Categories
       </a>
       @endif
       @if(Auth::user()->hasPrivilege('shop.purchase_orders.index'))
