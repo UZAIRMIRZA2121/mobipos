@@ -138,6 +138,10 @@ Route::middleware('auth')->group(function () {
 });
 
 // Staff Authentication Routes
+Route::get('/trial-ended', [\App\Http\Controllers\TrialController::class, 'show'])->name('trial.ended');
+Route::post('/trial-ended/verify', [\App\Http\Controllers\TrialController::class, 'verify'])->name('trial.verify');
+Route::post('/trial-ended/resend', [\App\Http\Controllers\TrialController::class, 'resend'])->name('trial.resend');
+
 Route::get('/staff/login', [App\Http\Controllers\StaffAuthController::class, 'showLoginForm'])->name('staff.login');
 Route::post('/staff/login', [App\Http\Controllers\StaffAuthController::class, 'login'])->name('staff.login.post');
 Route::post('/staff/logout', [App\Http\Controllers\StaffAuthController::class, 'logout'])->name('staff.logout');

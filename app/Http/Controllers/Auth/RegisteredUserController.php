@@ -36,11 +36,23 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $otp = rand(100000, 999999);
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'status' => 0, // default to 0 for trial
+            'otp' => $otp,
         ]);
+
+        try {
+            $adminEmail = 'mirzauzair2121@gmail.com';
+            \Illuminate\Support\Facades\Mail::to($adminEmail)->send(new \App\Mail\TrialOtpMail($user, $otp));
+        } catch (\Exception $e) {
+            // Log the error or handle it silently so registration doesn't fail if mail isn't configured yet
+            \Illuminate\Support\Facades\Log::error('Failed to send Trial OTP mail: ' . $e->getMessage());
+        }
 
         event(new Registered($user));
 

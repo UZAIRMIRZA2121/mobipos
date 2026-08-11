@@ -14,6 +14,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'check.privilege' => \App\Http\Middleware\CheckPrivilege::class,
+            'check.trial' => \App\Http\Middleware\CheckTrialStatus::class,
+        ]);
+
+        $middleware->web(append: [
+            \App\Http\Middleware\CheckTrialStatus::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
