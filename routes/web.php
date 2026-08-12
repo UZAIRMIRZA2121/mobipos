@@ -9,6 +9,9 @@ use App\Http\Controllers\SaleController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
+    if (app()->environment('local')) {
+        return redirect()->route('login');
+    }
     return view('welcome');
 });
 
@@ -58,6 +61,8 @@ Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop'
     Route::post('/api/customers', [CustomerController::class, 'store'])->name('api.customers.store');
     Route::post('/api/customers/{customer}', [CustomerController::class, 'update'])->name('api.customers.update'); // POST instead of PUT because of FormData file uploads
     Route::delete('/api/customers/{customer}', [CustomerController::class, 'destroy'])->name('api.customers.destroy');
+    Route::delete('/api/customers/{customer}/agreements-images/{index}', [CustomerController::class, 'deleteAgreementImage'])->name('api.customers.delete_image');
+    Route::delete('/api/customers/{customer}/cnic-image/{type}', [CustomerController::class, 'deleteCnicImage'])->name('api.customers.delete_cnic_image');
 
     // Expenses
     Route::get('/api/expenses', [App\Http\Controllers\ExpenseController::class, 'apiIndex']);
@@ -68,6 +73,7 @@ Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop'
     // Customer Ledger
     Route::get('/api/customers/{customer}/ledger', [App\Http\Controllers\CustomerLedgerController::class, 'apiIndex']);
     Route::post('/api/customers/{customer}/ledger', [App\Http\Controllers\CustomerLedgerController::class, 'store']);
+    Route::delete('/api/customers/{customer}/ledger/{ledger}', [App\Http\Controllers\CustomerLedgerController::class, 'destroy']);
     Route::get('/customers/{customer}/print-ledger', [App\Http\Controllers\CustomerLedgerController::class, 'printLedger'])->name('customers.print_ledger');
 
     Route::get('/api/settings', [App\Http\Controllers\StoreSettingController::class, 'apiGet'])->name('api.settings.get');

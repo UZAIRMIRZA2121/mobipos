@@ -14,6 +14,11 @@ class Customer extends Model
         'cnic_number',
         'cnic_front',
         'cnic_back',
+        'agreements_images',
+    ];
+
+    protected $casts = [
+        'agreements_images' => 'array',
     ];
 
     protected $appends = ['balance'];

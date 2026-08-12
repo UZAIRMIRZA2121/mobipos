@@ -16,6 +16,7 @@ class CustomerLedger extends Model
         'credit',
         'balance',
         'note',
+        'payment_proof',
     ];
 
     public function customer()

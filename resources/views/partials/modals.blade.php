@@ -204,7 +204,25 @@
       <div class="form-grid">
         <div class="form-group"><label>Customer Name *</label><input type="text" id="custName" class="input"/></div>
         <div class="form-group"><label>Phone *</label><input type="text" id="custPhone" class="input"/></div>
-        <div class="form-group"><label>CNIC Number</label><input type="text" id="custCnicNumber" class="input" placeholder="e.g. 12345-1234567-1"/></div><div class="form-group"><label>CNIC Front</label><input type="file" id="custCnicFront" class="input" accept="image/*"/></div><div class="form-group"><label>CNIC Back</label><input type="file" id="custCnicBack" class="input" accept="image/*"/></div><div class="form-group form-full"><label>Address</label><textarea id="custAddress" class="input" rows="2"></textarea></div>
+        <div class="form-group"><label>CNIC Number</label><input type="text" id="custCnicNumber" class="input" placeholder="e.g. 12345-1234567-1"/></div>
+        <div class="form-group">
+        </div>
+        <div class="form-group">
+          <label>CNIC Front</label>
+          <input type="file" id="custCnicFront" class="input" accept="image/*"/>
+          <div id="custCnicFrontList" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
+        </div>
+        <div class="form-group">
+          <label>CNIC Back</label>
+          <input type="file" id="custCnicBack" class="input" accept="image/*"/>
+          <div id="custCnicBackList" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
+        </div>
+        <div class="form-group form-full">
+          <label>Agreements Images</label>
+          <input type="file" id="custAgreementsImages" class="input" accept="image/*" multiple/>
+          <div id="custAgreementsList" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
+        </div>
+        <div class="form-group form-full"><label>Address</label><textarea id="custAddress" class="input" rows="2"></textarea></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -230,7 +248,7 @@
 </div>
 
 <!-- Confirm Modal -->
-<div class="modal-overlay hidden" id="confirmModal">
+<div class="modal-overlay hidden" id="confirmModal" style="z-index: 99999;">
   <div class="modal modal-sm">
     <div class="modal-header">
       <h3>Confirm Delete</h3>
@@ -286,9 +304,13 @@
     <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
       
       <!-- Add Entry Form -->
+      <style>
+        .ledger-form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; align-items: end; }
+        @media (max-width: 768px) { .ledger-form-grid { grid-template-columns: 1fr; } }
+      </style>
       <div class="card" style="margin-bottom: 20px; padding: 15px; background: #f9fafb; border: 1px solid #e5e7eb;">
         <h4 style="margin-bottom: 10px; font-size: 14px; font-weight: 600;">Add New Entry</h4>
-        <form onsubmit="addLedgerEntry(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; align-items: end;">
+        <form onsubmit="addLedgerEntry(event)" class="ledger-form-grid">
             <div class="form-group mb-0">
                 <label>Date & Time</label>
                 <input type="datetime-local" id="ledgerDate" class="input input-sm" required>
@@ -311,12 +333,16 @@
                 <label>Credit (They Paid)</label>
                 <input type="number" id="ledgerCredit" class="input input-sm" step="0.01" min="0">
             </div>
-            <div class="form-group mb-0" style="grid-column: span 2;">
+            <div class="form-group mb-0">
                 <label>Note</label>
                 <input type="text" id="ledgerNote" class="input input-sm" placeholder="Optional notes">
             </div>
             <div class="form-group mb-0">
-                <button type="submit" id="ledgerSubmitBtn" class="btn btn-primary btn-sm" style="width:100%;">Add Entry</button>
+                <label>Payment Proof</label>
+                <input type="file" id="ledgerProof" class="input input-sm" accept="image/*">
+            </div>
+            <div class="form-group mb-0" style="grid-column: 1 / -1; display: flex; justify-content: flex-end;">
+                <button type="submit" id="ledgerSubmitBtn" class="btn btn-primary btn-sm" style="width: 200px;">Add Entry</button>
             </div>
         </form>
       </div>
@@ -327,11 +353,13 @@
           <thead>
             <tr>
               <th>Date</th>
+              <th>Proof</th>
               <th>Type</th>
               <th>Debit</th>
               <th>Credit</th>
               <th>Balance</th>
               <th>Note</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody id="ledgerTbody">

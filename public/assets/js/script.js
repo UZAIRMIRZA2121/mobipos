@@ -2018,7 +2018,7 @@ async function loadCustomerLedger(id) {
   try {
     const res = await api(`/shop/api/customers/${id}/ledger`);
     if (res.length === 0) {
-      document.getElementById('ledgerTbody').innerHTML = '<tr><td colspan="6" class="empty-cell">No ledger entries found.</td></tr>';
+      document.getElementById('ledgerTbody').innerHTML = '<tr><td colspan="8" class="empty-cell">No ledger entries found.</td></tr>';
       if (statusEl) {
         statusEl.textContent = 'Settled (No Balance)';
         statusEl.style.color = 'var(--text-muted)';
@@ -2029,11 +2029,13 @@ async function loadCustomerLedger(id) {
     document.getElementById('ledgerTbody').innerHTML = res.map(l => `
             <tr>
                 <td>${fmtDateTime(l.date)}</td>
+                <td>${l.payment_proof ? `<a href="/storage/${l.payment_proof}" target="_blank"><img src="/storage/${l.payment_proof}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; border:1px solid #e5e7eb;" title="View Proof"></a>` : '-'}</td>
                 <td>${l.type}</td>
                 <td style="color:red">${l.debit > 0 ? parseFloat(l.debit).toFixed(2) : '-'}</td>
                 <td style="color:green">${l.credit > 0 ? parseFloat(l.credit).toFixed(2) : '-'}</td>
                 <td style="font-weight:bold">${parseFloat(l.balance).toFixed(2)}</td>
                 <td>${l.note || '-'}</td>
+                <td><button class="action-btn del" onclick="deleteLedgerEntry(${l.id})" title="Delete Entry"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button></td>
             </tr>
         `).join('');
 
@@ -2063,13 +2065,17 @@ async function addLedgerEntry(e) {
   e.preventDefault();
   if (!currentLedgerCustomerId) return;
 
-  const data = {
-    date: document.getElementById('ledgerDate').value,
-    type: document.getElementById('ledgerType').value,
-    debit: document.getElementById('ledgerDebit').value || 0,
-    credit: document.getElementById('ledgerCredit').value || 0,
-    note: document.getElementById('ledgerNote').value
-  };
+  const formData = new FormData();
+  formData.append('date', document.getElementById('ledgerDate').value);
+  formData.append('type', document.getElementById('ledgerType').value);
+  formData.append('debit', document.getElementById('ledgerDebit').value || 0);
+  formData.append('credit', document.getElementById('ledgerCredit').value || 0);
+  formData.append('note', document.getElementById('ledgerNote').value);
+  
+  const proofFile = document.getElementById('ledgerProof').files[0];
+  if (proofFile) {
+    formData.append('payment_proof', proofFile);
+  }
 
   try {
     const btn = document.getElementById('ledgerSubmitBtn');
@@ -2077,7 +2083,7 @@ async function addLedgerEntry(e) {
     btn.textContent = 'Saving...';
     btn.disabled = true;
 
-    const res = await api(`/shop/api/customers/${currentLedgerCustomerId}/ledger`, 'POST', data);
+    const res = await api(`/shop/api/customers/${currentLedgerCustomerId}/ledger`, 'POST', formData);
 
     btn.textContent = oldText;
     btn.disabled = false;
@@ -2087,6 +2093,16 @@ async function addLedgerEntry(e) {
       document.getElementById('ledgerDebit').value = '';
       document.getElementById('ledgerCredit').value = '';
       document.getElementById('ledgerNote').value = '';
+      document.getElementById('ledgerProof').value = '';
+      
+      let customersList = store.get('customers');
+      const cust = customersList.find(c => c.id == currentLedgerCustomerId);
+      if (cust && res.ledger) {
+          cust.balance = res.ledger.balance;
+          store.set('customers', customersList);
+          renderCustomers();
+      }
+      
       await loadCustomerLedger(currentLedgerCustomerId);
     } else if (res.message) {
       toast(res.message, 'danger');
@@ -2096,6 +2112,38 @@ async function addLedgerEntry(e) {
     document.getElementById('ledgerSubmitBtn').textContent = 'Add Entry';
     document.getElementById('ledgerSubmitBtn').disabled = false;
   }
+}
+
+async function deleteLedgerEntry(ledgerId) {
+    confirmDelete('Are you sure you want to delete this ledger entry? This will update the customer balance automatically.', async () => {
+        try {
+            const url = `/shop/api/customers/${currentLedgerCustomerId}/ledger/${ledgerId}`;
+            const res = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
+                }
+            });
+            const data = await res.json();
+            if (res.ok && data.message && data.message.includes('successfully')) {
+                toast('Entry deleted successfully');
+                let customersList = store.get('customers');
+                const cust = customersList.find(c => c.id == currentLedgerCustomerId);
+                if (cust) {
+                    cust.balance = data.new_customer_balance;
+                    store.set('customers', customersList);
+                    renderCustomers();
+                }
+                await loadCustomerLedger(currentLedgerCustomerId);
+            } else {
+                toast(data.message || 'Error deleting entry', 'danger');
+            }
+        } catch (err) {
+            toast('Error deleting entry', 'danger');
+            console.error(err);
+        }
+    });
 }
 
 function closeLedgerModal() {
@@ -2123,7 +2171,52 @@ function printCustomerLedger() {
     printFrame.src = printUrl;
 }
 
+function createImagePreview(imgPath, onDelete) {
+  const div = document.createElement('div');
+  div.style.position = 'relative';
+  div.style.display = 'inline-block';
+  
+  const imgEl = document.createElement('img');
+  imgEl.src = '/storage/' + imgPath;
+  imgEl.style.width = '80px';
+  imgEl.style.height = '80px';
+  imgEl.style.objectFit = 'cover';
+  imgEl.style.borderRadius = '4px';
+  imgEl.style.border = '1px solid #ccc';
+  
+  const btn = document.createElement('button');
+  btn.innerHTML = '✕';
+  btn.style.position = 'absolute';
+  btn.style.top = '-5px';
+  btn.style.right = '-5px';
+  btn.style.background = 'red';
+  btn.style.color = 'white';
+  btn.style.border = 'none';
+  btn.style.borderRadius = '50%';
+  btn.style.width = '20px';
+  btn.style.height = '20px';
+  btn.style.cursor = 'pointer';
+  btn.style.fontSize = '12px';
+  btn.style.lineHeight = '20px';
+  btn.style.padding = '0';
+  btn.onclick = (e) => {
+    e.preventDefault();
+    onDelete();
+  };
+  
+  div.appendChild(imgEl);
+  div.appendChild(btn);
+  return div;
+}
+
 function openCustModal(id) {
+  const agreementsList = document.getElementById('custAgreementsList');
+  agreementsList.innerHTML = '';
+  const cnicFrontList = document.getElementById('custCnicFrontList');
+  cnicFrontList.innerHTML = '';
+  const cnicBackList = document.getElementById('custCnicBackList');
+  cnicBackList.innerHTML = '';
+  
   if (id) {
     const c = store.get('customers').find(x => x.id == id);
     if (!c) return;
@@ -2133,11 +2226,25 @@ function openCustModal(id) {
     document.getElementById('custPhone').value = c.phone || '';
     document.getElementById('custCnicNumber').value = c.cnic_number || '';
     document.getElementById('custAddress').value = c.address || '';
+    
+    if (c.cnic_front) {
+      cnicFrontList.appendChild(createImagePreview(c.cnic_front, () => deleteCnicImage(c.id, 'front')));
+    }
+    
+    if (c.cnic_back) {
+      cnicBackList.appendChild(createImagePreview(c.cnic_back, () => deleteCnicImage(c.id, 'back')));
+    }
+    
+    if (c.agreements_images && c.agreements_images.length > 0) {
+      c.agreements_images.forEach((img, idx) => {
+        agreementsList.appendChild(createImagePreview(img, () => deleteAgreementImage(c.id, idx)));
+      });
+    }
   } else {
     document.getElementById('custModalTitle').textContent = 'Add Customer';
     document.getElementById('custId').value = '';
     ['custName', 'custPhone', 'custCnicNumber', 'custAddress'].forEach(id => document.getElementById(id).value = '');
-    ['custCnicFront', 'custCnicBack'].forEach(id => document.getElementById(id).value = '');
+    ['custCnicFront', 'custCnicBack', 'custAgreementsImages'].forEach(id => document.getElementById(id).value = '');
   }
   document.getElementById('custModal').classList.remove('hidden');
 }
@@ -2161,6 +2268,11 @@ async function saveCustomer() {
 
   const cnicBack = document.getElementById('custCnicBack').files[0];
   if (cnicBack) formData.append('cnic_back', cnicBack);
+  
+  const agreementFiles = document.getElementById('custAgreementsImages').files;
+  for (let i = 0; i < agreementFiles.length; i++) {
+    formData.append('agreements_images[]', agreementFiles[i]);
+  }
 
   try {
     if (editId) {
@@ -2190,6 +2302,32 @@ function deleteCustomer(id) {
       toast('Customer deleted', 'danger');
       await syncData();
     } catch (e) { toast('Error deleting', 'danger'); }
+  });
+}
+
+function deleteAgreementImage(custId, idx) {
+  confirmDelete('Are you sure you want to delete this image?', async () => {
+    try {
+      await api(`/shop/api/customers/${custId}/agreements-images/${idx}`, 'DELETE');
+      toast('Image deleted', 'success');
+      await syncData();
+      openCustModal(custId); // refresh modal UI
+    } catch(e) {
+      toast('Error deleting image', 'danger');
+    }
+  });
+}
+
+function deleteCnicImage(custId, type) {
+  confirmDelete('Are you sure you want to delete this CNIC image?', async () => {
+    try {
+      await api(`/shop/api/customers/${custId}/cnic-image/${type}`, 'DELETE');
+      toast('CNIC image deleted', 'success');
+      await syncData();
+      openCustModal(custId); // refresh modal UI
+    } catch(e) {
+      toast('Error deleting image', 'danger');
+    }
   });
 }
 
