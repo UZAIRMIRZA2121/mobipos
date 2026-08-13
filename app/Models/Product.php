@@ -12,7 +12,6 @@ class Product extends Model
         'condition',
         'code',
         'barcode',
-        'imei_serial',
         'color',
         'storage',
         'image',

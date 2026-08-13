@@ -96,8 +96,7 @@ async function syncData() {
     const mappedProds = Array.isArray(prods) ? prods.map(p => ({
       ...p,
       sale: p.sale_price,
-      purchase: p.purchase_price,
-      imei: p.imei_serial
+      purchase: p.purchase_price
     })) : [];
 
     store.set('categories', cats);
@@ -1334,7 +1333,7 @@ function buildInvoiceHTML(inv, ledgerHtml = '') {
     <tr>
       <td>
         <div class="r-item-name">${it.product ? it.product.name : (it.name || 'Unknown')}</div>
-        ${it.imeis ? `<div style="font-size: 8px; color: #555; margin-top: 2px;">IMEI/SN: ${it.imeis}</div>` : (it.product && it.product.imei_serial ? `<div style="font-size: 8px; color: #555; margin-top: 2px;">IMEI/SN: ${it.product.imei_serial}</div>` : '')}
+        ${it.imeis ? `<div style="font-size: 8px; color: #555; margin-top: 2px;">IMEI/SN: ${it.imeis}</div>` : ''}
       </td>
       <td style="text-align:center">${it.qty}</td>
       <td style="text-align:right">${parseFloat(it.price).toFixed(0)}</td>

@@ -206,8 +206,6 @@
                     <span class="item-name">{{ $item->product ? $item->product->name : 'Unknown Product' }}</span>
                     @if($item->imeis)
                         <div class="item-imei">IMEI: {{ $item->imeis }}</div>
-                    @elseif($item->product && $item->product->imei_serial)
-                        <div class="item-imei">IMEI: {{ $item->product->imei_serial }}</div>
                     @endif
                     <div class="item-meta">@ PKR {{ number_format($item->sell_price) }}</div>
                 </td>
