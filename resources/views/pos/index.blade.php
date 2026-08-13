@@ -113,6 +113,7 @@
                         <option value="cash">Cash</option>
                         <option value="card">Card</option>
                         <option value="online">Online</option>
+                        <option value="installment">Installment</option>
                     </select>
                 </div>
             </div>
@@ -168,6 +169,30 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
         <span id="mobileCartBadge" class="mobile-cart-badge">0</span>
     </button>
+
+    <!-- IMEI Selection Modal -->
+    <div class="modal-overlay hidden" id="imeiSelectModal" style="z-index: 10000;">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Select Device (IMEI)</h3>
+                <button class="modal-close" onclick="closeImeiSelectModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="imeiSelectProdId" />
+                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Choose the specific unit(s) you are selling:</p>
+                
+                <input type="text" id="imeiSearchInput" class="input" placeholder="Search IMEI..." style="margin-bottom: 10px; width: 100%;" oninput="filterImeiList(this.value)">
+                
+                <div id="imeiSelectList" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Checkboxes generated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeImeiSelectModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmImeiSelection()">Add to Cart</button>
+            </div>
+        </div>
+    </div>
 
     <!-- INVOICES HAVE BEEN MOVED TO THEIR OWN FILE -->
 </main>

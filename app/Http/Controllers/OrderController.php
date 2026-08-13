@@ -196,6 +196,8 @@ class OrderController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric',
+            'items.*.stock_units' => 'nullable|array',
+            'items.*.stock_units.*' => 'exists:product_stock_units,id',
         ]);
 
         try {
@@ -212,6 +214,7 @@ class OrderController extends Controller
                 'due_amount' => $request->due_amount,
                 'payment_status' => $request->payment_status,
                 'payment_method' => $request->payment_method,
+                'is_installment' => $request->has('is_installment') ? $request->is_installment : 0,
                 'user_id' => Auth::id(),
             ]);
 
@@ -219,7 +222,7 @@ class OrderController extends Controller
             foreach ($request->items as $itemData) {
                 $product = Product::findOrFail($itemData['product_id']);
 
-                OrderItem::create([
+                $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
                     'seller_id' => $product->buyer_id, // buyer_id from product table
@@ -229,6 +232,34 @@ class OrderController extends Controller
                     'user_id' => Auth::id(),
                 ]);
 
+                // Handle Stock Units (IMEIs)
+                $imeisString = null;
+                if (!empty($itemData['stock_units'])) {
+                    $selectedUnits = \App\Models\ProductStockUnit::whereIn('id', $itemData['stock_units'])
+                        ->where('status', 'available')
+                        ->get();
+                        
+                    if ($selectedUnits->count() < $itemData['qty']) {
+                        throw new \Exception("One or more selected IMEIs for {$product->name} are no longer available.");
+                    }
+                    
+                    $imeisList = [];
+                    foreach ($selectedUnits as $unit) {
+                        $unit->update([
+                            'status' => 'sold',
+                            'order_item_id' => $orderItem->id
+                        ]);
+                        if (!empty($unit->imeis)) {
+                            $imeisList[] = $unit->imeis;
+                        }
+                    }
+                    
+                    if (!empty($imeisList)) {
+                        $imeisString = implode(' | ', $imeisList);
+                        $orderItem->update(['imeis' => $imeisString]);
+                    }
+                }
+
                 // Update product stock and status
                 if ($product->stock < $itemData['qty']) {
                     throw new \Exception("Insufficient stock for product: {$product->name}");
@@ -236,13 +267,12 @@ class OrderController extends Controller
                 
                 $product->stock -= $itemData['qty'];
                 
-                // Only mark as sold if it's a unique item with an IMEI
-            if (!empty($product->imei_serial) && $product->stock <= 0) {
-                $product->status = 'sold';
-            }
+                if ($product->stock <= 0) {
+                    $product->status = 'sold';
+                }
             
-            $product->save();
-        }
+                $product->save();
+            }
 
         // Save to Ledger if checked
         if ($request->has('save_to_ledger') && $request->save_to_ledger == 1 && $request->buyer_id) {
@@ -265,6 +295,19 @@ class OrderController extends Controller
                     'note' => 'Auto entry from POS'
                 ]);
             }
+        }
+
+        // Create Installment Record if applicable
+        if ($request->has('is_installment') && $request->is_installment == 1) {
+            \App\Models\Installment::create([
+                'order_id' => $order->id,
+                'customer_id' => $request->buyer_id,
+                'total_amount' => $request->total,
+                'down_payment' => $request->installment_down_payment ?? 0,
+                'agreed_monthly_amount' => $request->installment_monthly_amount ?? 0,
+                'payment_day' => $request->installment_payment_day ?? 10,
+                'status' => 'Active'
+            ]);
         }
 
         DB::commit();
@@ -338,6 +381,7 @@ class OrderController extends Controller
                 'due_amount' => $request->due_amount,
                 'payment_status' => $request->payment_status,
                 'payment_method' => $request->payment_method,
+                'is_installment' => $request->has('is_installment') ? $request->is_installment : 0,
             ]);
 
             // Create New Items & Deduct Stock
@@ -388,6 +432,23 @@ class OrderController extends Controller
                     'note' => 'Auto entry from POS Update'
                 ]);
             }
+        }
+
+        // Update Installment Record if applicable
+        if ($request->has('is_installment') && $request->is_installment == 1) {
+            \App\Models\Installment::updateOrCreate(
+                ['order_id' => $order->id],
+                [
+                    'customer_id' => $request->buyer_id,
+                    'total_amount' => $request->total,
+                    'down_payment' => $request->installment_down_payment ?? 0,
+                    'agreed_monthly_amount' => $request->installment_monthly_amount ?? 0,
+                    'payment_day' => $request->installment_payment_day ?? 10,
+                    'status' => 'Active'
+                ]
+            );
+        } else {
+            \App\Models\Installment::where('order_id', $order->id)->delete();
         }
 
         DB::commit();

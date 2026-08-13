@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\ProductStockUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -14,9 +15,9 @@ class ProductController extends Controller
         return view('products.index');
     }
 
-    public function apiIndex()
+    public function apiIndex(Request $request)
     {
-        $products = Product::where('user_id', Auth::id())->get();
+        $products = Product::where('user_id', Auth::id())->with('stockUnits')->get();
         return response()->json($products);
     }
 
@@ -38,6 +39,8 @@ class ProductController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'buyer_id' => 'nullable|exists:customers,id',
             'category_id' => 'nullable|exists:categories,id',
+            'units_imeis' => 'nullable|array',
+            'units_imeis.*' => 'nullable|string',
         ]);
 
         $validated['user_id'] = Auth::id();
@@ -48,7 +51,22 @@ class ProductController extends Controller
 
         $product = Product::create($validated);
 
-        return response()->json($product, 201);
+        if (in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
+            $stock = (int) ($product->stock ?: 1);
+            $imeisArray = $request->input('units_imeis', []);
+            
+            for ($i = 0; $i < $stock; $i++) {
+                ProductStockUnit::create([
+                    'product_id' => $product->id,
+                    'imeis' => $imeisArray[$i] ?? null,
+                    'status' => 'available',
+                ]);
+            }
+        }
+
+        return response()->json($product->load(['stockUnits' => function($q) {
+            $q->where('status', 'available');
+        }]), 201);
     }
 
     public function update(Request $request, Product $product)
@@ -73,6 +91,8 @@ class ProductController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'buyer_id' => 'nullable|exists:customers,id',
             'category_id' => 'nullable|exists:categories,id',
+            'units_imeis' => 'nullable|array',
+            'units_imeis.*' => 'nullable|string',
         ]);
 
         if ($request->hasFile('image')) {
@@ -84,7 +104,26 @@ class ProductController extends Controller
 
         $product->update($validated);
 
-        return response()->json($product);
+        if (in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
+            $stock = (int) ($product->stock ?: 1);
+            $imeisArray = $request->input('units_imeis', []);
+            
+            // Remove currently available units
+            $product->stockUnits()->where('status', 'available')->delete();
+            
+            // Re-create available units based on new stock
+            for ($i = 0; $i < $stock; $i++) {
+                ProductStockUnit::create([
+                    'product_id' => $product->id,
+                    'imeis' => $imeisArray[$i] ?? null,
+                    'status' => 'available',
+                ]);
+            }
+        }
+
+        return response()->json($product->load(['stockUnits' => function($q) {
+            $q->where('status', 'available');
+        }]));
     }
 
     public function destroy(Product $product)

@@ -9,13 +9,16 @@
         <div class="card-header">
           <h3>Product Inventory</h3>
           <div class="header-actions">
-            <input type="text" class="input input-sm" id="prodSearch" placeholder="Search products (Name/IMEI)..."/>
-            <select class="input input-sm" id="prodTypeFilter">
+            <input type="text" class="input input-sm" id="prodSearch" placeholder="Search products (Name/IMEI)..." oninput="renderProducts()"/>
+            <select class="input input-sm" id="prodTypeFilter" onchange="renderProducts()">
                 <option value="">All Types</option>
                 <option value="mobile">Mobile</option>
                 <option value="tablet">Tablet</option>
                 <option value="laptop">Laptop</option>
                 <option value="accessory">Accessory</option>
+            </select>
+            <select class="input input-sm" id="prodCategoryFilter" onchange="renderProducts()">
+                <option value="">All Categories</option>
             </select>
             <button class="btn btn-primary btn-sm" onclick="openProductModal()">+ Add Product</button>
           </div>

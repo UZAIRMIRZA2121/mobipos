@@ -821,6 +821,37 @@ function addToCart(prodId) {
   if (!p) return;
   if (p.stock <= 0 || p.status === 'defective' || p.status === 'in_repair') { toast('Product is unavailable!', 'danger'); return; }
 
+  // IF IT IS SERIALIZED, prompt for IMEI selection
+  if (['mobile', 'tablet', 'laptop'].includes(p.type)) {
+     document.getElementById('imeiSelectProdId').value = p.id;
+     
+     const existingCartItem = cart.find(c => c.prodId == prodId);
+     const alreadySelectedIds = existingCartItem && existingCartItem.stock_units ? existingCartItem.stock_units : [];
+     
+     // Only show available units
+     const availableUnits = p.stock_units ? p.stock_units.filter(u => u.status === 'available') : [];
+
+     let html = '';
+     if (availableUnits.length > 0) {
+        availableUnits.forEach(unit => {
+           const isChecked = alreadySelectedIds.includes(unit.id) ? 'checked' : '';
+           html += `<label style="display:flex; align-items:center; gap:8px; padding: 10px; background: #fff; border: 1px solid var(--border); border-radius: 6px; cursor: pointer;">
+              <input type="checkbox" class="imei-checkbox" value="${unit.id}" data-imei="${unit.imeis || 'No IMEI'}" ${isChecked}>
+              <span style="font-family: var(--mono); font-size: 13px;">${unit.imeis || 'Unknown IMEI'}</span>
+           </label>`;
+        });
+     } else {
+        html = '<p>No specific IMEI units found in stock. Cannot sell serialized item without IMEI.</p>';
+     }
+     document.getElementById('imeiSelectList').innerHTML = html;
+     
+     const searchInput = document.getElementById('imeiSearchInput');
+     if (searchInput) searchInput.value = '';
+     
+     document.getElementById('imeiSelectModal').classList.remove('hidden');
+     return;
+  }
+
   const existing = cart.find(c => c.prodId == prodId);
   if (existing) {
     if (existing.qty >= p.stock) { toast('Not enough stock!', 'warning'); return; }
@@ -835,9 +866,78 @@ function addToCart(prodId) {
   toast(`${p.name} added`, 'success');
 }
 
+function closeImeiSelectModal() {
+  document.getElementById('imeiSelectModal').classList.add('hidden');
+}
+
+function filterImeiList(query) {
+   query = query.toLowerCase();
+   const list = document.getElementById('imeiSelectList');
+   if (!list) return;
+   
+   const labels = list.querySelectorAll('label');
+   labels.forEach(label => {
+      const text = label.textContent.toLowerCase();
+      if (text.includes(query)) {
+         label.style.display = 'flex';
+      } else {
+         label.style.display = 'none';
+      }
+   });
+}
+
+function confirmImeiSelection() {
+  const prodId = document.getElementById('imeiSelectProdId').value;
+  const p = store.get('products').find(m => m.id == prodId);
+  if (!p) return;
+  
+  const checkboxes = document.querySelectorAll('.imei-checkbox:checked');
+  const selectedUnitIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+  
+  if (selectedUnitIds.length === 0) {
+      removeFromCart(prodId);
+      closeImeiSelectModal();
+      return;
+  }
+  
+  if (selectedUnitIds.length > p.stock) {
+      toast('Cannot select more than available stock', 'danger');
+      return;
+  }
+  
+  const existing = cart.find(c => c.prodId == prodId);
+  if (existing) {
+      existing.qty = selectedUnitIds.length;
+      existing.sub = existing.qty * existing.price;
+      existing.stock_units = selectedUnitIds;
+  } else {
+      cart.push({ 
+          prodId: p.id, 
+          name: p.name, 
+          price: parseFloat(p.sale), 
+          qty: selectedUnitIds.length, 
+          sub: parseFloat(p.sale) * selectedUnitIds.length, 
+          maxStock: p.stock,
+          stock_units: selectedUnitIds,
+          type: p.type
+      });
+  }
+  
+  closeImeiSelectModal();
+  renderCart();
+  renderProdGrid();
+  toast(`${p.name} added`, 'success');
+}
+
 function changeQty(prodId, delta) {
   const item = cart.find(c => c.prodId == prodId);
   if (!item) return;
+  
+  if (item.type && ['mobile', 'tablet', 'laptop'].includes(item.type)) {
+     addToCart(prodId); // Re-open IMEI selection modal
+     return;
+  }
+
   const newQty = item.qty + delta;
   if (newQty <= 0) { removeFromCart(prodId); return; }
   if (newQty > item.maxStock) { toast('Not enough stock!', 'warning'); return; }
@@ -1022,21 +1122,42 @@ async function checkout() {
   const isLedgerSaved = document.getElementById('posSaveToLedger')?.checked;
   const paymentStatus = (isLedgerSaved || paid >= total) ? 'paid' : (paid > 0 ? 'partial' : 'unpaid');
 
+  if (payment === 'installment' && !window.installmentData) {
+    if (!custId) {
+      toast('Customer must be selected for installment payments!', 'warning');
+      return;
+    }
+    const instModal = document.getElementById('installmentModal');
+    if (instModal) {
+      instModal.classList.remove('hidden');
+      document.getElementById('instTotal').value = total.toFixed(2);
+      document.getElementById('instAdvance').value = paid.toFixed(2);
+      calcInstallment();
+    }
+    return; // Pause checkout process
+  }
+
   const payload = {
     buyer_id: custId,
     subtotal: subtotal,
     tax: taxAmt,
     discount: discAmt,
     total: total,
-    paid_amount: paid,
-    due_amount: due,
+    paid_amount: (payment === 'installment' && window.installmentData) ? window.installmentData.advance : paid,
+    due_amount: (payment === 'installment' && window.installmentData) ? (total - window.installmentData.advance) : due,
     payment_status: paymentStatus,
     payment_method: payment,
     save_to_ledger: (document.getElementById('posSaveToLedger') && document.getElementById('posSaveToLedger').checked) ? 1 : 0,
+    is_installment: (payment === 'installment' ? 1 : 0),
+    installment_down_payment: (window.installmentData ? window.installmentData.advance : 0),
+    installment_months: (window.installmentData ? window.installmentData.months : 0),
+    installment_monthly_amount: (window.installmentData ? window.installmentData.monthly : 0),
+    installment_payment_day: (window.installmentData ? window.installmentData.payment_day : 10),
     items: cart.map(c => ({
       product_id: c.prodId,
       qty: c.qty,
-      price: c.price
+      price: c.price,
+      stock_units: c.stock_units || []
     }))
   };
 
@@ -1208,13 +1329,16 @@ const THERMAL_CSS = `
 `;
 
 function buildInvoiceHTML(inv, ledgerHtml = '') {
-  // Build item rows â€” wrap long name to second line
+  // Build item rows
   const itemRows = inv.items.map(it => `
     <tr>
-      <td><div class="r-item-name">${it.name}</div></td>
+      <td>
+        <div class="r-item-name">${it.product ? it.product.name : (it.name || 'Unknown')}</div>
+        ${it.imeis ? `<div style="font-size: 8px; color: #555; margin-top: 2px;">IMEI/SN: ${it.imeis}</div>` : (it.product && it.product.imei_serial ? `<div style="font-size: 8px; color: #555; margin-top: 2px;">IMEI/SN: ${it.product.imei_serial}</div>` : '')}
+      </td>
       <td style="text-align:center">${it.qty}</td>
       <td style="text-align:right">${parseFloat(it.price).toFixed(0)}</td>
-      <td style="text-align:right">${parseFloat(it.sub).toFixed(0)}</td>
+      <td style="text-align:right">${parseFloat(it.sub || (it.qty * it.price)).toFixed(0)}</td>
     </tr>`).join('');
 
   const custPhone = inv.custId ? (getCustomer(inv.custId).phone || '') : '';
@@ -1531,6 +1655,19 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 function renderProducts() {
   const q = (document.getElementById('prodSearch')?.value || '').toLowerCase();
+  const typeFilter = document.getElementById('prodTypeFilter')?.value || '';
+  const catFilter = document.getElementById('prodCategoryFilter')?.value || '';
+
+  const catSelect = document.getElementById('prodCategoryFilter');
+  if (catSelect && catSelect.options.length <= 1) {
+    const cats = store.get('categories') || [];
+    cats.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = c.name;
+      catSelect.appendChild(opt);
+    });
+  }
 
   let prods = store.get('products');
   if (q) prods = prods.filter(p =>
@@ -1539,6 +1676,14 @@ function renderProducts() {
     (p.code || '').toLowerCase().includes(q) ||
     (p.barcode || '').toLowerCase().includes(q)
   );
+
+  if (typeFilter) {
+    prods = prods.filter(p => p.type === typeFilter);
+  }
+
+  if (catFilter) {
+    prods = prods.filter(p => p.category_id == catFilter);
+  }
 
   document.getElementById('prodTbody').innerHTML = prods.length ?
     prods.map(p => {
@@ -1591,35 +1736,86 @@ function editProduct(id = null) {
     document.getElementById('prodCode').value = p.code || '';
     document.getElementById('prodBarcode').value = p.barcode || '';
 
-    // Multiple IMEIs handling
-    const imeis = (p.imei_serial || '').split(',').map(s => s.trim()).filter(s => s);
-    document.getElementById('prodImei').value = imeis.length > 0 ? imeis[0] : '';
-    document.getElementById('additionalImeis').innerHTML = '';
-    for (let i = 1; i < imeis.length; i++) {
-      addImeiField(imeis[i]);
-    }
-
     document.getElementById('prodColor').value = p.color || '';
     document.getElementById('prodStorage').value = p.storage || '';
     document.getElementById('prodPurchase').value = p.purchase;
     document.getElementById('prodSale').value = p.sale;
     document.getElementById('prodStatus').value = p.status;
     document.getElementById('prodStock').value = p.stock !== undefined ? p.stock : 1;
+    // Dynamic IMEI Rendering
+    if (typeof renderImeiFields === 'function') {
+      renderImeiFields(p.stock_units || []);
+    }
+
     document.getElementById('prodCategory').value = p.category_id || '';
     document.getElementById('prodBuyer').value = p.buyer_id || '';
   } else {
     document.getElementById('prodModalTitle').textContent = 'Add Product';
     document.getElementById('prodId').value = '';
-    ['prodName', 'prodCode', 'prodBarcode', 'prodImei', 'prodColor', 'prodStorage', 'prodPurchase', 'prodSale', 'prodImage', 'prodBuyer'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('additionalImeis').innerHTML = '';
+    ['prodName', 'prodCode', 'prodBarcode', 'prodColor', 'prodStorage', 'prodPurchase', 'prodSale', 'prodImage', 'prodBuyer'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('prodType').value = 'mobile';
     document.getElementById('prodCondition').value = 'new';
     document.getElementById('prodStatus').value = 'in_stock';
     document.getElementById('prodStock').value = '1';
     document.getElementById('prodCategory').value = '';
+    
+    if (document.getElementById('groupImeiSold')) {
+       document.getElementById('groupImeiSold').style.display = 'none';
+       document.getElementById('groupImeiSoldInner').innerHTML = '';
+    }
+    
+    if (typeof renderImeiFields === 'function') renderImeiFields();
   }
   document.getElementById('prodModal').classList.remove('hidden');
   toggleProductFields();
+}
+
+function renderImeiFields(stockUnits = []) {
+   const stock = parseInt(document.getElementById('prodStock').value) || 1;
+   const container = document.getElementById('groupImeiInner');
+   const soldContainer = document.getElementById('groupImeiSold');
+   const soldInner = document.getElementById('groupImeiSoldInner');
+   
+   if (!container) return;
+   
+   // Separate units
+   const availableUnits = stockUnits.filter(u => u.status === 'available');
+   const soldUnits = stockUnits.filter(u => u.status === 'sold' || u.status === 'returned');
+   
+   // Keep existing input values to not wipe user typing if they just change quantity
+   const existingInputs = Array.from(document.querySelectorAll('.unit-imei-input')).map(el => el.value);
+   
+   let html = '';
+   for(let i=0; i<stock; i++) {
+      let val = '';
+      if (existingInputs.length > 0) {
+         val = existingInputs[i] || '';
+      } else if (availableUnits[i]) {
+         val = availableUnits[i].imeis || '';
+      }
+      
+      html += `<div style="margin-bottom: 8px;">
+         <label style="font-size:11px; color: var(--text-muted);">Stock Unit ${i+1}</label>
+         <input type="text" class="input unit-imei-input" placeholder="e.g. 3589... , 3589..." value="${val}"/>
+      </div>`;
+   }
+   container.innerHTML = html;
+   
+   // Handle sold units display
+   if (soldUnits.length > 0 && soldContainer && soldInner) {
+      soldContainer.style.display = 'block';
+      let soldHtml = '';
+      soldUnits.forEach((u, i) => {
+         soldHtml += `<div style="font-family: var(--mono); font-size: 11px; padding: 4px 0; border-bottom: 1px solid #ffcccc; display: flex; justify-content: space-between;">
+            <span>${u.imeis || 'Unknown IMEI'}</span>
+            <span style="font-weight: bold; font-size: 10px; color: #cc0000; text-transform: uppercase;">${u.status}</span>
+         </div>`;
+      });
+      soldInner.innerHTML = soldHtml;
+   } else if (soldContainer) {
+      soldContainer.style.display = 'none';
+      soldInner.innerHTML = '';
+   }
 }
 
 function toggleProductFields() {
@@ -1651,11 +1847,9 @@ async function saveProduct() {
   formData.append('code', document.getElementById('prodCode').value.trim());
   formData.append('barcode', document.getElementById('prodBarcode').value.trim());
 
-  const imeis = Array.from(document.querySelectorAll('.imei-input'))
-    .map(el => el.value.trim())
-    .filter(v => v)
-    .join(', ');
-  formData.append('imei_serial', imeis);
+  const unitImeis = Array.from(document.querySelectorAll('.unit-imei-input')).map(el => el.value.trim());
+  unitImeis.forEach(u => formData.append('units_imeis[]', u));
+
   formData.append('color', document.getElementById('prodColor').value.trim());
   formData.append('storage', document.getElementById('prodStorage').value.trim());
   formData.append('purchase_price', document.getElementById('prodPurchase').value || 0);
@@ -1747,18 +1941,6 @@ async function openProdSalesModal(id) {
 
 function closeProdSalesModal() {
   document.getElementById('prodSalesModal').classList.add('hidden');
-}
-
-function addImeiField(value = '') {
-  const container = document.getElementById('additionalImeis');
-  const div = document.createElement('div');
-  div.style.display = 'flex';
-  div.style.gap = '8px';
-  div.innerHTML = `
-    <input type="text" class="input imei-input" style="flex: 1;" placeholder="Additional IMEI" value="${value}" />
-    <button type="button" class="btn btn-outline" style="padding: 0 12px; font-size: 18px; color: var(--danger); border-color: var(--danger);" onclick="this.parentElement.remove()" title="Remove IMEI">-</button>
-  `;
-  container.appendChild(div);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2859,6 +3041,53 @@ async function deletePO(id) {
   } catch (err) {
     toast(err.message, 'danger');
   }
+}
+
+// ============================================================
+// INSTALLMENT MODAL
+// ============================================================
+
+function closeInstallmentModal() {
+  document.getElementById('installmentModal').classList.add('hidden');
+  window.installmentData = null;
+}
+
+function calcInstallment() {
+  const total = parseFloat(document.getElementById('instTotal').value || 0);
+  let advance = parseFloat(document.getElementById('instAdvance').value || 0);
+  
+  if (advance > total) {
+    advance = total;
+    document.getElementById('instAdvance').value = advance;
+  }
+  
+  const remaining = total - advance;
+  document.getElementById('instRemaining').value = remaining.toFixed(2);
+  
+  let months = parseInt(document.getElementById('instMonths').value || 1);
+  if (months < 1) {
+    months = 1;
+    document.getElementById('instMonths').value = months;
+  }
+  
+  const monthly = (remaining / months).toFixed(2);
+  document.getElementById('instMonthlyAmount').value = monthly;
+}
+
+function confirmInstallment() {
+  const total = parseFloat(document.getElementById('instTotal').value || 0);
+  const advance = parseFloat(document.getElementById('instAdvance').value || 0);
+  const remaining = parseFloat(document.getElementById('instRemaining').value || 0);
+  const months = parseInt(document.getElementById('instMonths').value || 1);
+  const monthly = parseFloat(document.getElementById('instMonthlyAmount').value || 0);
+  const payment_day = parseInt(document.getElementById('instPaymentDay').value || 10);
+
+  window.installmentData = {
+    total, advance, remaining, months, monthly, payment_day
+  };
+  
+  document.getElementById('installmentModal').classList.add('hidden');
+  checkout(); // Resume checkout
 }
 
 // ============================================================

@@ -127,6 +127,12 @@ Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop'
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::get('/settings', [App\Http\Controllers\StoreSettingController::class, 'index'])->name('settings.index');
     Route::get('/settings/print', [App\Http\Controllers\InvoiceSettingController::class, 'index'])->name('settings.print');
+
+    // Installments
+    Route::get('/installments', [App\Http\Controllers\InstallmentController::class, 'index'])->name('installments.index');
+    Route::get('/installments/{id}', [App\Http\Controllers\InstallmentController::class, 'show'])->name('installments.show');
+    Route::get('/installments/{id}/print', [App\Http\Controllers\InstallmentController::class, 'print'])->name('installments.print');
+    Route::post('/installments/{id}/payment', [App\Http\Controllers\InstallmentController::class, 'addPayment'])->name('installments.addPayment');
 });
 
 // Seller Dummy Routes

@@ -44,4 +44,9 @@ class Product extends Model
     {
         return $this->belongsTo(Customer::class, 'buyer_id');
     }
+
+    public function stockUnits()
+    {
+        return $this->hasMany(ProductStockUnit::class);
+    }
 }

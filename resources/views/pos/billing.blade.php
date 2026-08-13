@@ -70,6 +70,7 @@
                   <option value="cash">Cash</option>
                   <option value="card">Card</option>
                   <option value="online">Online Payment</option>
+                  <option value="installment">Installment</option>
                 </select>
               </div>
               <div class="form-group" style="flex:2">

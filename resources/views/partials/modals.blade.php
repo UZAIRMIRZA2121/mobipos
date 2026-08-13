@@ -154,13 +154,21 @@
         <div class="form-group"><label>Condition *</label><select id="prodCondition" class="input"><option value="new">New</option><option value="used">Used</option><option value="refurbished">Refurbished</option></select></div>
         <div class="form-group"><label>Code</label><input type="text" id="prodCode" class="input" placeholder="Product Code (optional)"/></div>
         <div class="form-group"><label>Barcode</label><input type="text" id="prodBarcode" class="input" placeholder="Barcode (optional)"/></div>
-        <div class="form-group" id="groupImei">
-          <label>IMEI / Serial Number</label>
-          <div style="display: flex; gap: 8px;" id="imeiContainerMain">
-            <input type="text" id="prodImei" class="input imei-input" style="flex: 1;" placeholder="Unique identifier"/>
-            <button type="button" class="btn btn-outline" style="padding: 0 12px; font-size: 18px;" onclick="addImeiField()" title="Add another IMEI">+</button>
+        <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" class="input" min="0" value="1" oninput="if(typeof renderImeiFields === 'function') renderImeiFields()"/></div>
+        <div class="form-group form-full" id="groupImei">
+          <label>IMEI / Serial Numbers (Available)</label>
+          <div id="groupImeiInner" style="max-height: 250px; overflow-y: auto; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: #fafafa; display: flex; flex-direction: column; gap: 10px;">
+             <!-- populated dynamically by JS -->
           </div>
-          <div id="additionalImeis" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;"></div>
+          <small style="color:var(--text-muted); font-size:11px; margin-top: 4px; display: block;">* For Dual-SIM devices, enter both IMEIs separated by a comma (e.g. 3589..., 3589...). Each box represents 1 physical Stock Unit.</small>
+          
+          <!-- Sold IMEIs Container -->
+          <div id="groupImeiSold" style="display: none; margin-top: 15px;">
+            <label style="color: var(--danger); font-size: 12px; margin-bottom: 5px; display: block;">Already Sold IMEIs</label>
+            <div id="groupImeiSoldInner" style="max-height: 150px; overflow-y: auto; padding: 10px; border: 1px dashed var(--danger); border-radius: 6px; background: #fff5f5; display: flex; flex-direction: column; gap: 6px;">
+               <!-- populated dynamically by JS -->
+            </div>
+          </div>
         </div>
         <div class="form-group"><label>Color</label><input type="text" id="prodColor" class="input" placeholder="e.g. Space Black"/></div>
         <div class="form-group" id="groupStorage"><label>Storage</label><input type="text" id="prodStorage" class="input" placeholder="e.g. 256GB"/></div>
@@ -181,7 +189,6 @@
             <button type="button" class="btn btn-outline" style="padding: 0 12px; font-size: 18px;" onclick="openCustModal()" title="Add Customer">+</button>
           </div>
         </div>
-        <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" class="input" min="0" value="1"/></div>
         <div class="form-group"><label>Product Image</label><input type="file" id="prodImage" class="input" accept="image/*"/></div>
       </div>
     </div>
@@ -410,6 +417,42 @@
   </div>
 </div>
 
-
-
-
+<!-- Installment Setup Modal -->
+<div class="modal-overlay hidden" id="installmentModal">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <h3>Installment Setup</h3>
+      <button class="modal-close" onclick="closeInstallmentModal()">×</button>
+    </div>
+    <div class="modal-body" style="display: flex; flex-wrap: wrap; margin: 0 -10px;">
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Total Amount</label>
+        <input type="number" id="instTotal" class="input" readonly>
+      </div>
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Advance Payment (Down Payment)</label>
+        <input type="number" id="instAdvance" class="input" oninput="calcInstallment()">
+      </div>
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Remaining Amount</label>
+        <input type="number" id="instRemaining" class="input" readonly>
+      </div>
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Number of Months</label>
+        <input type="number" id="instMonths" class="input" value="1" min="1" oninput="calcInstallment()">
+      </div>
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Monthly Installment</label>
+        <input type="number" id="instMonthlyAmount" class="input" readonly>
+      </div>
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Payment Day (1-30)</label>
+        <input type="number" id="instPaymentDay" class="input" value="10" min="1" max="30" required>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeInstallmentModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmInstallment()">Confirm & Checkout</button>
+    </div>
+  </div>
+</div>
