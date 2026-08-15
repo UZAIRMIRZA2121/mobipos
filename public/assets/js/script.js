@@ -965,12 +965,15 @@ function removeFromCart(prodId) {
 
 function clearCart() {
   cart = [];
-  renderCart();
-  renderProdGrid();
   const d = document.getElementById('posDiscount'); if (d) d.value = window.globalStoreSettings?.discount || 0;
   const t = document.getElementById('posTax'); if (t) t.value = window.globalStoreSettings?.tax || 0;
   const p = document.getElementById('posPaid'); if (p) p.value = 0;
   const n = document.getElementById('posNotes'); if (n) n.value = '';
+  const cust = document.getElementById('posCustomer'); if (cust) cust.value = '';
+  const pay = document.getElementById('posPayment'); if (pay) pay.value = 'Cash';
+  const ledger = document.getElementById('posSaveToLedger'); if (ledger) ledger.checked = false;
+  renderCart();
+  renderProdGrid();
 }
 
 function renderCart() {
@@ -1050,22 +1053,25 @@ function renderCartSummary() {
   }
 
   if (elRet && elRetLabel && changeRow) {
-    if (due > 0) {
+    const ledgerCheck = document.getElementById('posSaveToLedger');
+    const isChecked = ledgerCheck ? ledgerCheck.checked : false;
+    
+    let displayDue = isChecked ? 0 : due;
+    let displayAbsDue = Math.abs(displayDue);
+
+    if (displayDue > 0) {
       elRetLabel.textContent = "Amount Due";
-      elRet.textContent = fmtCur(due);
+      elRet.textContent = fmtCur(displayDue);
       changeRow.style.backgroundColor = "var(--danger-light, #ffebee)";
-    } else if (due < 0) {
+    } else if (displayDue < 0) {
       elRetLabel.textContent = "Change Due";
-      elRet.textContent = fmtCur(absDue);
+      elRet.textContent = fmtCur(displayAbsDue);
       changeRow.style.backgroundColor = "var(--success-light, #e8f5e9)";
     } else {
       elRetLabel.textContent = "Change Due";
       elRet.textContent = fmtCur(0);
       changeRow.style.backgroundColor = "var(--success-light, #e8f5e9)";
     }
-
-    const ledgerCheck = document.getElementById('posSaveToLedger');
-    const isChecked = ledgerCheck ? ledgerCheck.checked : false;
     let finalDue = isChecked ? (prevBal + due) : due;
     let finalAbs = Math.abs(finalDue);
 
@@ -1541,11 +1547,11 @@ async function renderSales(page = 1) {
           <td><span class="badge badge-primary" style="font-family:var(--mono)">${i.id}</span></td>
           <td>${i.buyer ? i.buyer.name : 'Walk-in'}</td>
           <td>${i.items.reduce((s, x) => s + parseInt(x.qty), 0)}</td>
-          <td>${fmtCur(i.subtotal)}</td>
-          <td>${fmtCur(i.discount)}</td>
-          <td>${fmtCur(i.tax)}</td>
-          <td style="font-weight:700;color:var(--primary)">${fmtCur(i.total)}</td>
-          <td>${fmtCur(i.paid_amount)}</td>
+          <td style="white-space:nowrap">${fmtCur(i.subtotal)}</td>
+          <td style="white-space:nowrap">${fmtCur(i.discount)}</td>
+          <td style="white-space:nowrap">${fmtCur(i.tax)}</td>
+          <td style="white-space:nowrap;font-weight:700;color:var(--primary)">${fmtCur(i.total)}</td>
+          <td style="white-space:nowrap">${fmtCur(i.paid_amount)}</td>
           <td>
             <span class="badge ${i.payment_status === 'paid' ? 'badge-success' : (i.payment_status === 'refunded' ? 'badge-gray' : (i.payment_status === 'partial' ? 'badge-warning' : 'badge-danger'))}" style="text-transform:capitalize">${i.payment_status}</span>
           </td>
@@ -1654,6 +1660,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================
 function renderProducts() {
   const q = (document.getElementById('prodSearch')?.value || '').toLowerCase();
+  const condFilter = document.getElementById('prodConditionFilter')?.value || '';
   const typeFilter = document.getElementById('prodTypeFilter')?.value || '';
   const catFilter = document.getElementById('prodCategoryFilter')?.value || '';
 
@@ -1672,6 +1679,10 @@ function renderProducts() {
   if (q) prods = prods.filter(p =>
     (p.code || '').toLowerCase().includes(q)
   );
+
+  if (condFilter) {
+    prods = prods.filter(p => (p.condition || '').toLowerCase() === condFilter.toLowerCase());
+  }
 
   if (typeFilter) {
     prods = prods.filter(p => p.type === typeFilter);

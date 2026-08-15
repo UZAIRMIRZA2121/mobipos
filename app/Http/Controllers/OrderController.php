@@ -203,6 +203,10 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
+            $is_ledger = $request->has('save_to_ledger') && $request->save_to_ledger == 1 && $request->buyer_id;
+            $order_paid = $is_ledger ? $request->total : $request->paid_amount;
+            $order_due = $is_ledger ? 0 : $request->due_amount;
+
             // Create Order
             $order = Order::create([
                 'buyer_id' => $request->buyer_id,
@@ -210,9 +214,9 @@ class OrderController extends Controller
                 'tax' => $request->tax,
                 'discount' => $request->discount,
                 'total' => $request->total,
-                'paid_amount' => $request->paid_amount,
-                'due_amount' => $request->due_amount,
-                'payment_status' => $request->payment_status,
+                'paid_amount' => $order_paid,
+                'due_amount' => $order_due,
+                'payment_status' => $is_ledger ? 'paid' : $request->payment_status,
                 'payment_method' => $request->payment_method,
                 'is_installment' => $request->has('is_installment') ? $request->is_installment : 0,
                 'user_id' => Auth::id(),
@@ -225,7 +229,7 @@ class OrderController extends Controller
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
-                    'seller_id' => $product->buyer_id, // buyer_id from product table
+                    'seller_id' => $product->buyer_id ?: null, // Force null if empty to avoid FK constraint errors
                     'qty' => $itemData['qty'],
                     'buy_price' => $product->purchase_price ?? 0, 
                     'sell_price' => $itemData['price'],
@@ -274,43 +278,43 @@ class OrderController extends Controller
                 $product->save();
             }
 
-        // Save to Ledger if checked
-        if ($request->has('save_to_ledger') && $request->save_to_ledger == 1 && $request->buyer_id) {
-            $diff = $request->total - $request->paid_amount;
-            if ($diff != 0) {
-                $lastLedger = \App\Models\CustomerLedger::where('customer_id', $request->buyer_id)->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
-                $previousBalance = $lastLedger ? $lastLedger->balance : 0;
-                $debit = $diff > 0 ? $diff : 0;
-                $credit = $diff < 0 ? abs($diff) : 0;
-                $newBalance = $previousBalance + $debit - $credit;
+            // Save to Ledger if checked
+            if ($request->has('save_to_ledger') && $request->save_to_ledger == 1 && $request->buyer_id) {
+                $diff = (float)$request->total - (float)$request->paid_amount;
+                if ($diff > 0) {
+                    $lastLedger = \App\Models\CustomerLedger::where('customer_id', $request->buyer_id)->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
+                    $previousBalance = $lastLedger ? (float)$lastLedger->balance : 0;
+                    $debit = $diff;
+                    $credit = 0;
+                    $newBalance = $previousBalance + $debit - $credit;
 
-                \App\Models\CustomerLedger::create([
+                    \App\Models\CustomerLedger::create([
+                        'customer_id' => $request->buyer_id,
+                        'user_id' => \Illuminate\Support\Facades\Auth::id(),
+                        'date' => now()->format('Y-m-d H:i:s'),
+                        'type' => 'Sale (Order #' . $order->id . ')',
+                        'debit' => $debit,
+                        'credit' => $credit,
+                        'balance' => $newBalance,
+                        'note' => 'Auto entry from POS'
+                    ]);
+                }
+            }
+
+            // Create Installment Record if applicable
+            if ($request->has('is_installment') && $request->is_installment == 1) {
+                \App\Models\Installment::create([
+                    'order_id' => $order->id,
                     'customer_id' => $request->buyer_id,
-                    'user_id' => \Illuminate\Support\Facades\Auth::id(),
-                    'date' => now()->format('Y-m-d'),
-                    'type' => 'Sale (Order #' . $order->id . ')',
-                    'debit' => $debit,
-                    'credit' => $credit,
-                    'balance' => $newBalance,
-                    'note' => 'Auto entry from POS'
+                    'total_amount' => $request->total,
+                    'down_payment' => $request->installment_down_payment ?? 0,
+                    'agreed_monthly_amount' => $request->installment_monthly_amount ?? 0,
+                    'payment_day' => $request->installment_payment_day ?? 10,
+                    'status' => 'Active'
                 ]);
             }
-        }
 
-        // Create Installment Record if applicable
-        if ($request->has('is_installment') && $request->is_installment == 1) {
-            \App\Models\Installment::create([
-                'order_id' => $order->id,
-                'customer_id' => $request->buyer_id,
-                'total_amount' => $request->total,
-                'down_payment' => $request->installment_down_payment ?? 0,
-                'agreed_monthly_amount' => $request->installment_monthly_amount ?? 0,
-                'payment_day' => $request->installment_payment_day ?? 10,
-                'status' => 'Active'
-            ]);
-        }
-
-        DB::commit();
+            DB::commit();
 
             return response()->json([
                 'success' => true,
@@ -320,9 +324,10 @@ class OrderController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Order Creation Failed: ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Error: ' . $e->getMessage()
             ], 400);
         }
     }
@@ -370,6 +375,10 @@ class OrderController extends Controller
             }
             $order->items()->delete();
 
+            $is_ledger = $request->has('save_to_ledger') && $request->save_to_ledger == 1 && $request->buyer_id;
+            $order_paid = $is_ledger ? $request->total : $request->paid_amount;
+            $order_due = $is_ledger ? 0 : $request->due_amount;
+
             // Update Order Data
             $order->update([
                 'buyer_id' => $request->buyer_id,
@@ -377,9 +386,9 @@ class OrderController extends Controller
                 'tax' => $request->tax,
                 'discount' => $request->discount,
                 'total' => $request->total,
-                'paid_amount' => $request->paid_amount,
-                'due_amount' => $request->due_amount,
-                'payment_status' => $request->payment_status,
+                'paid_amount' => $order_paid,
+                'due_amount' => $order_due,
+                'payment_status' => $is_ledger ? 'paid' : $request->payment_status,
                 'payment_method' => $request->payment_method,
                 'is_installment' => $request->has('is_installment') ? $request->is_installment : 0,
             ]);
@@ -467,6 +476,46 @@ class OrderController extends Controller
             ], 400);
         }
     }
+    private function removeOrderLedgers(Order $order)
+    {
+        $ledgers = \App\Models\CustomerLedger::where('type', 'like', '%Order #' . $order->id . ')%')->get();
+        foreach ($ledgers as $ledger) {
+            $deletedDate = $ledger->date;
+            $deletedId = $ledger->id;
+            $customerId = $ledger->customer_id;
+            
+            if ($ledger->payment_proof) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($ledger->payment_proof);
+            }
+            $ledger->delete();
+
+            $subsequentLedgers = \App\Models\CustomerLedger::where('customer_id', $customerId)
+                ->where(function($query) use ($deletedDate, $deletedId) {
+                    $query->where('date', '>', $deletedDate)
+                          ->orWhere(function($q) use ($deletedDate, $deletedId) {
+                              $q->where('date', '=', $deletedDate)
+                                ->where('id', '>', $deletedId);
+                          });
+                })
+                ->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+
+            $previousLedger = \App\Models\CustomerLedger::where('customer_id', $customerId)
+                ->where(function($query) use ($deletedDate, $deletedId) {
+                    $query->where('date', '<', $deletedDate)
+                          ->orWhere(function($q) use ($deletedDate, $deletedId) {
+                              $q->where('date', '=', $deletedDate)
+                                ->where('id', '<', $deletedId);
+                          });
+                })
+                ->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
+
+            $currentBalance = $previousLedger ? (float)$previousLedger->balance : 0;
+            foreach ($subsequentLedgers as $subLedger) {
+                $currentBalance = $currentBalance + $subLedger->debit - $subLedger->credit;
+                $subLedger->update(['balance' => $currentBalance]);
+            }
+        }
+    }
 
     public function destroy(Order $order)
     {
@@ -483,7 +532,9 @@ class OrderController extends Controller
                     }
                 }
             }
+            $this->removeOrderLedgers($order);
             $order->items()->delete();
+            \App\Models\Installment::where('order_id', $order->id)->delete();
             $order->delete();
         });
 
@@ -507,6 +558,7 @@ class OrderController extends Controller
                     $product->save();
                 }
             }
+            $this->removeOrderLedgers($order);
             $order->payment_status = 'refunded';
             $order->save();
         });

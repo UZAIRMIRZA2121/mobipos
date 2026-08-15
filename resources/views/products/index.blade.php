@@ -10,6 +10,12 @@
           <h3>Product Inventory</h3>
           <div class="header-actions">
             <input type="text" class="input input-sm" id="prodSearch" placeholder="Search products (Code)..." oninput="renderProducts()"/>
+            <select class="input input-sm" id="prodConditionFilter" onchange="renderProducts()">
+                <option value="">All Conditions</option>
+                <option value="new">New</option>
+                <option value="used">Used</option>
+                <option value="refurbished">Refurbished</option>
+            </select>
             <select class="input input-sm" id="prodTypeFilter" onchange="renderProducts()">
                 <option value="">All Types</option>
                 <option value="mobile">Mobile</option>
