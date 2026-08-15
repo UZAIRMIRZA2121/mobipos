@@ -81,7 +81,7 @@ class ReportController extends Controller
         foreach ($topProducts as $tp) {
             $prod = DB::table('products')->where('id', $tp->product_id)->first();
             $tp->name = $prod ? $prod->name : 'Unknown';
-            $tp->imei = $prod ? $prod->imei_serial : '';
+            $tp->imei = $prod ? $prod->code : '';
         }
 
         // 8. Expense List

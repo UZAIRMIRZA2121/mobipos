@@ -1670,10 +1670,7 @@ function renderProducts() {
 
   let prods = store.get('products');
   if (q) prods = prods.filter(p =>
-    p.name.toLowerCase().includes(q) ||
-    (p.imei || '').toLowerCase().includes(q) ||
-    (p.code || '').toLowerCase().includes(q) ||
-    (p.barcode || '').toLowerCase().includes(q)
+    (p.code || '').toLowerCase().includes(q)
   );
 
   if (typeFilter) {

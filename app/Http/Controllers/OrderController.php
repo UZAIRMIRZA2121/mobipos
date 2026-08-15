@@ -89,7 +89,7 @@ class OrderController extends Controller
         foreach($topProducts as $tp) {
             $prod = DB::table('products')->where('id', $tp->product_id)->first();
             $tp->name = $prod ? $prod->name : 'Unknown';
-            $tp->imei = $prod ? $prod->imei_serial : '';
+            $tp->imei = $prod ? $prod->code : '';
         }
 
         // Determine period
@@ -404,7 +404,7 @@ class OrderController extends Controller
                 
                 $product->stock -= $itemData['qty'];
                 
-            if (!empty($product->imei_serial) && $product->stock <= 0) {
+            if (!empty($product->code) && $product->stock <= 0) {
                 $product->status = 'sold';
             }
             

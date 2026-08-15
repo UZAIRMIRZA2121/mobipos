@@ -101,69 +101,73 @@
             </div>
         </div>
 
-        <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div class="row" style="display: flex; flex-wrap: wrap; margin-right: -12px; margin-left: -12px;">
             <!-- Top Selling Products -->
-            <div class="card">
-                <div class="card-header">
-                    <h3>Top Selling Products</h3>
-                </div>
-                <div class="table-wrap">
-                    <table class="table">
-                        <thead>
-                            <tr style="background: #f9fafb;">
-                                <th>Product Name</th>
-                                <th class="text-right">Quantity Sold</th>
-                                <th class="text-right">Total Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody id="repTopProductsTbody">
-                            <tr><td colspan="3" class="empty-cell">Generate report to view data</td></tr>
-                        </tbody>
-                    </table>
+            <div class="col-md-6" style="flex: 0 0 50%; max-width: 50%; padding-right: 12px; padding-left: 12px;">
+                <div class="card" style="margin-bottom: 24px; height: calc(100% - 24px);">
+                    <div class="card-header">
+                        <h3>Top Selling Products</h3>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead>
+                                <tr style="background: #f9fafb;">
+                                    <th>Product Name</th>
+                                    <th class="text-right">Quantity Sold</th>
+                                    <th class="text-right">Total Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody id="repTopProductsTbody">
+                                <tr><td colspan="3" class="empty-cell">Generate report to view data</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
             <!-- Expenses List -->
-            <div class="card" style="margin-top: 24px;">
-                <div class="card-header">
-                    <h3>Expenses List</h3>
-                </div>
-                <div class="table-wrap">
-                    <table class="table">
-                        <thead>
-                            <tr style="background: #f9fafb;">
-                                <th>Name</th>
-                                <th>Description</th>
-                                <th class="text-right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody id="repExpensesTbody">
-                            <tr><td colspan="3" class="empty-cell">Generate report to view data</td></tr>
-                        </tbody>
-                    </table>
+            <div class="col-md-6" style="flex: 0 0 50%; max-width: 50%; padding-right: 12px; padding-left: 12px;">
+                <div class="card" style="margin-bottom: 24px; height: calc(100% - 24px);">
+                    <div class="card-header">
+                        <h3>Expenses List</h3>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead>
+                                <tr style="background: #f9fafb;">
+                                    <th>Name</th>
+                                    <th>Description</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody id="repExpensesTbody">
+                                <tr><td colspan="3" class="empty-cell">Generate report to view data</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Purchase Orders List -->
-            <div class="card" style="margin-top: 24px;">
-                <div class="card-header">
-                    <h3>Purchase Orders List</h3>
-                </div>
-                <div class="table-wrap">
-                    <table class="table">
-                        <thead>
-                            <tr style="background: #f9fafb;">
-                                <th>PO Number</th>
-                                <th>Supplier</th>
-                                <th>Status</th>
-                                <th class="text-right">Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody id="repPurchaseOrdersTbody">
-                            <tr><td colspan="4" class="empty-cell">Generate report to view data</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+        <!-- Purchase Orders List -->
+        <div class="card" style="margin-top: 0;">
+            <div class="card-header">
+                <h3>Purchase Orders List</h3>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr style="background: #f9fafb;">
+                            <th>PO Number</th>
+                            <th>Supplier</th>
+                            <th>Status</th>
+                            <th class="text-right">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="repPurchaseOrdersTbody">
+                        <tr><td colspan="4" class="empty-cell">Generate report to view data</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

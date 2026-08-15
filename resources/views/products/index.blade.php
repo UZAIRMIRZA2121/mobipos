@@ -9,7 +9,7 @@
         <div class="card-header">
           <h3>Product Inventory</h3>
           <div class="header-actions">
-            <input type="text" class="input input-sm" id="prodSearch" placeholder="Search products (Name/IMEI)..." oninput="renderProducts()"/>
+            <input type="text" class="input input-sm" id="prodSearch" placeholder="Search products (Code)..." oninput="renderProducts()"/>
             <select class="input input-sm" id="prodTypeFilter" onchange="renderProducts()">
                 <option value="">All Types</option>
                 <option value="mobile">Mobile</option>
