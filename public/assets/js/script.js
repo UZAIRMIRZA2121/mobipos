@@ -2733,14 +2733,14 @@ async function renderPurchaseOrders() {
                 </span>
               </td>
               <td class="text-right">
-                  <button class="btn btn-ghost" onclick='viewPO(${JSON.stringify(po).replace(/'/g, "&apos;")})'>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                  <button class="action-btn" style="color:var(--primary)" onclick='viewPO(${JSON.stringify(po).replace(/'/g, "&apos;")})' title="View">
+                      ${VIEW_SVG}
                   </button>
-                  <button class="btn btn-ghost" onclick='editPO(${JSON.stringify(po).replace(/'/g, "&apos;")})'>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                  <button class="action-btn edit" onclick='editPO(${JSON.stringify(po).replace(/'/g, "&apos;")})' title="Edit">
+                      ${EDIT_SVG}
                   </button>
-                  <button class="btn btn-ghost" style="color:var(--danger)" onclick="deletePO(${po.id})">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                  <button class="action-btn del" onclick="deletePO(${po.id})" title="Delete">
+                      ${DEL_SVG}
                   </button>
               </td>
           </tr>
@@ -2762,7 +2762,10 @@ function viewPO(po) {
   if (po.items && po.items.length > 0) {
     tbody.innerHTML = po.items.map(item => `
           <tr>
-              <td>${item.product ? item.product.name : 'Unknown Product'}</td>
+              <td>
+                 <div style="font-weight:500">${item.product ? item.product.name : 'Unknown Product'}</div>
+                 ${item.product && (item.product.code || item.product.barcode) ? `<div style="font-size:11px; color:var(--text-muted); font-family:monospace;">Code: ${item.product.code || item.product.barcode}</div>` : ''}
+              </td>
               <td>${item.qty}</td>
               <td>${fmtCur(item.price)}</td>
               <td>${fmtCur(item.amount)}</td>
@@ -2792,7 +2795,10 @@ function printPO() {
   if (po.items && po.items.length > 0) {
     itemsHtml = po.items.map(item => `
             <tr>
-                <td>${item.product ? item.product.name : 'Unknown Product'}</td>
+                <td>
+                   <div style="font-weight:500">${item.product ? item.product.name : 'Unknown Product'}</div>
+                   ${item.product && (item.product.code || item.product.barcode) ? `<div style="font-size:12px; color:#666; font-family:monospace;">Code: ${item.product.code || item.product.barcode}</div>` : ''}
+                </td>
                 <td>${item.qty}</td>
                 <td>${fmtCur(item.price)}</td>
                 <td style="text-align: right;">${fmtCur(item.amount)}</td>
@@ -2877,8 +2883,10 @@ function printPO() {
     printFrame = document.createElement('iframe');
     printFrame.id = 'poPrintFrame';
     printFrame.style.position = 'absolute';
-    printFrame.style.width = '0px';
-    printFrame.style.height = '0px';
+    printFrame.style.width = '100vw';
+    printFrame.style.height = '100vh';
+    printFrame.style.left = '-10000px';
+    printFrame.style.top = '-10000px';
     printFrame.style.border = 'none';
     document.body.appendChild(printFrame);
   }
@@ -2980,13 +2988,19 @@ function editPO(po) {
   document.getElementById('poSupplier').value = po.supplier_name || '';
   document.getElementById('poPaidAmount').value = po.paid_amount || '0';
 
-  currentPOItems = po.items ? po.items.map(item => ({
-    product_id: item.product_id,
-    name: item.product ? item.product.name : 'Unknown Product',
-    code: item.product ? (item.product.code || item.product.barcode || '') : '',
-    qty: item.qty,
-    price: item.price
-  })) : [];
+  currentPOItems = po.items ? po.items.map(item => {
+    const p = (store.get('products') || []).find(x => x.id === item.product_id);
+    return {
+      product_id: item.product_id,
+      name: item.product ? item.product.name : 'Unknown Product',
+      code: item.product ? (item.product.code || item.product.barcode || '') : '',
+      qty: item.qty,
+      price: item.price,
+      sale_price: p ? parseFloat(p.sale_price) || 0 : 0,
+      type: p ? p.type : '',
+      imeis: []
+    };
+  }) : [];
 
   const searchInput = document.getElementById('poProductSearch');
   if (searchInput) searchInput.value = '';
@@ -3011,13 +3025,26 @@ function addProdToPO() {
   const name = hiddenInput.dataset.name;
   const code = hiddenInput.dataset.code || '';
   const price = parseFloat(hiddenInput.dataset.price) || 0;
+  
+  const p = (store.get('products') || []).find(x => x.id === prodId);
+  const salePrice = p ? parseFloat(p.sale_price) || 0 : 0;
+  const type = p ? p.type : '';
 
   // Check if already added
   const existing = currentPOItems.find(i => i.product_id === prodId);
   if (existing) {
     existing.qty += 1;
   } else {
-    currentPOItems.push({ product_id: prodId, name: name, code: code, qty: 1, price: price });
+    currentPOItems.push({ 
+       product_id: prodId, 
+       name: name, 
+       code: code, 
+       qty: 1, 
+       price: price,
+       sale_price: salePrice,
+       type: type,
+       imeis: [] 
+    });
   }
 
   // Clear selection
@@ -3043,6 +3070,37 @@ function updatePOItemPrice(index, price) {
   renderPOItemsTable();
 }
 
+function updatePOItemSalePrice(index, price) {
+  currentPOItems[index].sale_price = parseFloat(price) || 0;
+}
+
+function openPoImeiSetup(index) {
+  const row = document.getElementById(`po-imei-row-${index}`);
+  const container = document.getElementById(`po-imei-container-${index}`);
+  if (!row || !container) return;
+  
+  const item = currentPOItems[index];
+  item.imeis = item.imeis || [];
+  
+  let html = '';
+  for(let i=0; i<item.qty; i++) {
+     let val = item.imeis[i] || '';
+     html += `<input type="text" class="input" style="padding:4px; font-size:12px;" placeholder="IMEI ${i+1}" value="${val}" oninput="updatePoImei(${index}, ${i}, this.value)" />`;
+  }
+  container.innerHTML = html;
+  row.style.display = 'table-row';
+}
+
+function closePoImeiSetup(index) {
+  const row = document.getElementById(`po-imei-row-${index}`);
+  if (row) row.style.display = 'none';
+  renderPOItemsTable();
+}
+
+function updatePoImei(itemIndex, imeiIndex, val) {
+  currentPOItems[itemIndex].imeis[imeiIndex] = val;
+}
+
 function renderPOItemsTable() {
   const tbody = document.getElementById('poItemsTbody');
   if (!currentPOItems.length) {
@@ -3055,15 +3113,32 @@ function renderPOItemsTable() {
   tbody.innerHTML = currentPOItems.map((item, index) => {
     const amount = item.qty * item.price;
     total += amount;
+    
+    const needsImei = ['mobile', 'tablet', 'laptop'].includes(item.type);
+    let imeisFilled = (item.imeis || []).filter(x => x && x.trim() !== '').length;
+
     return `
       <tr>
         <td>${item.name} ${item.code ? `<div style="font-size:11px; color:var(--text-muted); font-family:monospace;">Code: ${item.code}</div>` : ''}</td>
         <td><input type="number" class="input" style="padding:4px; height:auto" min="1" value="${item.qty}" onchange="updatePOItemQty(${index}, this.value)"></td>
         <td><input type="number" class="input" style="padding:4px; height:auto" min="0" value="${item.price}" onchange="updatePOItemPrice(${index}, this.value)"></td>
+        <td><input type="number" class="input" style="padding:4px; height:auto" min="0" value="${item.sale_price || 0}" onchange="updatePOItemSalePrice(${index}, this.value)"></td>
+        <td>
+           ${needsImei ? `<button class="btn btn-sm btn-outline" onclick="openPoImeiSetup(${index})">IMEIs (${imeisFilled}/${item.qty})</button>` : `<span class="text-muted" style="font-size:12px;">N/A</span>`}
+        </td>
         <td>${fmtCur(amount)}</td>
         <td class="text-right">
           <button class="btn btn-ghost" style="color:var(--danger); padding:4px;" onclick="removeProdFromPO(${index})">✕</button>
         </td>
+      </tr>
+      <tr id="po-imei-row-${index}" style="display:none; background:#fafafa;">
+         <td colspan="7" style="padding: 10px; border-bottom: 2px solid var(--border);">
+             <div style="font-size:12px; font-weight:600; margin-bottom:8px;">Setup IMEIs for ${item.name}</div>
+             <div id="po-imei-container-${index}" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px;">
+                 <!-- IMEIs injected here -->
+             </div>
+             <button class="btn btn-sm btn-secondary" style="margin-top:10px;" onclick="closePoImeiSetup(${index})">Done</button>
+         </td>
       </tr>
       `;
   }).join('');
@@ -3085,7 +3160,9 @@ async function savePO() {
     items: currentPOItems.map(i => ({
       product_id: i.product_id,
       qty: i.qty,
-      price: i.price
+      price: i.price,
+      sale_price: i.sale_price,
+      imeis: i.imeis || []
     }))
   };
 

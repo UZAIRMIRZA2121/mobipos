@@ -32,9 +32,11 @@
           <thead>
             <tr>
               <th>Product</th>
-              <th width="100">Qty</th>
-              <th width="150">Price/Unit</th>
-              <th width="150">Amount</th>
+              <th width="80">Qty</th>
+              <th width="120">Purchase Price</th>
+              <th width="120">Sale Price</th>
+              <th width="100">IMEI Setup</th>
+              <th width="120">Amount</th>
               <th width="60" class="text-right">✕</th>
             </tr>
           </thead>

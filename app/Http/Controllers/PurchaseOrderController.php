@@ -87,7 +87,7 @@ class PurchaseOrderController extends Controller
                 'payment_status' => $paymentStatus,
             ]);
 
-            foreach ($validated['items'] as $item) {
+            foreach ($request->items as $item) {
                 $amount = $item['qty'] * $item['price'];
                 
                 PurchaseOrderItem::create([
@@ -99,11 +99,29 @@ class PurchaseOrderController extends Controller
                     'user_id' => Auth::id(),
                 ]);
 
-                // Increment Stock
+                // Increment Stock, update prices, and save IMEIs
                 $product = Product::find($item['product_id']);
                 if ($product) {
                     $product->stock += $item['qty'];
+                    if (isset($item['sale_price']) && is_numeric($item['sale_price'])) {
+                        $product->sale_price = $item['sale_price'];
+                    }
+                    // Optionally update purchase price to the latest PO price
+                    if (isset($item['price']) && is_numeric($item['price'])) {
+                        $product->purchase_price = $item['price'];
+                    }
                     $product->save();
+
+                    if (in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
+                        $imeisArray = $item['imeis'] ?? [];
+                        for ($i = 0; $i < $item['qty']; $i++) {
+                            \App\Models\ProductStockUnit::create([
+                                'product_id' => $product->id,
+                                'imeis' => $imeisArray[$i] ?? null,
+                                'status' => 'available',
+                            ]);
+                        }
+                    }
                 }
             }
 
@@ -169,7 +187,7 @@ class PurchaseOrderController extends Controller
             ]);
 
             // Add new items and increment stock
-            foreach ($validated['items'] as $item) {
+            foreach ($request->items as $item) {
                 $amount = $item['qty'] * $item['price'];
                 
                 PurchaseOrderItem::create([
@@ -184,7 +202,24 @@ class PurchaseOrderController extends Controller
                 $product = Product::find($item['product_id']);
                 if ($product) {
                     $product->stock += $item['qty'];
+                    if (isset($item['sale_price']) && is_numeric($item['sale_price'])) {
+                        $product->sale_price = $item['sale_price'];
+                    }
+                    if (isset($item['price']) && is_numeric($item['price'])) {
+                        $product->purchase_price = $item['price'];
+                    }
                     $product->save();
+
+                    if (in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
+                        $imeisArray = $item['imeis'] ?? [];
+                        for ($i = 0; $i < $item['qty']; $i++) {
+                            \App\Models\ProductStockUnit::create([
+                                'product_id' => $product->id,
+                                'imeis' => $imeisArray[$i] ?? null,
+                                'status' => 'available',
+                            ]);
+                        }
+                    }
                 }
             }
 
