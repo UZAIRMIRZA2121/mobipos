@@ -712,7 +712,7 @@ function buildProdCard(p) {
     ${inCart ? `<div class="med-card-incart" style="position:absolute; right:8px; top:8px; background:var(--success); color:white; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; z-index:2; box-shadow:0 2px 4px rgba(0,0,0,0.2);">${cartQty}</div>` : ''}
     <div class="med-card-cat">${p.type || 'Phone'} - ${p.condition || 'Used'}</div>
     <div class="med-card-name" style="margin-bottom:2px; display:flex; justify-content:space-between; align-items:flex-start; gap:4px;">
-      <span>${p.name} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Barcode: ${p.barcode})</span>` : '')}</span>
+      <span>${p.name} ${p.condition || p.color ? `<span style="font-size:12px; font-weight:normal; color:var(--primary);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Barcode: ${p.barcode})</span>` : '')}</span>
       <span style="font-weight:800; font-size:14px; color:var(--primary);">${fmtCur(p.sale)}</span>
     </div>
     ${p.storage || p.color || p.imei ? `<div class="med-card-generic" style="font-size:10.5px; color:var(--text-muted); line-height:1.2; margin-bottom:auto; padding-bottom:8px;">
@@ -738,7 +738,7 @@ function buildProdRow(p) {
 
   return `<div class="med-row${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})">
     <div class="med-row-info">
-      <div class="med-row-name">${p.name} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Barcode: ${p.barcode})</span>` : '')} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart ✕${inCart.qty}</span>` : ''}
+      <div class="med-row-name">${p.name} ${p.condition || p.color ? `<span style="font-size:11px; font-weight:normal; color:var(--primary);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Barcode: ${p.barcode})</span>` : '')} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart ✕${inCart.qty}</span>` : ''}
       </div>
       <div class="med-row-meta" style="margin-top: 4px;">
         ${p.storage ? p.storage + ' · ' : ''}
@@ -858,7 +858,8 @@ function addToCart(prodId) {
     existing.sub = existing.qty * existing.price;
   } else {
     if (p.stock <= 0) { toast('Out of stock!', 'danger'); return; }
-    cart.push({ prodId: p.id, name: p.name, price: parseFloat(p.sale), qty: 1, sub: parseFloat(p.sale), maxStock: p.stock });
+    const pName = p.name + (p.condition || p.color ? ` (${[p.condition, p.color].filter(Boolean).join(' - ')})` : '');
+    cart.push({ prodId: p.id, name: pName, price: parseFloat(p.sale), qty: 1, sub: parseFloat(p.sale), maxStock: p.stock });
   }
   renderCart();
   renderProdGrid();
@@ -912,7 +913,7 @@ function confirmImeiSelection() {
   } else {
       cart.push({ 
           prodId: p.id, 
-          name: p.name, 
+          name: p.name + (p.condition || p.color ? ` (${[p.condition, p.color].filter(Boolean).join(' - ')})` : ''), 
           price: parseFloat(p.sale), 
           qty: selectedUnitIds.length, 
           sub: parseFloat(p.sale) * selectedUnitIds.length, 
@@ -1700,7 +1701,7 @@ function renderProducts() {
         </td>
         <td>
           ${p.code ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono);margin-bottom:2px;">Code: ${p.code}</div>` : ''}
-          <div style="font-weight:500">${p.name}</div>
+          <div style="font-weight:500">${p.name} ${p.condition || p.color ? `<span style="font-size:12px; font-weight:normal; color:var(--text-muted);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''}</div>
           ${p.imei ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">IMEI/SN: ${p.imei}</div>` : ''}
           ${p.barcode ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">Barcode: ${p.barcode}</div>` : ''}
         </td>
@@ -2763,7 +2764,7 @@ function viewPO(po) {
     tbody.innerHTML = po.items.map(item => `
           <tr>
               <td>
-                 <div style="font-weight:500">${item.product ? item.product.name : 'Unknown Product'}</div>
+                 <div style="font-weight:500">${item.product ? item.product.name + (item.product.condition || item.product.color ? ` (${[item.product.condition, item.product.color].filter(Boolean).join(' - ')})` : '') : 'Unknown Product'}</div>
                  ${item.product && (item.product.code || item.product.barcode) ? `<div style="font-size:11px; color:var(--text-muted); font-family:monospace;">Code: ${item.product.code || item.product.barcode}</div>` : ''}
               </td>
               <td>${item.qty}</td>
@@ -2796,7 +2797,7 @@ function printPO() {
     itemsHtml = po.items.map(item => `
             <tr>
                 <td>
-                   <div style="font-weight:500">${item.product ? item.product.name : 'Unknown Product'}</div>
+                   <div style="font-weight:500">${item.product ? item.product.name + (item.product.condition || item.product.color ? ` (${[item.product.condition, item.product.color].filter(Boolean).join(' - ')})` : '') : 'Unknown Product'}</div>
                    ${item.product && (item.product.code || item.product.barcode) ? `<div style="font-size:12px; color:#666; font-family:monospace;">Code: ${item.product.code || item.product.barcode}</div>` : ''}
                 </td>
                 <td>${item.qty}</td>
@@ -2924,8 +2925,10 @@ function populatePoProductDropdown(q = '') {
 
   listEl.innerHTML = prods.map(p => {
       let codeStr = p.code ? ` (Code: ${p.code})` : (p.barcode ? ` (Barcode: ${p.barcode})` : '');
-      let displayStr = `${p.name}${codeStr}`;
-      let safeName = (p.name || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      let attrStr = (p.condition || p.color) ? ` (${[p.condition, p.color].filter(Boolean).join(' - ')})` : '';
+      let displayStr = `${p.name}${attrStr}${codeStr}`;
+      let pFullName = p.name + attrStr;
+      let safeName = (pFullName || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
       let safeCode = (p.code || p.barcode || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
       let safeDisplayStr = displayStr.replace(/'/g, "\\'").replace(/"/g, "&quot;");
       

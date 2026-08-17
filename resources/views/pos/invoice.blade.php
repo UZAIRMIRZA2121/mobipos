@@ -203,7 +203,12 @@
             @foreach($order->items as $item)
             <tr>
                 <td style="width: 60%">
-                    <span class="item-name">{{ $item->product ? $item->product->name : 'Unknown Product' }}</span>
+                    <span class="item-name">
+                        {{ $item->product ? $item->product->name : 'Unknown Product' }}
+                        @if($item->product && ($item->product->condition || $item->product->color))
+                            ({{ collect([$item->product->condition, $item->product->color])->filter()->join(' - ') }})
+                        @endif
+                    </span>
                     @if($item->product && ($item->product->code || $item->product->barcode))
                         <div class="item-meta">Code: {{ $item->product->code ?? $item->product->barcode }}</div>
                     @endif
