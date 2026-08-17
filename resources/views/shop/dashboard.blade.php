@@ -34,7 +34,7 @@
           </div>
           <div>
             <div id="dashActualEarning" style="font-size: 20px; font-weight: 700; color: #111827; line-height: 1.2;">PKR 0.00</div>
-            <div style="color: #6b7280; font-size: 13px; font-weight: 500; margin-top: 4px;">Actual Sales</div>
+            <div style="color: #6b7280; font-size: 13px; font-weight: 500; margin-top: 4px;">Actual Profit</div>
           </div>
         </div>
 

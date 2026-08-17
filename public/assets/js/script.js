@@ -538,8 +538,10 @@ function renderPOS() {
 
   // Populate category select (dropdown)
   const catSel = document.getElementById('posCatFilter');
-  catSel.innerHTML = '<option value="">All Categories</option>' +
-    cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  if (catSel) {
+    catSel.innerHTML = '<option value="">All Categories</option>' +
+      cats.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  }
 
   renderProdGrid();
   renderCart();
@@ -660,10 +662,8 @@ function renderProdGrid() {
   let prods = store.get('products');
   const q = posFilter.q.toLowerCase();
   if (q) prods = prods.filter(p =>
-    p.name.toLowerCase().includes(q) ||
-    (p.imei || '').toLowerCase().includes(q) ||
-    (p.color || '').toLowerCase().includes(q) ||
-    (p.storage || '').toLowerCase().includes(q)
+    (p.code || '').toLowerCase().includes(q) ||
+    (p.barcode || '').toLowerCase().includes(q)
   );
   // We don't have categories mapped exactly yet, skipping category filter unless implemented
   // if (posFilter.catId) prods = prods.filter(p => p.catId == posFilter.catId);
@@ -712,7 +712,7 @@ function buildProdCard(p) {
     ${inCart ? `<div class="med-card-incart" style="position:absolute; right:8px; top:8px; background:var(--success); color:white; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; z-index:2; box-shadow:0 2px 4px rgba(0,0,0,0.2);">${cartQty}</div>` : ''}
     <div class="med-card-cat">${p.type || 'Phone'} - ${p.condition || 'Used'}</div>
     <div class="med-card-name" style="margin-bottom:2px; display:flex; justify-content:space-between; align-items:flex-start; gap:4px;">
-      <span>${p.name}</span>
+      <span>${p.name} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Barcode: ${p.barcode})</span>` : '')}</span>
       <span style="font-weight:800; font-size:14px; color:var(--primary);">${fmtCur(p.sale)}</span>
     </div>
     ${p.storage || p.color || p.imei ? `<div class="med-card-generic" style="font-size:10.5px; color:var(--text-muted); line-height:1.2; margin-bottom:auto; padding-bottom:8px;">
@@ -738,7 +738,7 @@ function buildProdRow(p) {
 
   return `<div class="med-row${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})">
     <div class="med-row-info">
-      <div class="med-row-name">${p.name} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart ✕${inCart.qty}</span>` : ''}
+      <div class="med-row-name">${p.name} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Barcode: ${p.barcode})</span>` : '')} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart ✕${inCart.qty}</span>` : ''}
       </div>
       <div class="med-row-meta" style="margin-top: 4px;">
         ${p.storage ? p.storage + ' · ' : ''}
@@ -2895,6 +2895,68 @@ function printPO() {
   }, 250);
 }
 
+function populatePoProductDropdown(q = '') {
+  const listEl = document.getElementById('poProductDropdownList');
+  if (!listEl) return;
+
+  let prods = store.get('products') || [];
+  
+  if (q) {
+    q = q.toLowerCase();
+    prods = prods.filter(p => 
+      (p.code || '').toLowerCase().includes(q) || 
+      (p.barcode || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (prods.length === 0) {
+    listEl.innerHTML = '<div style="padding:10px; color:var(--text-muted); text-align:center;">No products found</div>';
+    return;
+  }
+
+  listEl.innerHTML = prods.map(p => {
+      let codeStr = p.code ? ` (Code: ${p.code})` : (p.barcode ? ` (Barcode: ${p.barcode})` : '');
+      let displayStr = `${p.name}${codeStr}`;
+      let safeName = (p.name || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      let safeCode = (p.code || p.barcode || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      let safeDisplayStr = displayStr.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+      
+      return `<div class="po-dropdown-item" style="padding:8px 12px; border-bottom:1px solid var(--border-light); cursor:pointer;" 
+                   onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'"
+                   onclick="selectPoProduct(${p.id}, '${safeName}', ${p.purchase_price || 0}, '${safeCode}', '${safeDisplayStr}')">
+                   <div style="font-weight:500; font-size:14px; margin-bottom: 2px;">${displayStr}</div>
+                   <div style="font-size:12px; color:var(--text-muted);">${fmtCur(p.purchase_price)}</div>
+              </div>`;
+  }).join('');
+}
+
+function selectPoProduct(id, name, price, code, displayStr) {
+  const hiddenInput = document.getElementById('poProductSelect');
+  if(hiddenInput) {
+      hiddenInput.value = id;
+      hiddenInput.dataset.name = name;
+      hiddenInput.dataset.price = price;
+      hiddenInput.dataset.code = code;
+  }
+  
+  const searchInput = document.getElementById('poProductSearch');
+  if(searchInput) searchInput.value = displayStr;
+  
+  togglePoDropdown(false);
+}
+
+function filterPoDropdown(q) {
+  togglePoDropdown(true);
+  populatePoProductDropdown(q);
+}
+
+function togglePoDropdown(show) {
+  const listEl = document.getElementById('poProductDropdownList');
+  if (listEl) {
+    listEl.style.display = show ? 'block' : 'none';
+  }
+}
+
 function openPOModal() {
   currentPOItems = [];
   document.getElementById('poId').value = '';
@@ -2902,11 +2964,11 @@ function openPOModal() {
   document.getElementById('poTotalAmount').value = '0';
   document.getElementById('poPaidAmount').value = '0';
 
+  const searchInput = document.getElementById('poProductSearch');
+  if (searchInput) searchInput.value = '';
+
   // Populate products dropdown
-  const prods = store.get('products') || [];
-  const select = document.getElementById('poProductSelect');
-  select.innerHTML = '<option value="">Select a product...</option>' +
-    prods.map(p => `<option value="${p.id}" data-price="${p.purchase_price || 0}">${p.name} - ${p.imei || ''} (${fmtCur(p.purchase_price)})</option>`).join('');
+  populatePoProductDropdown();
 
   document.getElementById('poModalTitle').textContent = 'Add to Purchase';
   renderPOItemsTable();
@@ -2921,15 +2983,16 @@ function editPO(po) {
   currentPOItems = po.items ? po.items.map(item => ({
     product_id: item.product_id,
     name: item.product ? item.product.name : 'Unknown Product',
+    code: item.product ? (item.product.code || item.product.barcode || '') : '',
     qty: item.qty,
     price: item.price
   })) : [];
 
+  const searchInput = document.getElementById('poProductSearch');
+  if (searchInput) searchInput.value = '';
+
   // Populate products dropdown
-  const prods = store.get('products') || [];
-  const select = document.getElementById('poProductSelect');
-  select.innerHTML = '<option value="">Select a product...</option>' +
-    prods.map(p => `<option value="${p.id}" data-price="${p.purchase_price || 0}">${p.name} - ${p.imei || ''} (${fmtCur(p.purchase_price)})</option>`).join('');
+  populatePoProductDropdown();
 
   document.getElementById('poModalTitle').textContent = 'Edit Purchase Order';
   renderPOItemsTable();
@@ -2941,20 +3004,26 @@ function closePOModal() {
 }
 
 function addProdToPO() {
-  const select = document.getElementById('poProductSelect');
-  if (!select.value) return toast('Please select a product', 'warning');
+  const hiddenInput = document.getElementById('poProductSelect');
+  if (!hiddenInput || !hiddenInput.value) return toast('Please select a product', 'warning');
 
-  const prodId = parseInt(select.value);
-  const name = select.options[select.selectedIndex].text.split(' - ')[0];
-  const price = parseFloat(select.options[select.selectedIndex].dataset.price) || 0;
+  const prodId = parseInt(hiddenInput.value);
+  const name = hiddenInput.dataset.name;
+  const code = hiddenInput.dataset.code || '';
+  const price = parseFloat(hiddenInput.dataset.price) || 0;
 
   // Check if already added
   const existing = currentPOItems.find(i => i.product_id === prodId);
   if (existing) {
     existing.qty += 1;
   } else {
-    currentPOItems.push({ product_id: prodId, name: name, qty: 1, price: price });
+    currentPOItems.push({ product_id: prodId, name: name, code: code, qty: 1, price: price });
   }
+
+  // Clear selection
+  hiddenInput.value = '';
+  const searchInput = document.getElementById('poProductSearch');
+  if(searchInput) searchInput.value = '';
 
   renderPOItemsTable();
 }
@@ -2988,7 +3057,7 @@ function renderPOItemsTable() {
     total += amount;
     return `
       <tr>
-        <td>${item.name}</td>
+        <td>${item.name} ${item.code ? `<div style="font-size:11px; color:var(--text-muted); font-family:monospace;">Code: ${item.code}</div>` : ''}</td>
         <td><input type="number" class="input" style="padding:4px; height:auto" min="1" value="${item.qty}" onchange="updatePOItemQty(${index}, this.value)"></td>
         <td><input type="number" class="input" style="padding:4px; height:auto" min="0" value="${item.price}" onchange="updatePOItemPrice(${index}, this.value)"></td>
         <td>${fmtCur(amount)}</td>

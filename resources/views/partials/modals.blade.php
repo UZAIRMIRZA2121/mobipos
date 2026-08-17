@@ -14,10 +14,14 @@
         </div>
         <div class="form-group" style="grid-column: span 2;">
           <label>Select Product to Add</label>
-          <div style="display:flex; gap:10px;">
-            <select id="poProductSelect" class="input" style="flex:1;">
-              <option value="">Select a product...</option>
-            </select>
+          <div style="display:flex; gap:10px; position:relative;">
+            <div class="custom-searchable-dropdown" style="flex:1; position:relative;">
+              <input type="hidden" id="poProductSelect" value="" />
+              <input type="text" id="poProductSearch" class="input" placeholder="Search by Code..." oninput="filterPoDropdown(this.value)" onclick="togglePoDropdown(true)" onblur="setTimeout(() => togglePoDropdown(false), 200)" autocomplete="off" style="width:100%;" />
+              <div id="poProductDropdownList" style="display:none; position:absolute; top:100%; left:0; width:100%; max-height:200px; overflow-y:auto; background:#fff; border:1px solid var(--border); border-top:none; border-radius:0 0 6px 6px; z-index:100; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                <!-- options populated via JS -->
+              </div>
+            </div>
             <button class="btn btn-secondary" onclick="addProdToPO()">Add</button>
           </div>
         </div>

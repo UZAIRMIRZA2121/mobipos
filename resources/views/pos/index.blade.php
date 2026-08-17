@@ -42,9 +42,6 @@
                 <input type="text" id="posSearch" class="pos-premium-search" placeholder="Scan barcode or search products..."/>
                 <button class="pos-search-clear hidden" id="posSearchClear" onclick="clearPosSearch()">✕</button>
             </div>
-            <select id="posCatFilter" class="pos-premium-filter">
-                <option value="">All Categories</option>
-            </select>
           </div>
 
           <!-- Product Grid -->
