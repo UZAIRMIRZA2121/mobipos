@@ -23,3 +23,7 @@
 
 </main>
 @endsection
+
+@section('scripts')
+<script src="{{ asset('assets/js/sales.js') }}?v={{ time() }}"></script>
+@endsection

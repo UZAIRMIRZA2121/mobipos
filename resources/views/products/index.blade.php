@@ -40,3 +40,9 @@
 
 </main>
 @endsection
+
+@section('scripts')
+<script src="{{ asset('assets/js/products.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/categories.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/customers.js') }}?v={{ time() }}"></script>
+@endsection

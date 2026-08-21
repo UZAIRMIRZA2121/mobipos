@@ -67,3 +67,8 @@
     </div>
 </main>
 @endsection
+
+@section('scripts')
+<script src="{{ asset('assets/js/purchases.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/products.js') }}?v={{ time() }}"></script>
+@endsection

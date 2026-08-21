@@ -13,12 +13,15 @@
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <link rel="manifest" href="{{ asset('manifest.json') }}">
+        <meta name="theme-color" content="#4f46e5">
+        <link rel="apple-touch-icon" href="{{ asset('assets/logo/main-logo.png') }}">
     </head>
     <body class="font-sans text-gray-900 antialiased">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 dark:bg-gray-900">
             <div>
-                <a href="/">
-                    <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
+                <a href="/" class="block  p-2 rounded-2xl shadow-lg">
+                    <img src="{{ asset('assets/logo/pos-logo.jpg') }}" alt="MobiPOS Logo" class="w-32 h-auto mx-auto rounded-xl" style="max-width: 150px;">
                 </a>
             </div>
 
@@ -26,5 +29,16 @@
                 {{ $slot }}
             </div>
         </div>
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js').then(registration => {
+                        console.log('SW registered:', registration.scope);
+                    }).catch(error => {
+                        console.log('SW registration failed:', error);
+                    });
+                });
+            }
+        </script>
     </body>
 </html>

@@ -15,7 +15,15 @@
                 </div>
                 <div class="form-group">
                     <label>Total Amount</label>
-                    <p><strong>PKR {{ number_format($installment->total_amount, 2) }}</strong></p>
+                    <p>
+                        <strong>PKR {{ number_format($installment->total_amount, 2) }}</strong>
+                        @if($installment->interest_percentage > 0)
+                            <br>
+                            <span style="font-size: 12px; color: #6b7280;">Base: PKR {{ number_format($installment->actual_price, 2) }}</span>
+                            <br>
+                            <span style="font-size: 12px; color: #6b7280;">Interest: {{ $installment->interest_percentage }}%</span>
+                        @endif
+                    </p>
                 </div>
                 <div class="form-group">
                     <label>Down Payment (Advance)</label>

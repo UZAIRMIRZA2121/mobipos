@@ -275,8 +275,17 @@ function renderReports() {
 // SIDEBAR TOGGLE
 // ============================================================
 function openSidebar() {
-  document.getElementById('sidebar').classList.add('open');
-  document.getElementById('overlay').classList.add('visible');
+  if (window.innerWidth <= 992) {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('overlay').classList.add('visible');
+  } else {
+    document.body.classList.toggle('sidebar-collapsed');
+    if (document.body.classList.contains('sidebar-collapsed')) {
+      localStorage.setItem('sidebarState', 'collapsed');
+    } else {
+      localStorage.setItem('sidebarState', 'open');
+    }
+  }
 }
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
@@ -1136,6 +1145,8 @@ async function checkout() {
     const instModal = document.getElementById('installmentModal');
     if (instModal) {
       instModal.classList.remove('hidden');
+      window.baseInstallmentTotal = total;
+      document.getElementById('instPercentage').value = 0;
       document.getElementById('instTotal').value = total.toFixed(2);
       document.getElementById('instAdvance').value = paid.toFixed(2);
       calcInstallment();
@@ -1159,6 +1170,8 @@ async function checkout() {
     installment_months: (window.installmentData ? window.installmentData.months : 0),
     installment_monthly_amount: (window.installmentData ? window.installmentData.monthly : 0),
     installment_payment_day: (window.installmentData ? window.installmentData.payment_day : 10),
+    installment_interest_percentage: (window.installmentData ? window.installmentData.interest_percentage : 0),
+    installment_actual_price: (window.installmentData ? window.installmentData.actual_price : 0),
     items: cart.map(c => ({
       product_id: c.prodId,
       qty: c.qty,
@@ -1757,10 +1770,21 @@ function editProduct(id = null) {
 
     document.getElementById('prodCategory').value = p.category_id || '';
     document.getElementById('prodBuyer').value = p.buyer_id || '';
+    
+    if (p.image) {
+      document.getElementById('existingImagePreview').src = '/storage/' + p.image;
+      document.getElementById('existingImageContainer').style.display = 'block';
+    } else {
+      document.getElementById('existingImageContainer').style.display = 'none';
+    }
+    document.getElementById('prodImageDeleted').value = '0';
   } else {
     document.getElementById('prodModalTitle').textContent = 'Add Product';
     document.getElementById('prodId').value = '';
     ['prodName', 'prodCode', 'prodBarcode', 'prodColor', 'prodStorage', 'prodPurchase', 'prodSale', 'prodImage', 'prodBuyer'].forEach(id => document.getElementById(id).value = '');
+    if (typeof clearPhoto === 'function') clearPhoto();
+    document.getElementById('existingImageContainer').style.display = 'none';
+    document.getElementById('prodImageDeleted').value = '0';
     document.getElementById('prodType').value = 'mobile';
     document.getElementById('prodCondition').value = 'new';
     document.getElementById('prodStatus').value = 'in_stock';
@@ -1837,7 +1861,10 @@ function toggleProductFields() {
 function openProductModal(id) {
   editProduct(id);
 }
-function closeProductModal() { document.getElementById('prodModal').classList.add('hidden'); }
+function closeProductModal() {
+  document.getElementById('prodModal').classList.add('hidden');
+  if (typeof clearPhoto === 'function') clearPhoto();
+}
 
 async function saveProduct() {
   const name = document.getElementById('prodName').value.trim();
@@ -1864,6 +1891,7 @@ async function saveProduct() {
   formData.append('sale_price', sale);
   formData.append('status', document.getElementById('prodStatus').value);
   formData.append('stock', document.getElementById('prodStock').value || 1);
+  formData.append('delete_image', document.getElementById('prodImageDeleted').value);
 
   const catId = parseInt(document.getElementById('prodCategory').value);
   if (catId) formData.append('category_id', catId);
@@ -2472,12 +2500,25 @@ async function saveCustomer() {
       const res = await api('/shop/api/customers', 'POST', formData);
       if (res && res.id) window.lastCreatedCustomerId = res.id;
       toast('Customer added!', 'success');
-      if (res && res.id && !document.getElementById('prodModal').classList.contains('hidden')) {
-        const select = document.getElementById('prodBuyer');
-        if (select) {
-          select.appendChild(new Option(`${name} (${phone || ''})`, res.id));
-          select.value = res.id;
-        }
+      
+      if (res && res.id) {
+        const optionText = `${name} (${phone || ''})`;
+        
+        const addAndSelect = (selectId, modalId) => {
+          const select = document.getElementById(selectId);
+          const modal = modalId ? document.getElementById(modalId) : null;
+          if (select) {
+            if (modal && modal.classList.contains('hidden')) return;
+            if (!Array.from(select.options).some(opt => opt.value == res.id)) {
+              select.appendChild(new Option(optionText, res.id));
+            }
+            select.value = res.id;
+          }
+        };
+
+        addAndSelect('prodBuyer', 'prodModal');
+        addAndSelect('newInstCustomer', 'newInstallmentModal');
+        addAndSelect('posCustomer', null);
       }
     }
     closeCustModal();
@@ -3230,6 +3271,14 @@ function calcInstallment() {
   document.getElementById('instMonthlyAmount').value = monthly;
 }
 
+function applyInstallmentPercentage() {
+  const pct = parseFloat(document.getElementById('instPercentage').value || 0);
+  const base = window.baseInstallmentTotal || 0;
+  const newTotal = base + (base * (pct / 100));
+  document.getElementById('instTotal').value = newTotal.toFixed(2);
+  calcInstallment();
+}
+
 function confirmInstallment() {
   const total = parseFloat(document.getElementById('instTotal').value || 0);
   const advance = parseFloat(document.getElementById('instAdvance').value || 0);
@@ -3237,9 +3286,11 @@ function confirmInstallment() {
   const months = parseInt(document.getElementById('instMonths').value || 1);
   const monthly = parseFloat(document.getElementById('instMonthlyAmount').value || 0);
   const payment_day = parseInt(document.getElementById('instPaymentDay').value || 10);
+  const interest_percentage = parseFloat(document.getElementById('instPercentage').value || 0);
+  const actual_price = window.baseInstallmentTotal || 0;
 
   window.installmentData = {
-    total, advance, remaining, months, monthly, payment_day
+    total, advance, remaining, months, monthly, payment_day, interest_percentage, actual_price
   };
   
   document.getElementById('installmentModal').classList.add('hidden');
@@ -3279,4 +3330,91 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAlertBadge();
   // navigate('dashboard'); // Removed to prevent infinite reload loop in MPA mode
 });
+
+// ============================================================
+// CAMERA FUNCTIONALITY
+// ============================================================
+let cameraStream = null;
+
+function openCamera() {
+  const modal = document.getElementById('cameraModal');
+  const video = document.getElementById('cameraVideo');
+  const previewContainer = document.getElementById('photoPreviewContainer');
+  
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(function(stream) {
+        cameraStream = stream;
+        video.srcObject = stream;
+        modal.classList.remove('hidden');
+        previewContainer.style.display = 'none';
+      })
+      .catch(function(err) {
+        console.error("Camera error:", err);
+        alert("Could not access the camera. Please ensure you have granted permissions.");
+      });
+  } else {
+    alert("Camera API is not supported in your browser.");
+  }
+}
+
+function closeCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  document.getElementById('cameraModal').classList.add('hidden');
+}
+
+function takePhoto() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  const preview = document.getElementById('photoPreview');
+  const previewContainer = document.getElementById('photoPreviewContainer');
+  const fileInput = document.getElementById('prodImage');
+  
+  if (!cameraStream) return;
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  
+  const context = canvas.getContext('2d');
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
+  
+  canvas.toBlob(function(blob) {
+    const file = new File([blob], "camera_capture_" + Date.now() + ".jpg", { type: "image/jpeg" });
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    fileInput.files = dataTransfer.files;
+    
+    preview.src = URL.createObjectURL(blob);
+    previewContainer.style.display = 'block';
+    
+    closeCamera();
+  }, 'image/jpeg', 0.9);
+}
+
+function clearPhoto() {
+  document.getElementById('photoPreviewContainer').style.display = 'none';
+  document.getElementById('photoPreview').src = '';
+  document.getElementById('prodImage').value = '';
+}
+
+function markImageForDeletion() {
+  document.getElementById('existingImageContainer').style.display = 'none';
+  document.getElementById('prodImageDeleted').value = '1';
+}
+
+function handleImageSelect(input) {
+  const preview = document.getElementById('photoPreview');
+  const previewContainer = document.getElementById('photoPreviewContainer');
+  
+  if (input.files && input.files[0]) {
+    preview.src = URL.createObjectURL(input.files[0]);
+    previewContainer.style.display = 'block';
+    closeCamera();
+  } else {
+    clearPhoto();
+  }
+}
 

@@ -34,3 +34,7 @@
     </div>
 </main>
 @endsection
+
+@section('scripts')
+<script src="{{ asset('assets/js/expenses.js') }}?v={{ time() }}"></script>
+@endsection

@@ -310,6 +310,8 @@ class OrderController extends Controller
                     'down_payment' => $request->installment_down_payment ?? 0,
                     'agreed_monthly_amount' => $request->installment_monthly_amount ?? 0,
                     'payment_day' => $request->installment_payment_day ?? 10,
+                    'interest_percentage' => $request->installment_interest_percentage ?? 0,
+                    'actual_price' => $request->installment_actual_price ?? 0,
                     'status' => 'Active'
                 ]);
             }
@@ -453,6 +455,8 @@ class OrderController extends Controller
                     'down_payment' => $request->installment_down_payment ?? 0,
                     'agreed_monthly_amount' => $request->installment_monthly_amount ?? 0,
                     'payment_day' => $request->installment_payment_day ?? 10,
+                    'interest_percentage' => $request->installment_interest_percentage ?? 0,
+                    'actual_price' => $request->installment_actual_price ?? 0,
                     'status' => 'Active'
                 ]
             );

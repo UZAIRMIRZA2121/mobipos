@@ -70,7 +70,6 @@
                   <option value="cash">Cash</option>
                   <option value="card">Card</option>
                   <option value="online">Online Payment</option>
-                  <option value="installment">Installment</option>
                 </select>
               </div>
               <div class="form-group" style="flex:2">
@@ -119,4 +118,11 @@
     </div>
 
 </main>
+@endsection
+
+@section('scripts')
+<script src="{{ asset('assets/js/pos.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/customers.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/products.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/sales.js') }}?v={{ time() }}"></script>
 @endsection

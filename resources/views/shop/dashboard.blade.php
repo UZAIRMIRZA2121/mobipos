@@ -134,3 +134,8 @@
 
 </main>
 @endsection
+
+@section('scripts')
+<script src="{{ asset('assets/js/dashboard.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/sales.js') }}?v={{ time() }}"></script>
+@endsection

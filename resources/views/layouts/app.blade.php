@@ -8,10 +8,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}?v={{ time() }}">
+<link rel="manifest" href="{{ asset('manifest.json') }}">
+<meta name="theme-color" content="#4f46e5">
+<link rel="apple-touch-icon" href="{{ asset('assets/logo/main-logo.png') }}">
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 <body>
-
+<script>
+    if (localStorage.getItem('sidebarState') === 'collapsed') {
+        document.body.classList.add('sidebar-collapsed');
+    }
+</script>
     @include('partials.sidebar')
     
     <!-- OVERLAY -->
@@ -44,7 +51,18 @@
     };
 </script>
 
-<script src="{{ asset('assets/js/script.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/core.js') }}?v={{ time() }}"></script>
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(registration => {
+                console.log('SW registered:', registration.scope);
+            }).catch(error => {
+                console.log('SW registration failed:', error);
+            });
+        });
+    }
+</script>
 @yield('scripts')
 </body>
 </html>

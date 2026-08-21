@@ -195,7 +195,26 @@
             <button type="button" class="btn btn-outline" style="padding: 0 12px; font-size: 18px;" onclick="openCustModal()" title="Add Customer">+</button>
           </div>
         </div>
-        <div class="form-group"><label>Product Image</label><input type="file" id="prodImage" class="input" accept="image/*"/></div>
+        <div class="form-group">
+          <label>Product Image</label>
+          <div style="display: flex; gap: 8px; align-items: flex-start;">
+            <div style="flex: 1;">
+              <input type="file" id="prodImage" class="input" accept="image/*" onchange="handleImageSelect(this)"/>
+              <div id="photoPreviewContainer" style="display: none; margin-top: 10px; position: relative; width: fit-content;">
+                <img id="photoPreview" style="max-height: 120px; border-radius: 6px; border: 1px solid var(--border);" src="" alt="Preview">
+                <button type="button" onclick="clearPhoto()" style="position: absolute; top: -8px; right: -8px; background: var(--danger); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; line-height: 1;">×</button>
+              </div>
+              <div id="existingImageContainer" style="display: none; margin-top: 10px; position: relative; width: fit-content;">
+                <img id="existingImagePreview" style="max-height: 120px; border-radius: 6px; border: 1px solid var(--border);" src="" alt="Current Image">
+                <button type="button" onclick="markImageForDeletion()" style="position: absolute; top: -8px; right: -8px; background: var(--danger); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; line-height: 1;" title="Delete current image">×</button>
+              </div>
+              <input type="hidden" id="prodImageDeleted" value="0">
+            </div>
+            <button type="button" class="btn btn-outline" style="padding: 0 12px; height: 38px; display: flex; align-items: center; justify-content: center;" onclick="openCamera()" title="Take Photo">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -433,7 +452,11 @@
     <div class="modal-body" style="display: flex; flex-wrap: wrap; margin: 0 -10px;">
       <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
         <label>Total Amount</label>
-        <input type="number" id="instTotal" class="input" readonly>
+        <input type="number" id="instTotal" class="input" oninput="calcInstallment()">
+      </div>
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Interest (%)</label>
+        <input type="number" id="instPercentage" class="input" value="0" min="0" oninput="applyInstallmentPercentage()">
       </div>
       <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
         <label>Advance Payment (Down Payment)</label>
@@ -459,6 +482,21 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeInstallmentModal()">Cancel</button>
       <button class="btn btn-primary" onclick="confirmInstallment()">Confirm & Checkout</button>
+    </div>
+  </div>
+</div>
+
+<!-- Camera Modal -->
+<div class="modal-overlay hidden" id="cameraModal" style="z-index: 9999;">
+  <div class="modal" style="max-width: 500px; padding: 0; overflow: hidden; background: #000;">
+    <div style="position: absolute; top: 10px; right: 10px; z-index: 10;">
+      <button class="modal-close" onclick="closeCamera()" style="background: rgba(255,255,255,0.2); color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 20px;">×</button>
+    </div>
+    <video id="cameraVideo" style="width: 100%; max-height: 70vh; background: #000; display: block; object-fit: contain;" autoplay playsinline></video>
+    <canvas id="cameraCanvas" style="display: none;"></canvas>
+    <div style="padding: 15px; display: flex; justify-content: center; gap: 15px; background: #111;">
+      <button type="button" class="btn btn-primary" onclick="takePhoto()" style="padding: 10px 24px; font-size: 15px;">Capture</button>
+      <button type="button" class="btn btn-outline" onclick="closeCamera()" style="padding: 10px 24px; font-size: 15px; background: white; color: var(--text);">Cancel</button>
     </div>
   </div>
 </div>

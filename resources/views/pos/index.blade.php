@@ -110,7 +110,6 @@
                         <option value="cash">Cash</option>
                         <option value="card">Card</option>
                         <option value="online">Online</option>
-                        <option value="installment">Installment</option>
                     </select>
                 </div>
             </div>
@@ -218,4 +217,12 @@
         }
     }, 1000);
 </script>
+@endsection
+
+@section('scripts')
+<script src="{{ asset('assets/js/pos.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/customers.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/products.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/sales.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('assets/js/categories.js') }}?v={{ time() }}"></script>
 @endsection

@@ -98,6 +98,11 @@ class ProductController extends Controller
                 Storage::disk('public')->delete($product->image);
             }
             $validated['image'] = $request->file('image')->store('products', 'public');
+        } elseif ($request->input('delete_image') == '1') {
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+            $validated['image'] = null;
         }
 
         $product->update($validated);
