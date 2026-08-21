@@ -23,7 +23,7 @@
                 <option value="laptop">Laptop</option>
                 <option value="accessory">Accessory</option>
             </select>
-            <select class="input input-sm" id="prodCategoryFilter" onchange="renderProducts()">
+            <select class="input input-sm" id="prodCategoryFilter" onchange="window.prodCurrentPage = 1; renderProducts()">
                 <option value="">All Categories</option>
             </select>
             <button class="btn btn-primary btn-sm" onclick="openProductModal()">+ Add Product</button>
@@ -34,6 +34,18 @@
             <thead><tr><th>Image</th><th>Product Name</th><th>Type</th><th>Condition</th><th>Storage/Color</th><th>Sale Price</th><th>Status</th><th>Category</th><th>Actions</th></tr></thead>
             <tbody id="prodTbody"></tbody>
           </table>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 13px; color: var(--text-muted);">Rows per page:</span>
+                <select class="input input-sm" id="prodPerPage" onchange="window.prodCurrentPage = 1; window.prodPerPage = parseInt(this.value); renderProducts()" style="width: auto; padding-right: 30px;">
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div id="prodPagination" style="display: flex; gap: 5px; align-items: center;"></div>
         </div>
       </div>
     </div>

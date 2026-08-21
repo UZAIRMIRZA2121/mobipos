@@ -1,11 +1,21 @@
 // ============================================================
-// MEDICINES
+// MEDICINES (PRODUCTS)
 // ============================================================
+window.prodCurrentPage = 1;
+window.prodPerPage = 10;
+let lastProdFilters = '';
+
 function renderProducts() {
   const q = (document.getElementById('prodSearch')?.value || '').toLowerCase();
   const condFilter = document.getElementById('prodConditionFilter')?.value || '';
   const typeFilter = document.getElementById('prodTypeFilter')?.value || '';
   const catFilter = document.getElementById('prodCategoryFilter')?.value || '';
+
+  const currentFilters = `${q}|${condFilter}|${typeFilter}|${catFilter}`;
+  if (lastProdFilters !== currentFilters) {
+      window.prodCurrentPage = 1;
+      lastProdFilters = currentFilters;
+  }
 
   const catSelect = document.getElementById('prodCategoryFilter');
   if (catSelect && catSelect.options.length <= 1) {
@@ -18,9 +28,9 @@ function renderProducts() {
     });
   }
 
-  let prods = store.get('products');
+  let prods = store.get('products') || [];
   if (q) prods = prods.filter(p =>
-    (p.code || '').toLowerCase().includes(q)
+    (p.code || '').toLowerCase().includes(q) || (p.name || '').toLowerCase().includes(q) || (p.imei || '').toLowerCase().includes(q) || (p.barcode || '').toLowerCase().includes(q)
   );
 
   if (condFilter) {
@@ -35,8 +45,15 @@ function renderProducts() {
     prods = prods.filter(p => p.category_id == catFilter);
   }
 
-  document.getElementById('prodTbody').innerHTML = prods.length ?
-    prods.map(p => {
+  const totalItems = prods.length;
+  const startIndex = (window.prodCurrentPage - 1) * window.prodPerPage;
+  const paginatedProds = prods.slice(startIndex, startIndex + window.prodPerPage);
+
+  const tbody = document.getElementById('prodTbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = paginatedProds.length ?
+    paginatedProds.map(p => {
       return `<tr>
         <td>
           ${p.image ? `<img src="/storage/${p.image}" alt="Product" style="width:40px; height:40px; border-radius:4px; object-fit:cover;">` : '<div style="width:40px; height:40px; background:#f3f4f6; border-radius:4px; display:flex; align-items:center; justify-content:center; color:#9ca3af; font-size:10px;">No Img</div>'}
@@ -65,7 +82,43 @@ function renderProducts() {
       </tr>`;
     }).join('') :
     '<tr><td colspan="9" class="empty-cell">No products found</td></tr>';
+    
+  renderProdPagination(totalItems);
 }
+
+function renderProdPagination(totalItems) {
+    const container = document.getElementById('prodPagination');
+    if (!container) return;
+    
+    if (totalItems <= window.prodPerPage) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    const totalPages = Math.ceil(totalItems / window.prodPerPage);
+    let html = '';
+    
+    html += `<button class="btn btn-outline btn-sm" ${window.prodCurrentPage === 1 ? 'disabled' : ''} onclick="window.prodCurrentPage--; renderProducts()">Prev</button>`;
+    
+    // Simple pagination logic, show up to 5 pages
+    let startPage = Math.max(1, window.prodCurrentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="btn btn-sm ${window.prodCurrentPage === i ? 'btn-primary' : 'btn-outline'}" onclick="window.prodCurrentPage = ${i}; renderProducts()">${i}</button>`;
+    }
+    
+    html += `<button class="btn btn-outline btn-sm" ${window.prodCurrentPage === totalPages ? 'disabled' : ''} onclick="window.prodCurrentPage++; renderProducts()">Next</button>`;
+    
+    html += `<span style="font-size: 13px; color: var(--text-muted); margin-left: 10px;">Total: ${totalItems} items</span>`;
+    
+    container.innerHTML = html;
+}
+
 
 function editProduct(id = null) {
   document.getElementById('prodId').value = id || '';
