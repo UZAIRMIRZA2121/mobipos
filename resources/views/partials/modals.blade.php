@@ -159,7 +159,15 @@
         <div class="form-group"><label>Type *</label><select id="prodType" class="input"><option value="mobile">Mobile</option><option value="tablet">Tablet</option><option value="laptop">Laptop</option><option value="accessory">Accessory</option></select></div>
         <div class="form-group"><label>Condition *</label><select id="prodCondition" class="input"><option value="new">New</option><option value="used">Used</option><option value="refurbished">Refurbished</option></select></div>
         <div class="form-group"><label>Code</label><input type="text" id="prodCode" class="input" placeholder="Product Code (optional)"/></div>
-        <div class="form-group"><label>Barcode</label><input type="text" id="prodBarcode" class="input" placeholder="Barcode (optional)"/></div>
+        <div class="form-group">
+          <label>Barcode</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="prodBarcode" class="input" placeholder="Barcode (optional)" style="flex: 1;"/>
+            <button type="button" class="btn btn-outline" style="padding: 0 12px; height: 38px; display: flex; align-items: center; justify-content: center;" onclick="generateRandomBarcode()" title="Auto Generate Barcode">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            </button>
+          </div>
+        </div>
         <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" class="input" min="0" value="1" oninput="if(typeof renderImeiFields === 'function') renderImeiFields()"/></div>
         <div class="form-group form-full" id="groupImei">
           <label>IMEI / Serial Numbers (Available)</label>
@@ -486,6 +494,31 @@
   </div>
 </div>
 
+<!-- Print Barcode Modal -->
+<div class="modal-overlay hidden" id="printBarcodeModal" style="z-index: 10000;">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3>Print Barcode</h3>
+      <button class="modal-close" onclick="closePrintBarcodeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="text-align: center; margin-bottom: 20px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+        <svg id="printBarcodePreview"></svg>
+        <div id="printBarcodeText" style="font-family: var(--mono); font-size: 14px; margin-top: 5px; font-weight: bold;"></div>
+      </div>
+      <div class="form-group">
+        <label>Number of Copies</label>
+        <input type="number" id="printBarcodeCopies" class="input" value="1" min="1">
+      </div>
+      <input type="hidden" id="printBarcodeValue">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closePrintBarcodeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmPrintBarcode()">Print</button>
+    </div>
+  </div>
+</div>
+
 <!-- Camera Modal -->
 <div class="modal-overlay hidden" id="cameraModal" style="z-index: 9999;">
   <div class="modal" style="max-width: 500px; padding: 0; overflow: hidden; background: #000;">
@@ -500,3 +533,5 @@
     </div>
   </div>
 </div>
+<!-- Load JsBarcode for generating previews and print -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>

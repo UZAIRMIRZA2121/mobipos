@@ -10,12 +10,15 @@ class Installment extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'order_id',
         'customer_id',
         'total_amount',
         'down_payment',
         'agreed_monthly_amount',
         'payment_day',
+        'interest_percentage',
+        'actual_price',
         'status',
     ];
 

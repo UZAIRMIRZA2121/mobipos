@@ -39,7 +39,7 @@
           <div class="pos-search-wrapper glass-panel">
             <div class="pos-search-inner">
                 <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="posSearch" class="pos-premium-search" placeholder="Scan barcode or search products..."/>
+                <input type="text" id="posSearch" class="pos-premium-search" placeholder="Scan barcode or search products..." autofocus/>
                 <button class="pos-search-clear hidden" id="posSearchClear" onclick="clearPosSearch()">✕</button>
             </div>
           </div>

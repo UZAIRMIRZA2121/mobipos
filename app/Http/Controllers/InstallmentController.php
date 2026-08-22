@@ -13,7 +13,7 @@ class InstallmentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Installment::with(['customer', 'order', 'payments'])->latest();
+        $query = Installment::with(['customer', 'order.items.product', 'payments'])->where('user_id', Auth::id())->latest();
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -61,7 +61,7 @@ class InstallmentController extends Controller
 
     public function show($id)
     {
-        $installment = Installment::with(['customer', 'order', 'payments'])->findOrFail($id);
+        $installment = Installment::with(['customer', 'order', 'payments'])->where('user_id', Auth::id())->findOrFail($id);
         
         $totalPaid = $installment->down_payment + $installment->payments->sum('amount');
         $remaining = $installment->total_amount - $totalPaid;
@@ -78,7 +78,7 @@ class InstallmentController extends Controller
             'notes' => 'nullable|string'
         ]);
 
-        $installment = Installment::findOrFail($id);
+        $installment = Installment::where('user_id', Auth::id())->findOrFail($id);
 
         try {
             DB::beginTransaction();
@@ -129,11 +129,162 @@ class InstallmentController extends Controller
 
     public function print($id)
     {
-        $installment = Installment::with(['customer', 'order.items.product', 'payments'])->findOrFail($id);
+        $installment = Installment::with(['customer', 'order.items.product', 'payments'])->where('user_id', Auth::id())->findOrFail($id);
         
         $totalPaid = $installment->down_payment + $installment->payments->sum('amount');
         $remaining = $installment->total_amount - $totalPaid;
         
         return view('installments.print', compact('installment', 'totalPaid', 'remaining'));
+    }
+    public function update(Request $request, $id)
+    {
+        $installment = Installment::where('user_id', Auth::id())->findOrFail($id);
+
+        $request->validate([
+            'interest_percentage' => 'required|numeric|min:0',
+            'installment_months' => 'required|integer|min:1',
+            'payment_day' => 'required|integer|min:1|max:31'
+        ]);
+
+        $basePrice = $installment->actual_price;
+        $interest = $request->interest_percentage;
+        $total = $basePrice + ($basePrice * ($interest / 100));
+        
+        $totalPaid = $installment->down_payment + $installment->payments()->sum('amount');
+        $remainingForInstallments = $total - $installment->down_payment;
+        
+        if ($remainingForInstallments < 0) {
+            $remainingForInstallments = 0;
+        }
+
+        $monthlyAmount = $remainingForInstallments / $request->installment_months;
+
+        $installment->update([
+            'interest_percentage' => $interest,
+            'total_amount' => $total,
+            'agreed_monthly_amount' => $monthlyAmount,
+            'payment_day' => $request->payment_day
+        ]);
+
+        if ($installment->order) {
+            $installment->order->update([
+                'total' => $total,
+                'due_amount' => max(0, $total - $totalPaid),
+                'installment_months' => $request->installment_months,
+                'installment_monthly_amount' => $monthlyAmount,
+                'installment_interest_percentage' => $interest,
+                'installment_payment_day' => $request->payment_day
+            ]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Installment updated successfully']);
+    }
+
+    public function updatePayment(Request $request, $paymentId)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:1',
+            'payment_date' => 'required|date',
+            'notes' => 'nullable|string'
+        ]);
+
+        $payment = InstallmentPayment::findOrFail($paymentId);
+        $installment = Installment::where('user_id', Auth::id())->findOrFail($payment->installment_id);
+
+        try {
+            DB::beginTransaction();
+
+            $oldAmount = $payment->amount;
+            $newAmount = $request->amount;
+            $difference = $newAmount - $oldAmount;
+
+            $payment->update([
+                'amount' => $newAmount,
+                'payment_date' => $request->payment_date,
+                'notes' => $request->notes,
+            ]);
+
+            if ($difference != 0) {
+                // Adjust Ledger
+                $lastLedger = CustomerLedger::where('customer_id', $installment->customer_id)
+                    ->orderBy('date', 'desc')
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $previousBalance = $lastLedger ? $lastLedger->balance : 0;
+                $newBalance = $previousBalance - $difference;
+
+                CustomerLedger::create([
+                    'customer_id' => $installment->customer_id,
+                    'user_id' => Auth::id(),
+                    'date' => now()->toDateString(),
+                    'type' => 'Installment Payment Adjustment (Order #' . $installment->order_id . ')',
+                    'debit' => $difference < 0 ? abs($difference) : 0,
+                    'credit' => $difference > 0 ? $difference : 0,
+                    'balance' => $newBalance,
+                    'note' => 'Adjusted payment amount for ' . $payment->payment_date,
+                    'payment_proof' => null
+                ]);
+            }
+
+            // Update status
+            $totalPaid = $installment->down_payment + $installment->payments()->sum('amount');
+            if ($totalPaid >= $installment->total_amount) {
+                $installment->update(['status' => 'Completed']);
+            } else {
+                $installment->update(['status' => 'Active']);
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Payment updated successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    public function destroyPayment($paymentId)
+    {
+        $payment = InstallmentPayment::findOrFail($paymentId);
+        $installment = Installment::where('user_id', Auth::id())->findOrFail($payment->installment_id);
+
+        try {
+            DB::beginTransaction();
+
+            $amount = $payment->amount;
+            
+            // Reversal in Ledger
+            $lastLedger = CustomerLedger::where('customer_id', $installment->customer_id)
+                ->orderBy('date', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
+            $previousBalance = $lastLedger ? $lastLedger->balance : 0;
+            $newBalance = $previousBalance + $amount;
+
+            CustomerLedger::create([
+                'customer_id' => $installment->customer_id,
+                'user_id' => Auth::id(),
+                'date' => now()->toDateString(),
+                'type' => 'Installment Payment Reversal (Order #' . $installment->order_id . ')',
+                'debit' => $amount,
+                'credit' => 0,
+                'balance' => $newBalance,
+                'note' => 'Payment reversed for ' . $payment->payment_date,
+                'payment_proof' => null
+            ]);
+
+            $payment->delete();
+
+            // Update status
+            $totalPaid = $installment->down_payment + $installment->payments()->sum('amount');
+            if ($totalPaid < $installment->total_amount) {
+                $installment->update(['status' => 'Active']);
+            }
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Payment reversed successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }

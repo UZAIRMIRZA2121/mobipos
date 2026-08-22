@@ -1,6 +1,7 @@
 // ============================================================
 // MEDICINES (PRODUCTS)
 // ============================================================
+const PRINT_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>`;
 window.prodCurrentPage = 1;
 window.prodPerPage = 10;
 let lastProdFilters = '';
@@ -75,6 +76,7 @@ function renderProducts() {
           ${p.category_id ? (store.get('categories').find(c => c.id == p.category_id)?.name || '-') : '-'}
         </td>
         <td>
+          ${p.barcode ? `<button class="action-btn" style="color:var(--primary)" onclick="openPrintBarcodeModal('${p.barcode}')" title="Print Barcode">${PRINT_SVG}</button>` : ''}
           <button class="action-btn" style="color:var(--primary)" onclick="openProdSalesModal(${p.id})" title="View Sales">${VIEW_SVG}</button>
           <button class="action-btn edit" onclick="openProductModal(${p.id})" title="Edit">${EDIT_SVG}</button>
           <button class="action-btn del" onclick="deleteProduct(${p.id})" title="Delete">${DEL_SVG}</button>
@@ -240,6 +242,17 @@ function toggleProductFields() {
   if (groupStorage) groupStorage.style.display = (type === 'accessory') ? 'none' : 'block';
 }
 
+function generateRandomBarcode() {
+    const barcodeInput = document.getElementById('prodBarcode');
+    if (barcodeInput) {
+        let barcode = '';
+        for (let i = 0; i < 12; i++) {
+            barcode += Math.floor(Math.random() * 10);
+        }
+        barcodeInput.value = barcode;
+    }
+}
+
 function openProductModal(id) {
   editProduct(id);
 }
@@ -301,13 +314,97 @@ async function saveProduct() {
 }
 
 function deleteProduct(id) {
-  confirmDelete('Delete this product?', async () => {
-    try {
-      await api('/shop/api/products/' + id, 'DELETE');
-      toast('Product deleted', 'danger');
-      await syncData();
-    } catch (e) { toast('Error deleting', 'danger'); }
+  if(!confirm('Are you sure you want to delete this product?')) return;
+  api(`/shop/api/products/${id}`, 'DELETE').then(() => {
+    toast('Product deleted', 'success');
+    syncData();
+  }).catch(e => {
+    toast(e.message || 'Error deleting product', 'danger');
   });
+}
+
+function openPrintBarcodeModal(barcode) {
+  document.getElementById('printBarcodeValue').value = barcode;
+  document.getElementById('printBarcodeText').textContent = barcode;
+  document.getElementById('printBarcodeCopies').value = 1;
+  document.getElementById('printBarcodeModal').classList.remove('hidden');
+  
+  const generate = () => {
+      if (typeof JsBarcode === 'function') {
+          JsBarcode("#printBarcodePreview", barcode, {
+              format: "CODE128",
+              width: 2,
+              height: 60,
+              displayValue: false
+          });
+      }
+  };
+  
+  if (typeof JsBarcode === 'function') generate();
+  else setTimeout(generate, 500);
+}
+
+function closePrintBarcodeModal() {
+  document.getElementById('printBarcodeModal').classList.add('hidden');
+}
+
+function confirmPrintBarcode() {
+  const barcode = document.getElementById('printBarcodeValue').value;
+  const copies = parseInt(document.getElementById('printBarcodeCopies').value) || 1;
+  
+  const printWindow = window.open('', '_blank');
+  
+  let html = `
+    <html>
+    <head>
+      <title>Print Barcode</title>
+      <style>
+        body { font-family: monospace; text-align: center; margin: 0; padding: 10px; }
+        .barcode-container { display: inline-block; text-align: center; margin: 10px; padding: 10px; border: 1px dashed #ccc; page-break-inside: avoid; }
+        svg { max-width: 100%; height: auto; }
+      </style>
+      <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+    </head>
+    <body>
+  `;
+  
+  for (let i = 0; i < copies; i++) {
+      html += `
+        <div class="barcode-container">
+          <svg class="barcode-svg" data-value="${barcode}"></svg>
+          <div style="font-size: 14px; font-weight: bold; letter-spacing: 2px;">${barcode}</div>
+        </div>
+      `;
+  }
+  
+  html += `
+      <script>
+        window.onload = function() {
+            const svgs = document.querySelectorAll('.barcode-svg');
+            svgs.forEach(svg => {
+                const val = svg.getAttribute('data-value');
+                JsBarcode(svg, val, {
+                    format: "CODE128",
+                    width: 2,
+                    height: 50,
+                    displayValue: false,
+                    margin: 0
+                });
+            });
+            setTimeout(() => {
+                window.print();
+            }, 500);
+        };
+      <\/script>
+    </body>
+    </html>
+  `;
+  
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  
+  closePrintBarcodeModal();
 }
 
 async function openProdSalesModal(id) {

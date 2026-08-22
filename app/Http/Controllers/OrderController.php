@@ -304,6 +304,7 @@ class OrderController extends Controller
             // Create Installment Record if applicable
             if ($request->has('is_installment') && $request->is_installment == 1) {
                 \App\Models\Installment::create([
+                    'user_id' => \Illuminate\Support\Facades\Auth::id(),
                     'order_id' => $order->id,
                     'customer_id' => $request->buyer_id,
                     'total_amount' => $request->total,

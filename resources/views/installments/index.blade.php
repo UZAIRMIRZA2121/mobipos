@@ -1,6 +1,16 @@
 @extends('layouts.app')
 
 @section('content')
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<style>
+  .ts-control { border-radius: 8px; border: 1px solid var(--border); padding: 8px 12px; font-size: 14px; min-height: 42px; background: #fff; }
+  .ts-control > input { font-family: inherit; font-size: 14px; }
+  .ts-dropdown { border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 4px; }
+  .ts-dropdown .option { padding: 10px 12px; }
+  .ts-dropdown .active { background-color: #f3f4f6; color: var(--text); }
+  .tom-select-wrap { flex: 1; }
+</style>
 <div class="pos-container" style="padding: 20px;">
 
     <!-- Summary Cards -->
@@ -116,6 +126,27 @@
                                         }
                                     }
                                 }
+
+                                $firstItem = $installment->order ? $installment->order->items->first() : null;
+                                $imeiStr = $firstItem ? $firstItem->imeis : null;
+                                if ($imeiStr && is_string($imeiStr) && strpos($imeiStr, '[') === 0) {
+                                    $parsed = json_decode($imeiStr, true);
+                                    if (is_array($parsed)) {
+                                        $imeiStr = implode(', ', $parsed);
+                                    }
+                                }
+                                $editData = [
+                                    'id' => $installment->id,
+                                    'customer_name' => $installment->customer->name ?? 'Unknown',
+                                    'product_name' => $firstItem->product->name ?? 'Unknown Product',
+                                    'imei' => $imeiStr ?: 'N/A',
+                                    'actual_price' => $installment->actual_price,
+                                    'interest_percentage' => $installment->interest_percentage,
+                                    'total_amount' => $installment->total_amount,
+                                    'down_payment' => $installment->down_payment,
+                                    'months' => $installment->order->installment_months ?? 1,
+                                    'payment_day' => $installment->payment_day
+                                ];
                             @endphp
                             <tr class="installment-row" 
                                 data-search="{{ strtolower($installment->order_id . ' ' . ($installment->customer->name ?? '') . ' ' . ($installment->customer->phone ?? '')) }}"
@@ -152,6 +183,9 @@
                                         <a href="{{ route('shop.installments.print', $installment->id) }}" class="action-btn" style="background:#fef3c7; color:#d97706;" target="_blank" title="Print Installment Details">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                                         </a>
+                                        <button type="button" class="action-btn edit" style="background:#e0f2fe; color:#0284c7; border:none; cursor:pointer;" data-edit='{{ json_encode($editData, JSON_HEX_APOS) }}' onclick="openEditInstallmentModal(this)" title="Edit Installment Setup">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        </button>
                                         <button type="button" class="action-btn delete" style="background:#fee2e2; color:#dc2626; border:none; cursor:pointer;" onclick="deleteInstallment({{ $installment->order_id }})" title="Delete Installment Setup">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                                         </button>
@@ -230,6 +264,8 @@
         });
     }
 
+    let instCustSelect, instProdSelect, instStockSelect;
+
     // New Installment Modal Logic
     function openNewInstallmentModal() {
         const customers = store.get('customers', []);
@@ -241,7 +277,26 @@
             
         const prodSelect = document.getElementById('newInstProduct');
         prodSelect.innerHTML = '<option value="">Select Product</option>' + 
-            products.map(p => `<option value="${p.id}" data-price="${p.sale}" data-type="${p.type}">${p.name} - PKR ${p.sale}</option>`).join('');
+            products.map(p => `<option value="${p.id}" data-price="${p.sale}" data-type="${p.type}" data-custom="${p.code || ''} ${p.barcode || ''}">${p.code ? '[' + p.code + '] ' : ''}${p.name} - PKR ${p.sale}</option>`).join('');
+
+        if (instCustSelect) instCustSelect.destroy();
+        if (instProdSelect) instProdSelect.destroy();
+        if (instStockSelect) { instStockSelect.destroy(); instStockSelect = null; }
+
+        instCustSelect = new TomSelect("#newInstCustomer", {
+            create: false,
+            sortField: { field: "text", direction: "asc" }
+        });
+
+        instProdSelect = new TomSelect("#newInstProduct", {
+            create: false,
+            searchField: ['text', 'custom'],
+            sortField: { field: "text", direction: "asc" }
+        });
+
+        instProdSelect.on('change', function() {
+            onNewInstProductChange();
+        });
 
         // Reset fields
         document.getElementById('newInstStockDiv').style.display = 'none';
@@ -263,30 +318,37 @@
     }
 
     function onNewInstProductChange() {
-        const prodSelect = document.getElementById('newInstProduct');
-        const option = prodSelect.options[prodSelect.selectedIndex];
-        if (!option.value) {
+        const prodId = document.getElementById('newInstProduct').value;
+        if (!prodId) {
             document.getElementById('newInstBasePrice').value = 0;
             document.getElementById('newInstStockDiv').style.display = 'none';
+            if (instStockSelect) { instStockSelect.destroy(); instStockSelect = null; }
             calcNewInstallment();
             return;
         }
 
-        const price = parseFloat(option.getAttribute('data-price') || 0);
+        const products = store.get('products', []);
+        const prod = products.find(p => p.id == prodId);
+        
+        const price = prod ? parseFloat(prod.sale || 0) : 0;
         document.getElementById('newInstBasePrice').value = price;
         
         // Handle Stock Units (IMEI)
-        const products = store.get('products', []);
-        const prod = products.find(p => p.id == option.value);
-        
         const stockSelect = document.getElementById('newInstStockUnit');
         if (prod && prod.stock_units && prod.stock_units.length > 0) {
             stockSelect.innerHTML = '<option value="">Select Unit (IMEI/Serial)</option>' + 
                 prod.stock_units.filter(s => s.status === 'available').map(s => `<option value="${s.id}">${s.imeis || 'Unknown IMEI'}</option>`).join('');
             document.getElementById('newInstStockDiv').style.display = 'block';
+            
+            if (instStockSelect) instStockSelect.destroy();
+            instStockSelect = new TomSelect("#newInstStockUnit", {
+                create: false,
+                sortField: { field: "text", direction: "asc" }
+            });
         } else {
             stockSelect.innerHTML = '';
             document.getElementById('newInstStockDiv').style.display = 'none';
+            if (instStockSelect) { instStockSelect.destroy(); instStockSelect = null; }
         }
 
         calcNewInstallment();
@@ -320,7 +382,13 @@
             document.getElementById('newInstMonths').value = months;
         }
 
-        const monthly = (remaining / months).toFixed(2);
+        let advanceIsFirst = document.getElementById('newAdvanceIsFirst');
+        let monthly = 0;
+        if (advanceIsFirst && advanceIsFirst.checked) {
+            monthly = (total / months).toFixed(2);
+        } else {
+            monthly = (remaining / months).toFixed(2);
+        }
         document.getElementById('newInstMonthlyAmount').value = monthly;
     }
 
@@ -396,11 +464,13 @@
     <div class="modal-body" style="display: flex; flex-wrap: wrap; margin: 0 -10px;">
       <div class="form-group" style="width: 100%; padding: 0 10px; margin-bottom: 15px;">
         <label>Customer</label>
-        <div style="display:flex; gap:4px;">
-          <select id="newInstCustomer" class="input" style="flex:1;">
-            <option value="">Select Customer</option>
-          </select>
-          <button class="btn btn-primary" onclick="openCustModal()" title="Add Customer" style="padding:0 12px;font-size:18px;">+</button>
+        <div style="display:flex; gap:4px; align-items:flex-start;">
+          <div class="tom-select-wrap">
+            <select id="newInstCustomer" class="input">
+              <option value="">Select Customer</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="openCustModal()" title="Add Customer" style="padding:0 12px;font-size:18px;height:42px;">+</button>
         </div>
       </div>
       
@@ -434,6 +504,12 @@
       <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
         <label>Advance Payment (Down Payment)</label>
         <input type="number" id="newInstAdvance" class="input" value="0" oninput="calcNewInstallment()">
+        <div style="margin-top: 5px; font-size: 12px;">
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer; color:#4b5563;">
+            <input type="checkbox" id="newAdvanceIsFirst" onchange="calcNewInstallment()" checked>
+            Advance is 1st Installment (Keep Monthly Rate Fixed)
+          </label>
+        </div>
       </div>
       <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
         <label>Remaining Amount</label>
@@ -458,6 +534,182 @@
     </div>
   </div>
 </div>
+
+<!-- Edit Installment Modal -->
+<div class="modal-overlay hidden" id="editInstallmentModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>Edit Installment Setup</h3>
+      <button class="modal-close" onclick="closeEditInstallmentModal()">×</button>
+    </div>
+    <div class="modal-body" style="display: flex; flex-wrap: wrap; margin: 0 -10px;">
+      <input type="hidden" id="editInstId">
+      
+      <div class="form-group" style="width: 100%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Customer</label>
+        <div id="editInstCustomerName" style="padding: 10px 12px; background: #f9fafb; border-radius: 8px; border: 1px solid var(--border); font-weight: 500;"></div>
+      </div>
+      
+      <div class="form-group" style="width: 100%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Product</label>
+        <div id="editInstProductName" style="padding: 10px 12px; background: #f9fafb; border-radius: 8px; border: 1px solid var(--border); font-weight: 500;"></div>
+      </div>
+
+      <div class="form-group" style="width: 100%; padding: 0 10px; margin-bottom: 15px; display: none;" id="editInstStockDiv">
+        <label>Unit / IMEI</label>
+        <div id="editInstImei" style="padding: 10px 12px; background: #f9fafb; border-radius: 8px; border: 1px solid var(--border); font-weight: 500;"></div>
+      </div>
+      
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Actual Price (Base)</label>
+        <input type="number" id="editInstBasePrice" class="input" readonly>
+      </div>
+      
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Interest (%)</label>
+        <input type="number" id="editInstPercentage" class="input" min="0" oninput="calcEditInstallment()">
+      </div>
+      
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Total Amount</label>
+        <input type="number" id="editInstTotal" class="input" oninput="calcEditInstallment()">
+      </div>
+      
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Advance Payment (Down Payment)</label>
+        <input type="number" id="editInstAdvance" class="input" readonly title="Cannot edit down payment after creation">
+        <div style="margin-top: 5px; font-size: 12px;">
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer; color:#4b5563;">
+            <input type="checkbox" id="editAdvanceIsFirst" onchange="calcEditInstallment()" checked>
+            Advance is 1st Installment
+          </label>
+        </div>
+      </div>
+      
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Remaining Amount</label>
+        <input type="number" id="editInstRemaining" class="input" readonly>
+      </div>
+
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Number of Months</label>
+        <input type="number" id="editInstMonths" class="input" min="1" oninput="calcEditInstallment()">
+      </div>
+
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Monthly Installment</label>
+        <input type="number" id="editInstMonthlyAmount" class="input" readonly>
+      </div>
+      
+      <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Payment Day (1-30)</label>
+        <input type="number" id="editInstPaymentDay" class="input" min="1" max="31">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEditInstallmentModal()">Cancel</button>
+      <button class="btn btn-primary" id="btnSubmitEditInst" onclick="submitEditInstallment()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+    function openEditInstallmentModal(btn) {
+        const data = JSON.parse(btn.getAttribute('data-edit'));
+        document.getElementById('editInstId').value = data.id;
+        document.getElementById('editInstCustomerName').textContent = data.customer_name;
+        document.getElementById('editInstProductName').textContent = data.product_name;
+        
+        if (data.imei && data.imei !== 'N/A' && data.imei !== '[]' && data.imei !== 'null') {
+            document.getElementById('editInstImei').textContent = data.imei;
+            document.getElementById('editInstStockDiv').style.display = 'block';
+        } else {
+            document.getElementById('editInstStockDiv').style.display = 'none';
+        }
+
+        document.getElementById('editInstBasePrice').value = data.actual_price;
+        document.getElementById('editInstPercentage').value = data.interest_percentage;
+        document.getElementById('editInstTotal').value = data.total_amount;
+        document.getElementById('editInstAdvance').value = data.down_payment;
+        document.getElementById('editInstMonths').value = data.months;
+        document.getElementById('editInstPaymentDay').value = data.payment_day;
+        
+        calcEditInstallment();
+        document.getElementById('editInstallmentModal').classList.remove('hidden');
+    }
+
+    function calcEditInstallment() {
+        const base = parseFloat(document.getElementById('editInstBasePrice').value || 0);
+        const pct = parseFloat(document.getElementById('editInstPercentage').value || 0);
+        let total = parseFloat(document.getElementById('editInstTotal').value || 0);
+        
+        if (document.activeElement.id === 'editInstPercentage' || document.activeElement.id === '') {
+            total = base + (base * (pct / 100));
+            document.getElementById('editInstTotal').value = total.toFixed(2);
+        } else if (document.activeElement.id === 'editInstTotal') {
+            total = parseFloat(document.getElementById('editInstTotal').value || 0);
+            if(base > 0) {
+                let newPct = ((total - base) / base) * 100;
+                document.getElementById('editInstPercentage').value = newPct.toFixed(2);
+            }
+        }
+
+        let advance = parseFloat(document.getElementById('editInstAdvance').value || 0);
+        if (advance > total) {
+            advance = total;
+        }
+
+        let remaining = total - advance;
+        if(remaining < 0) remaining = 0;
+        document.getElementById('editInstRemaining').value = remaining.toFixed(2);
+
+        let months = parseInt(document.getElementById('editInstMonths').value || 1);
+        if (months < 1) {
+            months = 1;
+            document.getElementById('editInstMonths').value = months;
+        }
+
+        let advanceIsFirst = document.getElementById('editAdvanceIsFirst');
+        let monthly = 0;
+        if (advanceIsFirst && advanceIsFirst.checked) {
+            monthly = (total / months).toFixed(2);
+        } else {
+            monthly = (remaining / months).toFixed(2);
+        }
+        document.getElementById('editInstMonthlyAmount').value = monthly;
+    }
+
+    function closeEditInstallmentModal() {
+        document.getElementById('editInstallmentModal').classList.add('hidden');
+    }
+
+    async function submitEditInstallment() {
+        const id = document.getElementById('editInstId').value;
+        const interest = document.getElementById('editInstPercentage').value;
+        const months = document.getElementById('editInstMonths').value;
+        const paymentDay = document.getElementById('editInstPaymentDay').value;
+        
+        const payload = {
+            interest_percentage: interest,
+            installment_months: months,
+            payment_day: paymentDay
+        };
+
+        const btn = document.getElementById('btnSubmitEditInst');
+        btn.disabled = true;
+        btn.innerHTML = 'Saving...';
+
+        try {
+            await api(`/shop/installments/${id}`, 'PUT', payload);
+            toast('Installment updated successfully!', 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (e) {
+            toast(e.message || 'Error updating installment', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = 'Save Changes';
+        }
+    }
+</script>
 @endsection
 
 @section('scripts')

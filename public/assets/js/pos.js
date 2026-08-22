@@ -242,6 +242,83 @@ let posSearchTimeout = null;
 document.addEventListener('DOMContentLoaded', () => {
   const posSearchEl = document.getElementById('posSearch');
   if (posSearchEl) {
+    posSearchEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const val = this.value.trim().toLowerCase();
+        if (!val) return;
+        
+        const prods = store.get('products');
+        let exactMatch = null;
+        let matchedUnit = null;
+
+        for (const p of prods) {
+            if ((p.barcode && p.barcode.toLowerCase() === val) || 
+                (p.code && p.code.toLowerCase() === val)) {
+                exactMatch = p;
+                break;
+            }
+            if (p.stock_units && p.stock_units.length > 0) {
+                const foundUnit = p.stock_units.find(u => {
+                    if (u.status !== 'available' || !u.imeis) return false;
+                    const imeiList = u.imeis.split(',').map(s => s.trim().toLowerCase());
+                    return imeiList.includes(val);
+                });
+                if (foundUnit) {
+                    exactMatch = p;
+                    matchedUnit = foundUnit;
+                    break;
+                }
+            }
+        }
+        
+        if (exactMatch) {
+            if (matchedUnit) {
+                const existing = cart.find(c => c.prodId == exactMatch.id);
+                if (existing) {
+                    if (!existing.stock_units) existing.stock_units = [];
+                    if (!existing.stock_units.includes(matchedUnit.id)) {
+                        existing.stock_units.push(matchedUnit.id);
+                        existing.qty = existing.stock_units.length;
+                        existing.sub = existing.qty * existing.price;
+                        toast(`IMEI added`, 'success');
+                    } else {
+                        toast(`IMEI already in cart`, 'warning');
+                    }
+                } else {
+                    const pName = exactMatch.name + (exactMatch.condition || exactMatch.color ? ` (${[exactMatch.condition, exactMatch.color].filter(Boolean).join(' - ')})` : '');
+                    cart.push({ 
+                        prodId: exactMatch.id, 
+                        name: pName, 
+                        price: parseFloat(exactMatch.sale), 
+                        qty: 1, 
+                        sub: parseFloat(exactMatch.sale), 
+                        maxStock: exactMatch.stock,
+                        stock_units: [matchedUnit.id],
+                        type: exactMatch.type
+                    });
+                    toast(`IMEI added`, 'success');
+                }
+                this.value = '';
+                posFilter.q = '';
+                const clearBtn = document.getElementById('posSearchClear');
+                if (clearBtn) clearBtn.classList.add('hidden');
+                renderCart();
+                renderProdGrid();
+            } else {
+                addToCart(exactMatch.id);
+                this.value = '';
+                posFilter.q = '';
+                const clearBtn = document.getElementById('posSearchClear');
+                if (clearBtn) clearBtn.classList.add('hidden');
+                renderProdGrid();
+            }
+        } else {
+            toast('Product or IMEI not found', 'warning');
+        }
+      }
+    });
+
     posSearchEl.addEventListener('input', function () {
       posFilter.q = this.value;
       const clearBtn = document.getElementById('posSearchClear');
@@ -300,6 +377,17 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .catch(console.error);
   }
+
+  // Global scanner listener: if typing outside an input, auto-focus posSearch
+  document.addEventListener('keydown', function(e) {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+          const posSearchEl = document.getElementById('posSearch');
+          if (posSearchEl) {
+              posSearchEl.focus();
+          }
+      }
+  });
 });
 
 function addToCart(prodId) {

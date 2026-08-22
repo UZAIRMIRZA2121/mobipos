@@ -133,6 +133,9 @@ Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop'
     Route::get('/installments/{id}', [App\Http\Controllers\InstallmentController::class, 'show'])->name('installments.show');
     Route::get('/installments/{id}/print', [App\Http\Controllers\InstallmentController::class, 'print'])->name('installments.print');
     Route::post('/installments/{id}/payment', [App\Http\Controllers\InstallmentController::class, 'addPayment'])->name('installments.addPayment');
+    Route::put('/installments/{id}', [App\Http\Controllers\InstallmentController::class, 'update'])->name('installments.update');
+    Route::put('/installments/payment/{paymentId}', [App\Http\Controllers\InstallmentController::class, 'updatePayment'])->name('installments.updatePayment');
+    Route::delete('/installments/payment/{paymentId}', [App\Http\Controllers\InstallmentController::class, 'destroyPayment'])->name('installments.destroyPayment');
 });
 
 // Seller Dummy Routes

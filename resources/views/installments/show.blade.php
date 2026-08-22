@@ -68,6 +68,7 @@
                                 <th>Amount</th>
                                 <th>Method</th>
                                 <th>Notes</th>
+                                <th style="width: 80px;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -78,6 +79,7 @@
                                 <td>PKR {{ number_format($installment->down_payment, 2) }}</td>
                                 <td>{{ ucfirst($installment->order->payment_method ?? 'cash') }}</td>
                                 <td>Advance / Down Payment</td>
+                                <td></td>
                             </tr>
                             @endif
 
@@ -88,10 +90,20 @@
                                 <td>PKR {{ number_format($payment->amount, 2) }}</td>
                                 <td>{{ ucfirst($payment->payment_method) }}</td>
                                 <td>{{ $payment->notes }}</td>
+                                <td>
+                                    <div style="display:flex; gap:5px;">
+                                        <button type="button" class="action-btn edit" style="background:#e0f2fe; color:#0284c7; border:none; cursor:pointer;" onclick="openEditPaymentModal({{ $payment->id }}, '{{ \Carbon\Carbon::parse($payment->payment_date)->format('Y-m-d') }}', {{ $payment->amount }}, '{{ addslashes($payment->notes) }}')" title="Edit Payment">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                        </button>
+                                        <button type="button" class="action-btn delete" style="background:#fee2e2; color:#dc2626; border:none; cursor:pointer;" onclick="deletePayment({{ $payment->id }})" title="Delete Payment">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="4" class="text-center" style="color:#6b7280;">No monthly payments received yet.</td>
+                                <td colspan="5" class="text-center" style="color:#6b7280;">No monthly payments received yet.</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -143,4 +155,111 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Payment Modal -->
+<div class="modal-overlay hidden" id="editPaymentModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3>Edit Payment</h3>
+      <button class="modal-close" onclick="closeEditPaymentModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editPaymentId">
+      
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label>Payment Date</label>
+        <input type="date" id="editPaymentDate" class="input" required>
+      </div>
+      
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label>Amount (PKR)</label>
+        <input type="number" id="editPaymentAmount" class="input" min="1" step="0.01" required>
+      </div>
+      
+      <div class="form-group" style="margin-bottom: 15px;">
+        <label>Notes</label>
+        <input type="text" id="editPaymentNotes" class="input">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEditPaymentModal()">Cancel</button>
+      <button class="btn btn-primary" id="btnSubmitEditPayment" onclick="submitEditPayment()">Save Changes</button>
+    </div>
+  </div>
+</div>
+@endsection
+
+@section('scripts')
+<script>
+    function openEditPaymentModal(id, date, amount, notes) {
+        document.getElementById('editPaymentId').value = id;
+        document.getElementById('editPaymentDate').value = date;
+        document.getElementById('editPaymentAmount').value = amount;
+        document.getElementById('editPaymentNotes').value = notes;
+        document.getElementById('editPaymentModal').classList.remove('hidden');
+    }
+
+    function closeEditPaymentModal() {
+        document.getElementById('editPaymentModal').classList.add('hidden');
+    }
+
+    async function submitEditPayment() {
+        const id = document.getElementById('editPaymentId').value;
+        const date = document.getElementById('editPaymentDate').value;
+        const amount = document.getElementById('editPaymentAmount').value;
+        const notes = document.getElementById('editPaymentNotes').value;
+        
+        const payload = {
+            payment_date: date,
+            amount: amount,
+            notes: notes
+        };
+
+        const btn = document.getElementById('btnSubmitEditPayment');
+        btn.disabled = true;
+        btn.innerHTML = 'Saving...';
+
+        try {
+            await api(`/shop/installments/payment/${id}`, 'PUT', payload);
+            toast('Payment updated successfully!', 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } catch (e) {
+            toast(e.message || 'Error updating payment', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = 'Save Changes';
+        }
+    }
+
+    function deletePayment(id) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "This payment will be reversed from your ledger/sales!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc2626',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Yes, delete it!'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    processDelete(id);
+                }
+            });
+        } else {
+            if (confirm("Are you sure? This payment will be reversed from your ledger/sales!")) {
+                processDelete(id);
+            }
+        }
+    }
+
+    async function processDelete(id) {
+        try {
+            await api(`/shop/installments/payment/${id}`, 'DELETE');
+            toast('Payment reversed successfully!', 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } catch(e) {
+            toast(e.message || 'Error deleting payment', 'danger');
+        }
+    }
+</script>
 @endsection
