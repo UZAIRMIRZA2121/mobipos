@@ -18,8 +18,19 @@ class OrderController extends Controller
         
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
-            $query->whereHas('buyer', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
+            $query->where(function($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                  ->orWhereHas('buyer', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhere('customer_name', 'like', "%{$search}%")
+                  ->orWhereHas('items.product', function($q3) use ($search) {
+                      $q3->where('code', 'like', "%{$search}%")
+                         ->orWhere('barcode', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('items', function($q4) use ($search) {
+                      $q4->where('imeis', 'like', "%{$search}%");
+                  });
             });
         }
         
