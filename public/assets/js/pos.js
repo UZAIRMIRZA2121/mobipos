@@ -320,6 +320,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             toast('Product or IMEI not found', 'warning');
+            this.value = '';
+            posFilter.q = '';
+            const clearBtn = document.getElementById('posSearchClear');
+            if (clearBtn) clearBtn.classList.add('hidden');
+            renderProdGrid();
         }
       }
     });
