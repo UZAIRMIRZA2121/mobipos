@@ -57,10 +57,12 @@
         Sales History
       </a>
       @endif
+      @if(!Auth::user()->storeSetting || Auth::user()->storeSetting->business_type === 'mobile')
       <a class="nav-item {{ request()->routeIs('shop.installments.*') ? 'active' : '' }}" href="{{ route('shop.installments.index') }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         Installments
       </a>
+      @endif
       @if(Auth::user()->hasPrivilege('shop.expenses.index'))
       <a class="nav-item {{ request()->routeIs('shop.expenses.index') ? 'active' : '' }}" href="{{ route('shop.expenses.index') }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/><path d="M17 12h.01"/><path d="M7 12h.01"/></svg>
@@ -73,7 +75,7 @@
       @if(Auth::user()->hasPrivilege('shop.products.index'))
       <a class="nav-item" href="{{ route('shop.products.index') }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-        Mobiles & Products
+        Products
       </a>
       @endif
       @if(Auth::user()->hasPrivilege('shop.categories.index'))

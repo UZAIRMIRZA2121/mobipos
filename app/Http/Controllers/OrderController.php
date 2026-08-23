@@ -9,6 +9,7 @@ use App\Models\Expense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 class OrderController extends Controller
 {
     public function apiIndex(Request $request)
@@ -184,6 +185,7 @@ class OrderController extends Controller
     {
         $request->validate([
             'buyer_id' => 'nullable|exists:customers,id',
+            'customer_name' => 'nullable|string|max:255',
             'subtotal' => 'required|numeric',
             'tax' => 'required|numeric',
             'discount' => 'required|numeric',
@@ -193,7 +195,12 @@ class OrderController extends Controller
             'payment_status' => 'required|string',
             'payment_method' => 'required|string',
             'items' => 'required|array',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_id' => [
+                'required',
+                Rule::exists('products', 'id')->where(function ($query) {
+                    $query->where('user_id', Auth::id());
+                }),
+            ],
             'items.*.qty' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric',
             'items.*.stock_units' => 'nullable|array',
@@ -210,6 +217,7 @@ class OrderController extends Controller
             // Create Order
             $order = Order::create([
                 'buyer_id' => $request->buyer_id,
+                'customer_name' => $request->customer_name,
                 'subtotal' => $request->subtotal,
                 'tax' => $request->tax,
                 'discount' => $request->discount,

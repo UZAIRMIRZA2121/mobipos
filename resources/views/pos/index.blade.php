@@ -113,6 +113,10 @@
                     </select>
                 </div>
             </div>
+            
+            <div class="form-group" style="padding: 0 20px; margin-bottom: 16px; margin-top: -4px;">
+                <input type="text" id="posCustomerName" class="input input-sm" placeholder="Walk-in Customer Name (optional)" style="width: 100%;">
+            </div>
 
             <div class="checkout-summary-box">
                 <div class="sum-row">

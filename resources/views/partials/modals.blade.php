@@ -155,21 +155,24 @@
     <div class="modal-body">
       <input type="hidden" id="prodId"/>
       <div class="form-grid">
-        <div class="form-group"><label>Product Name *</label><input type="text" id="prodName" class="input" placeholder="e.g. iPhone 14 Pro Max"/></div>
-        <div class="form-group"><label>Type *</label><select id="prodType" class="input"><option value="mobile">Mobile</option><option value="tablet">Tablet</option><option value="laptop">Laptop</option><option value="accessory">Accessory</option></select></div>
-        <div class="form-group"><label>Condition *</label><select id="prodCondition" class="input"><option value="new">New</option><option value="used">Used</option><option value="refurbished">Refurbished</option></select></div>
+        <div class="form-group"><label>Product Name *</label><input type="text" id="prodName" class="input" placeholder="e.g. Product Name"/></div>
+        <div class="form-group module-field module-mobile"><label>Type *</label><select id="prodType" class="input"><option value="mobile">Mobile</option><option value="tablet">Tablet</option><option value="laptop">Laptop</option><option value="accessory">Accessory</option></select></div>
+        <div class="form-group module-field module-mobile"><label>Condition *</label><select id="prodCondition" class="input"><option value="new">New</option><option value="used">Used</option><option value="refurbished">Refurbished</option></select></div>
         <div class="form-group"><label>Code</label><input type="text" id="prodCode" class="input" placeholder="Product Code (optional)"/></div>
         <div class="form-group">
           <label>Barcode</label>
           <div style="display: flex; gap: 8px;">
-            <input type="text" id="prodBarcode" class="input" placeholder="Barcode (optional)" style="flex: 1;"/>
+            <input type="text" id="prodBarcode" class="input" placeholder="Barcode (optional)" style="flex: 1;" onkeypress="if(event.key === 'Enter') { fetchBarcodeData(); event.preventDefault(); }"/>
+            <button type="button" class="btn btn-outline" style="padding: 0 12px; height: 38px; display: flex; align-items: center; justify-content: center;" onclick="fetchBarcodeData()" title="Fetch Details from Barcode">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
+            </button>
             <button type="button" class="btn btn-outline" style="padding: 0 12px; height: 38px; display: flex; align-items: center; justify-content: center;" onclick="generateRandomBarcode()" title="Auto Generate Barcode">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
             </button>
           </div>
         </div>
         <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" class="input" min="0" value="1" oninput="if(typeof renderImeiFields === 'function') renderImeiFields()"/></div>
-        <div class="form-group form-full" id="groupImei">
+        <div class="form-group module-field module-mobile" id="groupImei">
           <label>IMEI / Serial Numbers (Available)</label>
           <div id="groupImeiInner" style="max-height: 250px; overflow-y: auto; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: #fafafa; display: flex; flex-direction: column; gap: 10px;">
              <!-- populated dynamically by JS -->
@@ -184,8 +187,18 @@
             </div>
           </div>
         </div>
-        <div class="form-group"><label>Color</label><input type="text" id="prodColor" class="input" placeholder="e.g. Space Black"/></div>
-        <div class="form-group" id="groupStorage"><label>Storage</label><input type="text" id="prodStorage" class="input" placeholder="e.g. 256GB"/></div>
+        
+        <!-- Module Specific Fields -->
+        <div class="form-group module-field module-cosmetics module-garments module-shoes module-food"><label>Brand</label><input type="text" id="prodBrand" class="input" placeholder="e.g. Nike, L'Oreal"/></div>
+        
+        <div class="form-group module-field module-garments module-shoes"><label>Size</label><input type="text" id="prodSize" class="input" placeholder="e.g. XL, 42"/></div>
+        
+        <div class="form-group module-field module-cosmetics module-food"><label>Weight / Volume</label><input type="text" id="prodWeight" class="input" placeholder="e.g. 500g, 1L"/></div>
+        
+        <div class="form-group module-field module-cosmetics module-food"><label>Expiry Date</label><input type="date" id="prodExpiry" class="input"/></div>
+
+        <div class="form-group module-field module-mobile module-garments module-shoes"><label>Color</label><input type="text" id="prodColor" class="input" placeholder="e.g. Space Black, Red"/></div>
+        <div class="form-group module-field module-mobile" id="groupStorage"><label>Storage</label><input type="text" id="prodStorage" class="input" placeholder="e.g. 256GB"/></div>
         <div class="form-group"><label>Purchase Price (PKR)</label><input type="number" id="prodPurchase" class="input" min="0" step="0.01"/></div>
         <div class="form-group"><label>Sale Price (PKR) *</label><input type="number" id="prodSale" class="input" min="0" step="0.01"/></div>
         <div class="form-group"><label>Status *</label><select id="prodStatus" class="input"><option value="in_stock">In Stock</option><option value="sold">Sold</option><option value="in_repair">In Repair</option></select></div>
@@ -535,3 +548,27 @@
 </div>
 <!-- Load JsBarcode for generating previews and print -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+<!-- Onboarding Module Modal -->
+<div class="modal-overlay hidden" id="selectModuleModal" style="z-index: 99999; backdrop-filter: blur(5px);">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Select Your Business Type</h3>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom: 15px; color: var(--text-dark);">Welcome! Please select your business type to configure the system.</p>
+      <div class="form-group">
+        <select id="onboardingBusinessType" class="input">
+            <option value="mobile">Mobile & Electronics</option>
+            <option value="cosmetics">Cosmetics</option>
+            <option value="garments">Garments</option>
+            <option value="shoes">Shoes</option>
+            <option value="food">Food & Grocery</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="saveOnboardingModule()" style="width: 100%;">Continue</button>
+    </div>
+  </div>
+</div>

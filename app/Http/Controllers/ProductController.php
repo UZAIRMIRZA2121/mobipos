@@ -7,6 +7,7 @@ use App\Models\ProductStockUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -27,8 +28,18 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|in:mobile,tablet,laptop,accessory',
             'condition' => 'required|in:new,used,refurbished',
-            'code' => 'nullable|string|max:255|unique:products',
-            'barcode' => 'nullable|string|max:255|unique:products',
+            'code' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('products')->where(fn ($query) => $query->where('user_id', Auth::id()))
+            ],
+            'barcode' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('products')->where(fn ($query) => $query->where('user_id', Auth::id()))
+            ],
             'color' => 'nullable|string|max:255',
             'storage' => 'nullable|string|max:255',
             'purchase_price' => 'nullable|numeric|min:0|lt:sale_price',
@@ -40,6 +51,7 @@ class ProductController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'units_imeis' => 'nullable|array',
             'units_imeis.*' => 'nullable|string',
+            'meta_data' => 'nullable|json',
         ]);
 
         $validated['user_id'] = Auth::id();
@@ -48,9 +60,15 @@ class ProductController extends Controller
             $validated['image'] = $request->file('image')->store('products', 'public');
         }
 
+        if ($request->has('meta_data')) {
+            $validated['meta_data'] = json_decode($request->input('meta_data'), true);
+        }
+
         $product = Product::create($validated);
 
-        if (in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
+        $businessType = Auth::user()->storeSetting->business_type ?? 'mobile';
+        
+        if ($businessType === 'mobile' && in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
             $stock = (int) ($product->stock ?: 1);
             $imeisArray = $request->input('units_imeis', []);
             
@@ -78,8 +96,18 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|in:mobile,tablet,laptop,accessory',
             'condition' => 'required|in:new,used,refurbished',
-            'code' => 'nullable|string|max:255|unique:products,code,' . $product->id,
-            'barcode' => 'nullable|string|max:255|unique:products,barcode,' . $product->id,
+            'code' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('products')->where(fn ($query) => $query->where('user_id', Auth::id()))->ignore($product->id)
+            ],
+            'barcode' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('products')->where(fn ($query) => $query->where('user_id', Auth::id()))->ignore($product->id)
+            ],
             'color' => 'nullable|string|max:255',
             'storage' => 'nullable|string|max:255',
             'purchase_price' => 'nullable|numeric|min:0|lt:sale_price',
@@ -91,6 +119,7 @@ class ProductController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'units_imeis' => 'nullable|array',
             'units_imeis.*' => 'nullable|string',
+            'meta_data' => 'nullable|json',
         ]);
 
         if ($request->hasFile('image')) {
@@ -105,9 +134,15 @@ class ProductController extends Controller
             $validated['image'] = null;
         }
 
+        if ($request->has('meta_data')) {
+            $validated['meta_data'] = json_decode($request->input('meta_data'), true);
+        }
+
         $product->update($validated);
 
-        if (in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
+        $businessType = Auth::user()->storeSetting->business_type ?? 'mobile';
+
+        if ($businessType === 'mobile' && in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
             $stock = (int) ($product->stock ?: 1);
             $imeisArray = $request->input('units_imeis', []);
             
@@ -167,5 +202,48 @@ class ProductController extends Controller
             });
 
         return response()->json($sales);
+    }
+
+    public function barcodeLookup($barcode)
+    {
+        if (Auth::user()->type !== 'shop' && !Auth::user()->hasPrivilege('shop.products.index')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Try OpenFoodFacts/OpenBeautyFacts first
+        $response = \Illuminate\Support\Facades\Http::timeout(5)->get("https://world.openfoodfacts.org/api/v2/product/{$barcode}.json");
+        
+        if ($response->successful()) {
+            $data = $response->json();
+            if (isset($data['product'])) {
+                $product = $data['product'];
+                return response()->json([
+                    'found' => true,
+                    'name' => $product['product_name'] ?? null,
+                    'brand' => $product['brands'] ?? null,
+                    'weight' => $product['quantity'] ?? null,
+                ]);
+            }
+        }
+
+        // Fallback to UPCitemdb
+        $response = \Illuminate\Support\Facades\Http::timeout(5)->get("https://api.upcitemdb.com/prod/trial/lookup", [
+            'upc' => $barcode
+        ]);
+
+        if ($response->successful()) {
+            $data = $response->json();
+            if (isset($data['items']) && count($data['items']) > 0) {
+                $item = $data['items'][0];
+                return response()->json([
+                    'found' => true,
+                    'name' => $item['title'] ?? null,
+                    'brand' => $item['brand'] ?? null,
+                    'weight' => $item['weight'] ?? null, // UPCitemdb may have weight, model, etc.
+                ]);
+            }
+        }
+
+        return response()->json(['found' => false, 'message' => 'Product not found in global databases.']);
     }
 }

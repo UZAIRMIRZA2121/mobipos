@@ -143,6 +143,20 @@ function editProduct(id = null) {
 
     document.getElementById('prodColor').value = p.color || '';
     document.getElementById('prodStorage').value = p.storage || '';
+    
+    // Set Metadata
+    if (p.meta_data) {
+       const meta = typeof p.meta_data === 'string' ? JSON.parse(p.meta_data) : p.meta_data;
+       const prodBrand = document.getElementById('prodBrand');
+       if(prodBrand) prodBrand.value = meta.brand || '';
+       const prodSize = document.getElementById('prodSize');
+       if(prodSize) prodSize.value = meta.size || '';
+       const prodWeight = document.getElementById('prodWeight');
+       if(prodWeight) prodWeight.value = meta.weight || '';
+       const prodExpiry = document.getElementById('prodExpiry');
+       if(prodExpiry) prodExpiry.value = meta.expiry_date || '';
+    }
+
     document.getElementById('prodPurchase').value = p.purchase;
     document.getElementById('prodSale').value = p.sale;
     document.getElementById('prodStatus').value = p.status;
@@ -165,7 +179,10 @@ function editProduct(id = null) {
   } else {
     document.getElementById('prodModalTitle').textContent = 'Add Product';
     document.getElementById('prodId').value = '';
-    ['prodName', 'prodCode', 'prodBarcode', 'prodColor', 'prodStorage', 'prodPurchase', 'prodSale', 'prodImage', 'prodBuyer'].forEach(id => document.getElementById(id).value = '');
+    ['prodName', 'prodCode', 'prodBarcode', 'prodColor', 'prodStorage', 'prodBrand', 'prodSize', 'prodWeight', 'prodExpiry', 'prodPurchase', 'prodSale', 'prodImage', 'prodBuyer'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.value = '';
+    });
     if (typeof clearPhoto === 'function') clearPhoto();
     document.getElementById('existingImageContainer').style.display = 'none';
     document.getElementById('prodImageDeleted').value = '0';
@@ -236,10 +253,21 @@ function renderImeiFields(stockUnits = []) {
 
 function toggleProductFields() {
   const type = document.getElementById('prodType').value;
-  const groupImei = document.getElementById('groupImei');
-  const groupStorage = document.getElementById('groupStorage');
-  if (groupImei) groupImei.style.display = (type === 'accessory') ? 'none' : 'block';
-  if (groupStorage) groupStorage.style.display = (type === 'accessory') ? 'none' : 'block';
+  const activeModule = window.ACTIVE_MODULE || 'mobile';
+
+  // Hide all module specific fields
+  document.querySelectorAll('.module-field').forEach(el => el.style.display = 'none');
+  
+  // Show fields for active module
+  document.querySelectorAll('.module-' + activeModule).forEach(el => el.style.display = 'block');
+  
+  // Additional type checks for mobile module
+  if (activeModule === 'mobile' && type === 'accessory') {
+      const groupImei = document.getElementById('groupImei');
+      const groupStorage = document.getElementById('groupStorage');
+      if (groupImei) groupImei.style.display = 'none';
+      if (groupStorage) groupStorage.style.display = 'none';
+  }
 }
 
 function generateRandomBarcode() {
@@ -280,13 +308,21 @@ async function saveProduct() {
   const unitImeis = Array.from(document.querySelectorAll('.unit-imei-input')).map(el => el.value.trim());
   unitImeis.forEach(u => formData.append('units_imeis[]', u));
 
-  formData.append('color', document.getElementById('prodColor').value.trim());
-  formData.append('storage', document.getElementById('prodStorage').value.trim());
+  formData.append('color', document.getElementById('prodColor') ? document.getElementById('prodColor').value.trim() : '');
+  formData.append('storage', document.getElementById('prodStorage') ? document.getElementById('prodStorage').value.trim() : '');
   formData.append('purchase_price', document.getElementById('prodPurchase').value || 0);
   formData.append('sale_price', sale);
   formData.append('status', document.getElementById('prodStatus').value);
   formData.append('stock', document.getElementById('prodStock').value || 1);
   formData.append('delete_image', document.getElementById('prodImageDeleted').value);
+
+  const meta_data = {
+    brand: document.getElementById('prodBrand') ? document.getElementById('prodBrand').value.trim() : '',
+    size: document.getElementById('prodSize') ? document.getElementById('prodSize').value.trim() : '',
+    weight: document.getElementById('prodWeight') ? document.getElementById('prodWeight').value.trim() : '',
+    expiry_date: document.getElementById('prodExpiry') ? document.getElementById('prodExpiry').value.trim() : '',
+  };
+  formData.append('meta_data', JSON.stringify(meta_data));
 
   const catId = parseInt(document.getElementById('prodCategory').value);
   if (catId) formData.append('category_id', catId);
@@ -553,4 +589,33 @@ function handleImageSelect(input) {
   }
 }
 
+async function fetchBarcodeData() {
+  const barcode = document.getElementById('prodBarcode').value.trim();
+  if (!barcode) {
+    alert('Please enter or scan a barcode first.');
+    return;
+  }
 
+  // Show a toast or loading state
+  showToast('Fetching product info...', 'info');
+
+  try {
+    const res = await fetch(`/shop/api/barcode-lookup/${barcode}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.found) {
+        if (data.name) document.getElementById('prodName').value = data.name;
+        if (data.brand) document.getElementById('prodBrand').value = data.brand;
+        if (data.weight) document.getElementById('prodWeight').value = data.weight;
+        showToast('Product data fetched successfully!', 'success');
+      } else {
+        showToast('Product not found in global databases.', 'error');
+      }
+    } else {
+      showToast('Error looking up barcode.', 'error');
+    }
+  } catch (error) {
+    console.error(error);
+    showToast('Network error looking up barcode.', 'error');
+  }
+}

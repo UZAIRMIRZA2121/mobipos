@@ -224,13 +224,18 @@ function buildProdRow(p) {
   else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + availStock + ')'; }
 
   return `<div class="med-row${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})">
-    <div class="med-row-info">
-      <div class="med-row-name">${p.name} ${p.condition || p.color ? `<span style="font-size:11px; font-weight:normal; color:var(--primary);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Barcode: ${p.barcode})</span>` : '')} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart ✕${inCart.qty}</span>` : ''}
-      </div>
-      <div class="med-row-meta" style="margin-top: 4px;">
+    <div class="med-row-info" style="display:flex; align-items:center; gap:12px;">
+      ${(posFilter.showImage && p.image) ? `<img src="/storage/${p.image}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0;">` : `<div style="width:40px; height:40px; background:var(--border-light); border-radius:6px; flex-shrink:0; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>`}
+      <div>
+        <div class="med-row-name">
+          ${p.meta_data && p.meta_data.brand ? `<div style="font-size:10px; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.5px; margin-bottom:2px; line-height:1;">${p.meta_data.brand}</div>` : ''}
+          ${p.name} ${p.condition || p.color ? `<span style="font-size:11px; font-weight:normal; color:var(--primary);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Barcode: ${p.barcode})</span>` : '')} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart ✕${inCart.qty}</span>` : ''}
+        </div>
+        <div class="med-row-meta" style="margin-top: 4px;">
         ${p.storage ? p.storage + ' · ' : ''}
         ${p.color ? p.color + ' · ' : ''}
         <span style="font-size:10px; font-weight:600; padding:2px 6px; border-radius:10px; background:${stockBg}; color:${stockColor};">${stockText}</span>
+      </div>
       </div>
     </div>
     <div class="med-row-price">${fmtCur(p.sale)}</div>
@@ -396,7 +401,7 @@ function addToCart(prodId) {
   if (p.stock <= 0 || p.status === 'defective' || p.status === 'in_repair') { toast('Product is unavailable!', 'danger'); return; }
 
   // IF IT IS SERIALIZED, prompt for IMEI selection
-  if (['mobile', 'tablet', 'laptop'].includes(p.type)) {
+  if (window.ACTIVE_MODULE === 'mobile' && ['mobile', 'tablet', 'laptop'].includes(p.type)) {
      document.getElementById('imeiSelectProdId').value = p.id;
      
      const existingCartItem = cart.find(c => c.prodId == prodId);
@@ -434,7 +439,8 @@ function addToCart(prodId) {
   } else {
     if (p.stock <= 0) { toast('Out of stock!', 'danger'); return; }
     const pName = p.name + (p.condition || p.color ? ` (${[p.condition, p.color].filter(Boolean).join(' - ')})` : '');
-    cart.push({ prodId: p.id, name: pName, price: parseFloat(p.sale), qty: 1, sub: parseFloat(p.sale), maxStock: p.stock });
+    const pBrand = p.meta_data && p.meta_data.brand ? p.meta_data.brand : null;
+    cart.push({ prodId: p.id, name: pName, price: parseFloat(p.sale), qty: 1, sub: parseFloat(p.sale), maxStock: p.stock, image: p.image, brand: pBrand });
   }
   renderCart();
   renderProdGrid();
@@ -494,7 +500,9 @@ function confirmImeiSelection() {
           sub: parseFloat(p.sale) * selectedUnitIds.length, 
           maxStock: p.stock,
           stock_units: selectedUnitIds,
-          type: p.type
+          type: p.type,
+          image: p.image,
+          brand: p.meta_data && p.meta_data.brand ? p.meta_data.brand : null
       });
   }
   
@@ -546,6 +554,7 @@ function clearCart() {
   const p = document.getElementById('posPaid'); if (p) p.value = 0;
   const n = document.getElementById('posNotes'); if (n) n.value = '';
   const cust = document.getElementById('posCustomer'); if (cust) cust.value = '';
+  const custName = document.getElementById('posCustomerName'); if (custName) custName.value = '';
   const pay = document.getElementById('posPayment'); if (pay) pay.value = 'Cash';
   const ledger = document.getElementById('posSaveToLedger'); if (ledger) ledger.checked = false;
   renderCart();
@@ -581,7 +590,13 @@ function renderCart() {
   tbody.innerHTML = cart.map(item =>
     `<tr>
         <td>
-          <div class="cart-item-name">${item.name}</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            ${(posFilter.showImage && item.image) ? `<img src="/storage/${item.image}" style="width:32px; height:32px; object-fit:cover; border-radius:4px; flex-shrink:0;">` : `<div style="width:32px; height:32px; background:var(--border-light); border-radius:4px; flex-shrink:0; display:flex; align-items:center; justify-content:center;"><svg width="16" height="16" fill="none" stroke="#94a3b8" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>`}
+            <div>
+              ${item.brand ? `<div style="font-size:9px; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.5px; margin-bottom:1px; line-height:1;">${item.brand}</div>` : ''}
+              <div class="cart-item-name" style="margin:0; line-height:1.2;">${item.name}</div>
+            </div>
+          </div>
         </td>
         <td style="text-align:center">
           <div class="qty-control">
@@ -690,6 +705,7 @@ async function checkout() {
   const tax = parseFloat(document.getElementById('posTax')?.value || 0);
   const paid = parseFloat(document.getElementById('posPaid')?.value || 0);
   const custId = document.getElementById('posCustomer')?.value || null;
+  const custName = document.getElementById('posCustomerName')?.value || null;
   const payment = document.getElementById('posPayment')?.value || 'Cash';
   const notes = document.getElementById('posNotes')?.value || '';
 
@@ -722,6 +738,7 @@ async function checkout() {
 
   const payload = {
     buyer_id: custId,
+    customer_name: custName,
     subtotal: subtotal,
     tax: taxAmt,
     discount: discAmt,

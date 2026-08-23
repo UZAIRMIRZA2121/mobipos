@@ -22,6 +22,11 @@ class Product extends Model
         'category_id',
         'buyer_id',
         'user_id',
+        'meta_data',
+    ];
+
+    protected $casts = [
+        'meta_data' => 'array',
     ];
 
     public function user()

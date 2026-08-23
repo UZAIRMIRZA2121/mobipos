@@ -11,6 +11,7 @@ class StoreSetting extends Model
 
     protected $fillable = [
         'user_id',
+        'business_type',
         'discount',
         'tax',
     ];

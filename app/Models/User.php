@@ -93,4 +93,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Sale::class);
     }
+
+    public function storeSetting()
+    {
+        return $this->hasOne(StoreSetting::class);
+    }
 }

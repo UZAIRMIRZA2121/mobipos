@@ -182,7 +182,7 @@
     </div>
     <div class="info-row">
         <span>Customer:</span>
-        <span>{{ $order->buyer ? $order->buyer->name : 'Walk-in' }}</span>
+        <span>{{ $order->buyer ? $order->buyer->name : ($order->customer_name ?? 'Walk-in Customer') }}</span>
     </div>
     <div class="info-row">
         <span>Payment:</span>
@@ -203,6 +203,9 @@
             @foreach($order->items as $item)
             <tr>
                 <td style="width: 60%">
+                    @if($item->product && isset($item->product->meta_data['brand']) && !empty($item->product->meta_data['brand']))
+                        <div class="item-meta" style="text-transform: uppercase; font-weight: bold; font-size: 0.85em; margin-bottom: 1px;">{{ $item->product->meta_data['brand'] }}</div>
+                    @endif
                     <span class="item-name">
                         {{ $item->product ? $item->product->name : 'Unknown Product' }}
                         @if($item->product && ($item->product->condition || $item->product->color))

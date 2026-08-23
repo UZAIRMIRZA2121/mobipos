@@ -11,6 +11,18 @@
             <div class="card-body" style="padding: 24px;">
                 <div style="display: flex; gap: 20px; margin-bottom: 24px;">
                     <div class="form-group" style="flex: 1;">
+                        <label style="display: block; font-weight: 500; margin-bottom: 8px; color: var(--text-dark);">Active Business Type</label>
+                        <select id="settingBusinessType" class="input">
+                            <option value="mobile">Mobile & Electronics</option>
+                            <option value="cosmetics">Cosmetics</option>
+                            <option value="garments">Garments</option>
+                            <option value="shoes">Shoes</option>
+                            <option value="food">Food & Grocery</option>
+                        </select>
+                        <small style="color: var(--text-muted); font-size: 12px; margin-top: 4px; display: block;">Select your business type to customize features.</small>
+                    </div>
+
+                    <div class="form-group" style="flex: 1;">
                         <label style="display: block; font-weight: 500; margin-bottom: 8px; color: var(--text-dark);">Global Discount (%)</label>
                         <input type="number" id="settingDiscount" class="input" min="0" max="100" step="0.01" placeholder="e.g. 5" value="0">
                         <small style="color: var(--text-muted); font-size: 12px; margin-top: 4px; display: block;">This discount percentage will be automatically applied to new sales.</small>
@@ -76,6 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await res.json();
             document.getElementById('settingDiscount').value = data.discount || 0;
             document.getElementById('settingTax').value = data.tax || 0;
+            if (data.business_type) document.getElementById('settingBusinessType').value = data.business_type;
         }
     } catch(err) {
         console.error('Failed to load settings', err);
@@ -85,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function saveStoreSettings() {
     const discount = document.getElementById('settingDiscount').value || 0;
     const tax = document.getElementById('settingTax').value || 0;
+    const business_type = document.getElementById('settingBusinessType').value;
     
     try {
         const res = await fetch('/shop/api/settings', {
@@ -93,7 +107,7 @@ async function saveStoreSettings() {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
             },
-            body: JSON.stringify({ discount, tax })
+            body: JSON.stringify({ discount, tax, business_type })
         });
         
         const data = await res.json();
@@ -103,6 +117,7 @@ async function saveStoreSettings() {
             } else {
                 alert(data.message);
             }
+            setTimeout(() => window.location.reload(), 1500); // Reload to apply module changes globally
         } else {
             if (typeof toast !== 'undefined') {
                 toast(data.message || 'Error updating settings', 'danger');

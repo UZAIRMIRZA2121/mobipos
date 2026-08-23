@@ -38,8 +38,10 @@
 
 @php
     $printSetting = Auth::check() ? \App\Models\InvoiceSetting::where('user_id', Auth::id())->first() : null;
+    $storeSetting = Auth::check() ? \App\Models\StoreSetting::where('user_id', Auth::id())->first() : null;
 @endphp
 <script>
+    window.ACTIVE_MODULE = {!! json_encode($storeSetting->business_type ?? null) !!};
     window.printSettings = {
         name: {!! json_encode($printSetting->store_name ?? 'MobiPOS') !!},
         desc: {!! json_encode($printSetting->header_text ?? 'Store address here') !!},
@@ -64,5 +66,31 @@
     }
 </script>
 @yield('scripts')
+<script>
+    if (window.ACTIVE_MODULE === null) {
+        document.getElementById('selectModuleModal').classList.remove('hidden');
+    }
+
+    async function saveOnboardingModule() {
+        const business_type = document.getElementById('onboardingBusinessType').value;
+        try {
+            const res = await fetch('/shop/api/settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify({ business_type: business_type })
+            });
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                alert('Error saving business type');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+</script>
 </body>
 </html>
