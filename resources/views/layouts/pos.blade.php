@@ -41,8 +41,10 @@
 
 @php
     $printSetting = Auth::check() ? \App\Models\InvoiceSetting::where('user_id', Auth::id())->first() : null;
+    $storeSetting = Auth::check() ? \App\Models\StoreSetting::where('user_id', Auth::id())->first() : null;
 @endphp
 <script>
+    window.ACTIVE_MODULE = {!! json_encode($storeSetting->business_type ?? 'mobile') !!};
     window.printSettings = {
         name: {!! json_encode($printSetting->store_name ?? 'MobiPOS') !!},
         desc: {!! json_encode($printSetting->header_text ?? 'Store address here') !!},
