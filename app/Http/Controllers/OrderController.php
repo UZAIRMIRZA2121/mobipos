@@ -366,6 +366,11 @@ class OrderController extends Controller
             // Revert old items and stock if it wasn't already refunded
             if ($order->payment_status !== 'refunded') {
                 foreach ($order->items as $item) {
+                    \App\Models\ProductStockUnit::where('order_item_id', $item->id)->update([
+                        'status' => 'available',
+                        'order_item_id' => null
+                    ]);
+
                     $product = $item->product;
                     if ($product) {
                         $product->stock += $item->qty;
@@ -527,6 +532,11 @@ class OrderController extends Controller
         DB::transaction(function () use ($order) {
             if ($order->payment_status !== 'refunded') {
                 foreach ($order->items as $item) {
+                    \App\Models\ProductStockUnit::where('order_item_id', $item->id)->update([
+                        'status' => 'available',
+                        'order_item_id' => null
+                    ]);
+
                     $product = $item->product;
                     if ($product) {
                         $product->stock += $item->qty;
@@ -554,6 +564,11 @@ class OrderController extends Controller
 
         DB::transaction(function () use ($order) {
             foreach ($order->items as $item) {
+                \App\Models\ProductStockUnit::where('order_item_id', $item->id)->update([
+                    'status' => 'available',
+                    'order_item_id' => null
+                ]);
+
                 $product = $item->product;
                 if ($product) {
                     $product->stock += $item->qty;
