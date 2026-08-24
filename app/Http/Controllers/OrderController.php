@@ -14,7 +14,7 @@ class OrderController extends Controller
 {
     public function apiIndex(Request $request)
     {
-        $query = Order::where('user_id', Auth::id())->with(['items.product', 'buyer'])->orderBy('created_at', 'desc');
+        $query = Order::where('user_id', Auth::id())->where('is_installment', 0)->with(['items.product', 'buyer'])->orderBy('created_at', 'desc');
         
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
@@ -63,12 +63,13 @@ class OrderController extends Controller
 
     public function dashboardStats(\Illuminate\Http\Request $request)
     {
-        $totalEarning = Order::where('user_id', Auth::id())->where('payment_status', '!=', 'refunded')->sum('total');
+        $totalEarning = Order::where('user_id', Auth::id())->where('payment_status', '!=', 'refunded')->where('is_installment', 0)->sum('total');
         
         $totalCostOfGoodsSold = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->where('orders.user_id', Auth::id())
             ->where('orders.payment_status', '!=', 'refunded')
+            ->where('orders.is_installment', 0)
             ->sum(DB::raw('order_items.buy_price * order_items.qty'));
 
         $totalExpense = Expense::where('user_id', Auth::user()->id)->sum('amount');
@@ -82,6 +83,7 @@ class OrderController extends Controller
 
         // Recent Sales
         $recentSales = Order::where('user_id', Auth::id())
+            ->where('is_installment', 0)
             ->with(['items.product', 'buyer'])
             ->orderBy('created_at', 'desc')
             ->take(5)
@@ -92,6 +94,7 @@ class OrderController extends Controller
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->select('order_items.product_id', DB::raw('SUM(order_items.qty) as total_qty'), DB::raw('SUM(order_items.sell_price * order_items.qty) as total_revenue'))
             ->where('orders.user_id', Auth::id())
+            ->where('orders.is_installment', 0)
             ->groupBy('order_items.product_id')
             ->orderBy('total_qty', 'desc')
             ->take(5)
@@ -117,6 +120,7 @@ class OrderController extends Controller
         $dailySalesQuery = DB::table('orders')
             ->where('user_id', Auth::id())
             ->where('payment_status', '!=', 'refunded')
+            ->where('is_installment', 0)
             ->where('created_at', '>=', $startDate);
 
         $dailyExpensesQuery = DB::table('expenses')
@@ -127,6 +131,7 @@ class OrderController extends Controller
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
             ->where('orders.user_id', Auth::id())
             ->where('orders.payment_status', '!=', 'refunded')
+            ->where('orders.is_installment', 0)
             ->where('orders.created_at', '>=', $startDate);
 
         if ($period === 'year') {
@@ -237,7 +242,7 @@ class OrderController extends Controller
                 'due_amount' => $order_due,
                 'payment_status' => $is_ledger ? 'paid' : $request->payment_status,
                 'payment_method' => $request->payment_method,
-                'is_installment' => $request->has('is_installment') ? $request->is_installment : 0,
+                'is_installment' => ($request->payment_method === 'installment' || $request->is_installment == 1) ? 1 : 0,
                 'user_id' => Auth::id(),
             ]);
 
@@ -321,7 +326,7 @@ class OrderController extends Controller
             }
 
             // Create Installment Record if applicable
-            if ($request->has('is_installment') && $request->is_installment == 1) {
+            if ($request->payment_method === 'installment' || ($request->has('is_installment') && $request->is_installment == 1)) {
                 \App\Models\Installment::create([
                     'user_id' => \Illuminate\Support\Facades\Auth::id(),
                     'order_id' => $order->id,
@@ -417,7 +422,7 @@ class OrderController extends Controller
                 'due_amount' => $order_due,
                 'payment_status' => $is_ledger ? 'paid' : $request->payment_status,
                 'payment_method' => $request->payment_method,
-                'is_installment' => $request->has('is_installment') ? $request->is_installment : 0,
+                'is_installment' => ($request->payment_method === 'installment' || $request->is_installment == 1) ? 1 : 0,
             ]);
 
             // Create New Items & Deduct Stock
@@ -471,7 +476,7 @@ class OrderController extends Controller
         }
 
         // Update Installment Record if applicable
-        if ($request->has('is_installment') && $request->is_installment == 1) {
+        if ($request->payment_method === 'installment' || ($request->has('is_installment') && $request->is_installment == 1)) {
             \App\Models\Installment::updateOrCreate(
                 ['order_id' => $order->id],
                 [

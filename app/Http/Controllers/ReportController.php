@@ -41,6 +41,7 @@ class ReportController extends Controller
         $totalSales = Order::where('user_id', Auth::id())
             ->whereBetween('created_at', [$startDateTime, $endDateTime])
             ->where('payment_status', '!=', 'refunded')
+            ->where('is_installment', 0)
             ->sum('total');
 
         // 2. Total Purchases
@@ -62,6 +63,7 @@ class ReportController extends Controller
             ->where('orders.user_id', Auth::id())
             ->whereBetween('orders.created_at', [$startDateTime, $endDateTime])
             ->where('orders.payment_status', '!=', 'refunded')
+            ->where('orders.is_installment', 0)
             ->sum(DB::raw('order_items.buy_price * order_items.qty'));
 
         // 6. True Net Profit (Sales - COGS - Expenses)
@@ -73,6 +75,7 @@ class ReportController extends Controller
             ->select('order_items.product_id', DB::raw('SUM(order_items.qty) as total_qty'), DB::raw('SUM(order_items.sell_price * order_items.qty) as total_revenue'))
             ->where('orders.user_id', Auth::id())
             ->whereBetween('orders.created_at', [$startDateTime, $endDateTime])
+            ->where('orders.is_installment', 0)
             ->groupBy('order_items.product_id')
             ->orderBy('total_qty', 'desc')
             ->take(10)

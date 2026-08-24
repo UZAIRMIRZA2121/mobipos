@@ -22,6 +22,10 @@ Route::get('/dashboard', function () {
     return redirect()->route('shop.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::get('/reports', function () {
+    return redirect()->route('shop.reports.index');
+})->middleware(['auth', 'verified']);
+
 Route::post('/api/settings/backup/import-public', [App\Http\Controllers\BackupController::class, 'importPublic'])->name('api.settings.backup.import_public');
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {

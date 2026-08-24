@@ -114,6 +114,7 @@ class InstallmentController extends Controller
 
             // Check if fully paid
             $totalPaid = $installment->down_payment + $installment->payments()->sum('amount');
+            
             if ($totalPaid >= $installment->total_amount) {
                 $installment->update(['status' => 'Completed']);
             }

@@ -20,6 +20,7 @@ class Order extends Model
         'due_amount',
         'payment_status',
         'payment_method',
+        'is_installment',
         'user_id'
     ];
 

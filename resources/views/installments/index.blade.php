@@ -99,6 +99,7 @@
                                 
                                 $dueText = '';
                                 $dueColor = '';
+                                $paidThisMonth = 0;
                                 
                                 if ($installment->status === 'Completed' || $remaining <= 0) {
                                     $dueText = 'Fully Paid';
