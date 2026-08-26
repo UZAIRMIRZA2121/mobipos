@@ -70,6 +70,7 @@
             </div>
         </div>
 
+        @if(app()->environment('local'))
         <div class="card" style="max-width: 600px; margin: 24px auto;">
             <div class="card-header">
                 <h3>Backup & Restore</h3>
@@ -104,6 +105,7 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
 </main>
 
