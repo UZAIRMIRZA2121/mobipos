@@ -54,9 +54,9 @@ class ReportController extends Controller
             ->whereBetween('expense_date', [$startDateTime, $endDateTime])
             ->sum('amount');
 
-        // 4. Current Profit (Sales - Purchases - Expenses)
-        $profit = $totalSales - ($totalPurchases + $totalExpenses);
-
+        // 4. Current Profit (Sales - Purchases - Expenses) - We won't use this old formula for the final UI
+        // We will calculate Base Profit (Gross Profit) first
+        
         // 5. Cost of Goods Sold (buy_price * qty of sold items)
         $totalCogs = DB::table('order_items')
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
@@ -66,8 +66,11 @@ class ReportController extends Controller
             ->where('orders.is_installment', 0)
             ->sum(DB::raw('order_items.buy_price * order_items.qty'));
 
-        // 6. True Net Profit (Sales - COGS - Expenses)
-        $netProfit = $totalSales - $totalCogs - $totalExpenses;
+        // 6. Base Profit (Sales - COGS)
+        $netProfit = $totalSales - $totalCogs; 
+
+        // 7. Profit After Expense (Base Profit - Expenses)
+        $profit = $netProfit - $totalExpenses;
 
         // 7. Top Selling Products
         $topProducts = DB::table('order_items')

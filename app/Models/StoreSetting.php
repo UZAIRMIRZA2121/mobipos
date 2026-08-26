@@ -14,6 +14,12 @@ class StoreSetting extends Model
         'business_type',
         'discount',
         'tax',
+        'ultramsg_api_url',
+        'ultramsg_instance_id',
+        'ultramsg_token',
+        'ultramsg_total_sent',
+        'ultramsg_msg_cost',
+        'whatsapp_config',
     ];
 
     public function user()

@@ -327,7 +327,7 @@ class OrderController extends Controller
 
             // Create Installment Record if applicable
             if ($request->payment_method === 'installment' || ($request->has('is_installment') && $request->is_installment == 1)) {
-                \App\Models\Installment::create([
+                $installment = \App\Models\Installment::create([
                     'user_id' => \Illuminate\Support\Facades\Auth::id(),
                     'order_id' => $order->id,
                     'customer_id' => $request->buyer_id,
@@ -339,6 +339,18 @@ class OrderController extends Controller
                     'actual_price' => $request->installment_actual_price ?? 0,
                     'status' => 'Active'
                 ]);
+
+                if ($request->buyer_id) {
+                    $customer = \App\Models\Customer::find($request->buyer_id);
+                    if ($customer && !empty($customer->phone)) {
+                        $msg = "Hello {$customer->name}, your installment plan for Order #{$order->id} has been successfully created.\n";
+                        $msg .= "Total Amount: PKR {$request->total}\n";
+                        $msg .= "Down Payment: PKR " . ($request->installment_down_payment ?? 0) . "\n";
+                        $msg .= "Monthly Installment: PKR " . ($request->installment_monthly_amount ?? 0) . "\n";
+                        $msg .= "Thank you for shopping with us!";
+                        \App\Services\UltramsgService::sendMessage(\Illuminate\Support\Facades\Auth::id(), $customer->phone, $msg);
+                    }
+                }
             }
 
             DB::commit();

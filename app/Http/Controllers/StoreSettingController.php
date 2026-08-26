@@ -16,7 +16,14 @@ class StoreSettingController extends Controller
     public function apiGet()
     {
         $settings = StoreSetting::where('user_id', Auth::id())->first();
-        return response()->json($settings ?: ['discount' => 0, 'tax' => 0, 'business_type' => null]);
+        return response()->json($settings ?: [
+            'discount' => 0, 
+            'tax' => 0, 
+            'business_type' => null,
+            'ultramsg_api_url' => null,
+            'ultramsg_instance_id' => null,
+            'ultramsg_token' => null
+        ]);
     }
 
     public function apiUpdate(Request $request)
@@ -25,6 +32,9 @@ class StoreSettingController extends Controller
             'discount' => 'nullable|numeric|min:0|max:100',
             'tax' => 'nullable|numeric|min:0|max:100',
             'business_type' => 'nullable|string|in:mobile,cosmetics,garments,shoes,food',
+            'ultramsg_api_url' => 'nullable|string|max:255',
+            'ultramsg_instance_id' => 'nullable|string|max:255',
+            'ultramsg_token' => 'nullable|string|max:255',
         ]);
 
         $settings = StoreSetting::where('user_id', Auth::id())->first();
@@ -46,6 +56,18 @@ class StoreSettingController extends Controller
 
         if (array_key_exists('business_type', $validated) && $validated['business_type']) {
             $settings->business_type = $validated['business_type'];
+        }
+
+        if (array_key_exists('ultramsg_api_url', $validated)) {
+            $settings->ultramsg_api_url = $validated['ultramsg_api_url'];
+        }
+
+        if (array_key_exists('ultramsg_instance_id', $validated)) {
+            $settings->ultramsg_instance_id = $validated['ultramsg_instance_id'];
+        }
+
+        if (array_key_exists('ultramsg_token', $validated)) {
+            $settings->ultramsg_token = $validated['ultramsg_token'];
         }
 
         $settings->save();

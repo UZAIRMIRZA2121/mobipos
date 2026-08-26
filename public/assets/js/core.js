@@ -161,10 +161,17 @@ async function generateReport() {
   try {
     const res = await api('/shop/api/reports/generate', 'POST', { start_date: sDate, end_date: eDate });
 
-    document.getElementById('repTotalSales').textContent = fmtCur(res.total_sales);
-    document.getElementById('repTotalPurchases').textContent = fmtCur(res.total_purchases);
-    document.getElementById('repTotalExpenses').textContent = fmtCur(res.total_expenses);
-    document.getElementById('repProfit').textContent = fmtCur(res.profit);
+    const elSales = document.getElementById('repTotalSales');
+    if(elSales) elSales.textContent = fmtCur(res.total_sales);
+
+    const elPurchases = document.getElementById('repTotalPurchases');
+    if(elPurchases) elPurchases.textContent = fmtCur(res.total_purchases);
+
+    const elExpenses = document.getElementById('repTotalExpenses');
+    if(elExpenses) elExpenses.textContent = fmtCur(res.total_expenses);
+
+    const elProfit = document.getElementById('repProfit');
+    if(elProfit) elProfit.textContent = fmtCur(res.profit);
 
     const netProfitEl = document.getElementById('repNetProfit');
     netProfitEl.textContent = fmtCur(res.net_profit);

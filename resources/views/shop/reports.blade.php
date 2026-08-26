@@ -73,14 +73,6 @@
                     <div style="color: #6b7280; font-size: 13px; font-weight: 500;">Total Sales</div>
                 </div>
             </div>
-            
-            <div class="stat-card card" style="display: flex; align-items: center; gap: 15px; margin-bottom: 0;">
-                <div style="width: 48px; height: 48px; border-radius: 12px; background: #fff3e0; color: #e65100; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 500;">$</div>
-                <div>
-                    <div id="repTotalPurchases" style="font-size: 20px; font-weight: 700; color: #111827;">PKR 0.00</div>
-                    <div style="color: #6b7280; font-size: 13px; font-weight: 500;">Total Purchases</div>
-                </div>
-            </div>
 
             <div class="stat-card card" style="display: flex; align-items: center; gap: 15px; margin-bottom: 0;">
                 <div style="width: 48px; height: 48px; border-radius: 12px; background: #ffebee; color: #c62828; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 500;">$</div>
@@ -91,18 +83,18 @@
             </div>
 
             <div class="stat-card card" style="display: flex; align-items: center; gap: 15px; margin-bottom: 0;">
-                <div style="width: 48px; height: 48px; border-radius: 12px; background: #f3e5f5; color: #7b1fa2; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 500;">$</div>
+                <div style="width: 48px; height: 48px; border-radius: 12px; background: #e3f2fd; color: #1565c0; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 500;">$</div>
                 <div>
-                    <div id="repProfit" style="font-size: 20px; font-weight: 700; color: #111827;">PKR 0.00</div>
+                    <div id="repNetProfit" style="font-size: 20px; font-weight: 700; color: #111827;">PKR 0.00</div>
                     <div style="color: #6b7280; font-size: 13px; font-weight: 500;">Profit</div>
                 </div>
             </div>
 
             <div class="stat-card card" style="display: flex; align-items: center; gap: 15px; margin-bottom: 0;">
-                <div style="width: 48px; height: 48px; border-radius: 12px; background: #e3f2fd; color: #1565c0; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 500;">$</div>
+                <div style="width: 48px; height: 48px; border-radius: 12px; background: #f3e5f5; color: #7b1fa2; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 500;">$</div>
                 <div>
-                    <div id="repNetProfit" style="font-size: 20px; font-weight: 700; color: #111827;">PKR 0.00</div>
-                    <div style="color: #6b7280; font-size: 13px; font-weight: 500;">Net Profit</div>
+                    <div id="repProfit" style="font-size: 20px; font-weight: 700; color: #111827;">PKR 0.00</div>
+                    <div style="color: #6b7280; font-size: 13px; font-weight: 500;">Profit After Expense</div>
                 </div>
             </div>
         </div>

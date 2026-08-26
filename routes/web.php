@@ -30,15 +30,69 @@ Route::post('/api/settings/backup/import-public', [App\Http\Controllers\BackupCo
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', function () {
+        $stores = \App\Models\User::where('type', 'shop')->orderBy('id', 'desc')->get();
         return view('admin.dashboard', [
             'totalSales' => 0,
             'totalCommissionPaid' => 0,
             'totalCommissionPending' => 0,
             'totalUsers' => 0,
-            'totalStores' => 0,
+            'totalStores' => $stores->count(),
             'totalSellers' => 0,
+            'stores' => $stores,
         ]);
     })->name('dashboard');
+
+    Route::post('/users/{user}/toggle-status', function(\App\Models\User $user) {
+        $user->status = $user->status == 1 ? 0 : 1;
+        $user->save();
+        return back()->with('success', 'User status updated successfully.');
+    })->name('users.toggle-status');
+
+    Route::post('/users/{user}/impersonate', function(\App\Models\User $user) {
+        \Illuminate\Support\Facades\Auth::login($user);
+        return redirect()->route('dashboard');
+    })->name('users.impersonate');
+
+    Route::get('/users/{user}/whatsapp-settings', function(\App\Models\User $user) {
+        $settings = \App\Models\StoreSetting::firstOrCreate(['user_id' => $user->id]);
+        return response()->json([
+            'whatsapp_config' => (bool)$settings->whatsapp_config,
+            'ultramsg_api_url' => $settings->ultramsg_api_url,
+            'ultramsg_instance_id' => $settings->ultramsg_instance_id,
+            'ultramsg_token' => $settings->ultramsg_token,
+            'ultramsg_total_sent' => $settings->ultramsg_total_sent,
+            'ultramsg_msg_cost' => $settings->ultramsg_msg_cost,
+        ]);
+    })->name('users.whatsapp.get');
+
+    Route::post('/users/{user}/whatsapp-settings', function(\Illuminate\Http\Request $request, \App\Models\User $user) {
+        $request->validate([
+            'whatsapp_config' => 'nullable|boolean',
+            'ultramsg_api_url' => 'nullable|string',
+            'ultramsg_instance_id' => 'nullable|string',
+            'ultramsg_token' => 'nullable|string',
+            'ultramsg_msg_cost' => 'nullable|numeric|min:0',
+        ]);
+        $settings = \App\Models\StoreSetting::firstOrCreate(['user_id' => $user->id]);
+        if ($request->has('whatsapp_config')) {
+            $settings->whatsapp_config = $request->whatsapp_config;
+        }
+        $settings->ultramsg_api_url = $request->ultramsg_api_url;
+        $settings->ultramsg_instance_id = $request->ultramsg_instance_id;
+        $settings->ultramsg_token = $request->ultramsg_token;
+        if ($request->has('ultramsg_msg_cost')) {
+            $settings->ultramsg_msg_cost = $request->ultramsg_msg_cost;
+        }
+        $settings->save();
+        return response()->json(['message' => 'Settings updated successfully']);
+    })->name('users.whatsapp.update');
+
+    Route::post('/users/{user}/whatsapp-settings/reset', function(\App\Models\User $user) {
+        $settings = \App\Models\StoreSetting::firstOrCreate(['user_id' => $user->id]);
+        $settings->ultramsg_total_sent = 0;
+        $settings->save();
+        return response()->json(['message' => 'Counter reset successfully']);
+    })->name('users.whatsapp.reset');
 
     // Dummy routes for Admin sidebar
     Route::get('/users', function() { return 'Users UI Pending'; })->name('users.index');

@@ -47,6 +47,28 @@
                 <p style="margin:0; font-size: 13px; color: #6b7280;">Unpaid Amount</p>
             </div>
         </div>
+
+        <!-- Card 4 -->
+        <div class="card" style="flex:1; min-width:200px; border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: #e0e7ff; color: #4338ca; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold;">
+                $
+            </div>
+            <div>
+                <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumActualProfit ?? 0, 2) }}</h4>
+                <p style="margin:0; font-size: 13px; color: #6b7280;">Actual Profit</p>
+            </div>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="card" style="flex:1; min-width:200px; border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+            <div style="width: 50px; height: 50px; border-radius: 12px; background: #fce7f3; color: #be185d; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold;">
+                $
+            </div>
+            <div>
+                <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumPendingProfit ?? 0, 2) }}</h4>
+                <p style="margin:0; font-size: 13px; color: #6b7280;">Pending Profit</p>
+            </div>
+        </div>
     </div>
 
     <div class="card">
@@ -77,6 +99,7 @@
                             <th>Paid So Far</th>
                             <th>Remaining</th>
                             <th>Monthly Inst.</th>
+                            <th>Profit</th>
                             <th>Status</th>
                             <th>Next Payment</th>
                             <th>Action</th>
@@ -167,6 +190,10 @@
                                 <td>PKR {{ number_format($remaining, 2) }}</td>
                                 <td>PKR {{ number_format($installment->agreed_monthly_amount, 2) }}</td>
                                 <td>
+                                    <div>Act: PKR {{ number_format($installment->actual_profit ?? 0, 2) }}</div>
+                                    <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">Pend: PKR {{ number_format($installment->pending_profit ?? 0, 2) }}</div>
+                                </td>
+                                <td>
                                     <span class="badge {{ $installment->status === 'Completed' ? 'badge-success' : 'badge-warning' }}">
                                         {{ $installment->status }}
                                     </span>
@@ -195,7 +222,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="text-center">No installment plans found.</td>
+                                <td colspan="11" class="text-center">No installment plans found.</td>
                             </tr>
                         @endforelse
                     </tbody>

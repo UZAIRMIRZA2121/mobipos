@@ -39,9 +39,11 @@
 @php
     $printSetting = Auth::check() ? \App\Models\InvoiceSetting::where('user_id', Auth::id())->first() : null;
     $storeSetting = Auth::check() ? \App\Models\StoreSetting::where('user_id', Auth::id())->first() : null;
+    $isAdmin = Auth::check() && Auth::user()->type === 'admin';
 @endphp
 <script>
     window.ACTIVE_MODULE = {!! json_encode($storeSetting->business_type ?? null) !!};
+    window.IS_ADMIN = {!! json_encode($isAdmin) !!};
     window.printSettings = {
         name: {!! json_encode($printSetting->store_name ?? 'MobiPOS') !!},
         desc: {!! json_encode($printSetting->header_text ?? 'Store address here') !!},
@@ -67,7 +69,7 @@
 </script>
 @yield('scripts')
 <script>
-    if (window.ACTIVE_MODULE === null) {
+    if (window.ACTIVE_MODULE === null && !window.IS_ADMIN) {
         document.getElementById('selectModuleModal').classList.remove('hidden');
     }
 

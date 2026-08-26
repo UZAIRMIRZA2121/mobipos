@@ -56,7 +56,30 @@ class InstallmentController extends Controller
         });
         $sumUnpaidAmount = $sumTotalAmount - $sumTotalPaid;
 
-        return view('installments.index', compact('installments', 'sumTotalAmount', 'sumTotalPaid', 'sumUnpaidAmount'));
+        $sumActualProfit = 0;
+        $sumPendingProfit = 0;
+
+        foreach ($installments as $installment) {
+            $totalCost = $installment->order ? $installment->order->items->sum(function($item) {
+                return $item->buy_price * $item->qty;
+            }) : 0;
+            
+            $expectedProfit = $installment->total_amount - $totalCost;
+            $totalPaid = $installment->down_payment + $installment->payments->sum('amount');
+            
+            $profitMargin = $installment->total_amount > 0 ? ($expectedProfit / $installment->total_amount) : 0;
+            $actualProfit = $totalPaid * $profitMargin;
+            $pendingProfit = $expectedProfit - $actualProfit;
+            
+            $installment->actual_profit = $actualProfit;
+            $installment->pending_profit = $pendingProfit;
+            $installment->expected_profit = $expectedProfit;
+            
+            $sumActualProfit += $actualProfit;
+            $sumPendingProfit += $pendingProfit;
+        }
+
+        return view('installments.index', compact('installments', 'sumTotalAmount', 'sumTotalPaid', 'sumUnpaidAmount', 'sumActualProfit', 'sumPendingProfit'));
     }
 
     public function show($id)
@@ -120,6 +143,14 @@ class InstallmentController extends Controller
             }
 
             DB::commit();
+
+            if ($installment->customer && !empty($installment->customer->phone)) {
+                $remaining = max(0, $installment->total_amount - $totalPaid);
+                $msg = "Hello {$installment->customer->name}, we have received your installment payment of PKR {$request->amount} for Order #{$installment->order_id}.\n";
+                $msg .= "Remaining Balance: PKR {$remaining}\n";
+                $msg .= "Thank you!";
+                \App\Services\UltramsgService::sendMessage(Auth::id(), $installment->customer->phone, $msg);
+            }
 
             return redirect()->route('installments.show', $installment->id)->with('success', 'Payment added successfully.');
         } catch (\Exception $e) {
