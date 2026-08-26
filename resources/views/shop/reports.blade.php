@@ -97,6 +97,14 @@
                     <div style="color: #6b7280; font-size: 13px; font-weight: 500;">Profit After Expense</div>
                 </div>
             </div>
+
+            <div class="stat-card card" style="display: flex; align-items: center; gap: 15px; margin-bottom: 0;">
+                <div style="width: 48px; height: 48px; border-radius: 12px; background: #fff3e0; color: #e65100; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 500;">$</div>
+                <div>
+                    <div id="repTotalPurchases" style="font-size: 20px; font-weight: 700; color: #111827;">PKR 0.00</div>
+                    <div style="color: #6b7280; font-size: 13px; font-weight: 500;">Total Purchases</div>
+                </div>
+            </div>
         </div>
 
         <div class="row" style="display: flex; flex-wrap: wrap; margin-right: -12px; margin-left: -12px;">

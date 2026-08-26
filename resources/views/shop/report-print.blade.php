@@ -98,8 +98,12 @@
                 <td style="border-bottom: 1px dashed #e5e7eb; padding: 8px 10px; text-align: right;">PKR {{ number_format($net_profit, 2) }}</td>
             </tr>
             <tr>
-                <td style="border-bottom: none; padding: 8px 10px; font-weight: 600;">Profit After Expense</td>
-                <td style="border-bottom: none; padding: 8px 10px; text-align: right;">PKR {{ number_format($profit, 2) }}</td>
+                <td style="border-bottom: 1px dashed #e5e7eb; padding: 8px 10px; font-weight: 600;">Profit After Expense</td>
+                <td style="border-bottom: 1px dashed #e5e7eb; padding: 8px 10px; text-align: right;">PKR {{ number_format($profit, 2) }}</td>
+            </tr>
+            <tr>
+                <td style="border-bottom: none; padding: 8px 10px; font-weight: 600;">Total Purchases</td>
+                <td style="border-bottom: none; padding: 8px 10px; text-align: right;">PKR {{ number_format($total_purchases, 2) }}</td>
             </tr>
         </table>
     </div>
