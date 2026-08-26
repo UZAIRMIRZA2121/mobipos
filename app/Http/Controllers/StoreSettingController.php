@@ -22,7 +22,8 @@ class StoreSettingController extends Controller
             'business_type' => null,
             'ultramsg_api_url' => null,
             'ultramsg_instance_id' => null,
-            'ultramsg_token' => null
+            'ultramsg_token' => null,
+            'whatsapp_config' => false
         ]);
     }
 
@@ -35,6 +36,7 @@ class StoreSettingController extends Controller
             'ultramsg_api_url' => 'nullable|string|max:255',
             'ultramsg_instance_id' => 'nullable|string|max:255',
             'ultramsg_token' => 'nullable|string|max:255',
+            'whatsapp_config' => 'nullable|boolean',
         ]);
 
         $settings = StoreSetting::where('user_id', Auth::id())->first();
@@ -56,6 +58,10 @@ class StoreSettingController extends Controller
 
         if (array_key_exists('business_type', $validated) && $validated['business_type']) {
             $settings->business_type = $validated['business_type'];
+        }
+
+        if (array_key_exists('whatsapp_config', $validated)) {
+            $settings->whatsapp_config = $validated['whatsapp_config'] ? 1 : 0;
         }
 
         if (array_key_exists('ultramsg_api_url', $validated)) {

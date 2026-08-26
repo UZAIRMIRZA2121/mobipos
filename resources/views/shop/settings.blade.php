@@ -47,27 +47,17 @@
         <!-- WhatsApp Settings -->
         <div class="card" style="max-width: 600px; margin: 24px auto;">
             <div class="card-header">
-                <h3>WhatsApp Integration (Ultramsg)</h3>
+                <h3>WhatsApp Notifications</h3>
             </div>
             
             <div class="card-body" style="padding: 24px;">
                 <div class="settings-grid">
                     <div class="form-group" style="margin-bottom: 24px;">
-                        <label class="form-label">API URL</label>
-                        <input type="text" id="ultramsg_api_url" class="input" placeholder="e.g. https://api.ultramsg.com/instance12345">
-                        <p class="form-hint" style="margin-top: 4px; color: var(--text-muted); font-size: 12px;">Your Ultramsg API URL.</p>
-                    </div>
-                    <div style="display: flex; gap: 20px; margin-bottom: 24px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label class="form-label">INSTANCE ID</label>
-                            <input type="text" id="ultramsg_instance_id" class="input" placeholder="e.g. instance12345">
-                            <p class="form-hint" style="margin-top: 4px; color: var(--text-muted); font-size: 12px;">Your Ultramsg Instance ID.</p>
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label class="form-label">TOKEN</label>
-                            <input type="password" id="ultramsg_token" class="input" placeholder="e.g. 1a2b3c4d5e6f">
-                            <p class="form-hint" style="margin-top: 4px; color: var(--text-muted); font-size: 12px;">Your Ultramsg API Token.</p>
-                        </div>
+                        <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="whatsapp_config" style="margin-right: 10px; width: 20px; height: 20px;">
+                            <span style="font-weight: 500; font-size: 16px;">Enable WhatsApp Notifications</span>
+                        </label>
+                        <p class="form-hint" style="margin-top: 8px; color: var(--text-muted); font-size: 13px; margin-left: 30px;">Turn on to automatically send WhatsApp reminders and notifications to your customers.</p>
                     </div>
                 </div>
 
@@ -126,9 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('settingDiscount').value = data.discount || 0;
             document.getElementById('settingTax').value = data.tax || 0;
             if (data.business_type) document.getElementById('settingBusinessType').value = data.business_type;
-            if (data.ultramsg_api_url) document.getElementById('ultramsg_api_url').value = data.ultramsg_api_url;
-            if (data.ultramsg_instance_id) document.getElementById('ultramsg_instance_id').value = data.ultramsg_instance_id;
-            if (data.ultramsg_token) document.getElementById('ultramsg_token').value = data.ultramsg_token;
+            if (data.whatsapp_config !== undefined) document.getElementById('whatsapp_config').checked = data.whatsapp_config == 1;
         }
     } catch(err) {
         console.error('Failed to load settings', err);
@@ -139,9 +127,7 @@ async function saveStoreSettings() {
     const discount = document.getElementById('settingDiscount').value || 0;
     const tax = document.getElementById('settingTax').value || 0;
     const business_type = document.getElementById('settingBusinessType').value;
-    const ultramsg_api_url = document.getElementById('ultramsg_api_url').value;
-    const ultramsg_instance_id = document.getElementById('ultramsg_instance_id').value;
-    const ultramsg_token = document.getElementById('ultramsg_token').value;
+    const whatsapp_config = document.getElementById('whatsapp_config').checked ? 1 : 0;
     
     try {
         const res = await fetch('/shop/api/settings', {
@@ -150,7 +136,7 @@ async function saveStoreSettings() {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
             },
-            body: JSON.stringify({ discount, tax, business_type, ultramsg_api_url, ultramsg_instance_id, ultramsg_token })
+            body: JSON.stringify({ discount, tax, business_type, whatsapp_config })
         });
         
         const data = await res.json();
