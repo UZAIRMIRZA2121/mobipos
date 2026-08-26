@@ -59,6 +59,20 @@
                         </label>
                         <p class="form-hint" style="margin-top: 8px; color: var(--text-muted); font-size: 13px; margin-left: 30px;">Turn on to automatically send WhatsApp reminders and notifications to your customers.</p>
                     </div>
+
+                    <div style="background: #f9fafb; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; margin-bottom: 24px; border: 1px solid #e5e7eb;">
+                        <div>
+                            <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Messages Sent</div>
+                            <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;">
+                                <div id="waTotalSent" style="font-size: 20px; font-weight: 700; color: var(--text-dark);">0</div>
+                                <div id="waCostPerMsg" style="font-size: 13px; color: var(--text-muted); font-weight: 500;"></div>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total Cost</div>
+                            <div id="waTotalCost" style="font-size: 20px; font-weight: 700; color: #1565c0; margin-top: 4px;">PKR 0.00</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div style="text-align: right;">
@@ -119,6 +133,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('settingTax').value = data.tax || 0;
             if (data.business_type) document.getElementById('settingBusinessType').value = data.business_type;
             if (data.whatsapp_config !== undefined) document.getElementById('whatsapp_config').checked = data.whatsapp_config == 1;
+
+            const totalSent = data.ultramsg_total_sent || 0;
+            const costPerMsg = data.ultramsg_msg_cost || 0;
+            document.getElementById('waTotalSent').textContent = totalSent;
+            document.getElementById('waCostPerMsg').textContent = `(PKR ${parseFloat(costPerMsg).toFixed(2)} / msg)`;
+            document.getElementById('waTotalCost').textContent = 'PKR ' + (totalSent * costPerMsg).toFixed(2);
         }
     } catch(err) {
         console.error('Failed to load settings', err);
