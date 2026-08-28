@@ -246,4 +246,43 @@ class ProductController extends Controller
 
         return response()->json(['found' => false, 'message' => 'Product not found in global databases.']);
     }
+
+    public function reportLoss(Request $request, Product $product)
+    {
+        if ($product->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'qty' => 'required|numeric|min:1|max:' . ($product->stock ?: 0),
+        ]);
+
+        $qty = $validated['qty'];
+        $lossAmount = $qty * ($product->purchase_price ?: 0);
+
+        // Deduct stock
+        $product->stock -= $qty;
+        $product->save();
+        
+        // Mark available units as lost (if applicable)
+        $businessType = Auth::user()->storeSetting->business_type ?? 'mobile';
+        if ($businessType === 'mobile' && in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
+             $unitsToMark = $product->stockUnits()->where('status', 'available')->limit($qty)->get();
+             foreach($unitsToMark as $unit) {
+                 $unit->status = 'lost';
+                 $unit->save();
+             }
+        }
+
+        // Create Expense
+        \App\Models\Expense::create([
+            'user_id' => Auth::id(),
+            'title' => 'Product Loss',
+            'amount' => $lossAmount,
+            'expense_date' => now()->toDateString(),
+            'description' => "Product: {$product->name} (Code: {$product->code}) - Qty Lost: {$qty}, Purchase Price: " . ($product->purchase_price ?: 0),
+        ]);
+
+        return response()->json(['message' => 'Loss reported successfully']);
+    }
 }

@@ -109,6 +109,7 @@ Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop'
     Route::put('/api/products/{product}', [ProductController::class, 'update'])->name('api.products.update');
     Route::delete('/api/products/{product}', [ProductController::class, 'destroy'])->name('api.products.destroy');
     Route::get('/api/products/{product}/sales', [ProductController::class, 'salesHistory'])->name('api.products.sales');
+    Route::post('/api/products/{product}/loss', [ProductController::class, 'reportLoss'])->name('api.products.loss');
     Route::get('/api/barcode-lookup/{barcode}', [ProductController::class, 'barcodeLookup'])->name('api.barcode.lookup');
 
     Route::get('/api/categories', [CategoryController::class, 'apiIndex'])->name('api.categories.index');

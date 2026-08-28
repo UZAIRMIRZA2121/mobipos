@@ -245,6 +245,33 @@
   </div>
 </div>
 
+<!-- Loss Modal -->
+<div class="modal-overlay hidden" id="lossModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3 id="lossModalTitle">Report Loss</h3>
+      <button class="modal-close" onclick="closeLossModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="lossProdId"/>
+      <input type="hidden" id="lossPurchasePrice"/>
+      <div class="form-group">
+        <label>Quantity Lost *</label>
+        <input type="number" id="lossQty" class="input" min="1" value="1" oninput="calcLoss()" required/>
+      </div>
+      <div class="form-group">
+        <label>Total Loss Amount (PKR)</label>
+        <input type="number" id="lossTotalAmount" class="input" readonly style="background-color: #f3f4f6; color: var(--danger); font-weight: bold;"/>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-top: 10px;">This will deduct the stock and automatically create an expense entry.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeLossModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="submitLoss()">Confirm Loss</button>
+    </div>
+  </div>
+</div>
+
 <!-- Customer Modal -->
 <div class="modal-overlay hidden" id="custModal">
   <div class="modal">

@@ -2,6 +2,7 @@
 // MEDICINES (PRODUCTS)
 // ============================================================
 const PRINT_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>`;
+const LOSS_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
 window.prodCurrentPage = 1;
 window.prodPerPage = 10;
 let lastProdFilters = '';
@@ -80,6 +81,7 @@ function renderProducts() {
           <button class="action-btn" style="color:var(--primary)" onclick="openProdSalesModal(${p.id})" title="View Sales">${VIEW_SVG}</button>
           <button class="action-btn edit" onclick="openProductModal(${p.id})" title="Edit">${EDIT_SVG}</button>
           <button class="action-btn del" onclick="deleteProduct(${p.id})" title="Delete">${DEL_SVG}</button>
+          <button class="action-btn" style="color:var(--danger)" onclick="openLossModal(${p.id})" title="Report Loss">${LOSS_SVG}</button>
         </td>
       </tr>`;
     }).join('') :
@@ -163,7 +165,7 @@ function editProduct(id = null) {
     document.getElementById('prodStock').value = p.stock !== undefined ? p.stock : 1;
     // Dynamic IMEI Rendering
     if (typeof renderImeiFields === 'function') {
-      renderImeiFields(p.stock_units || []);
+      renderImeiFields(true);
     }
 
     document.getElementById('prodCategory').value = p.category_id || '';
@@ -197,13 +199,13 @@ function editProduct(id = null) {
        document.getElementById('groupImeiSoldInner').innerHTML = '';
     }
     
-    if (typeof renderImeiFields === 'function') renderImeiFields();
+    if (typeof renderImeiFields === 'function') renderImeiFields(true);
   }
   document.getElementById('prodModal').classList.remove('hidden');
   toggleProductFields();
 }
 
-function renderImeiFields(stockUnits = []) {
+function renderImeiFields(forceRefresh = false) {
    const stock = parseInt(document.getElementById('prodStock').value) || 1;
    const container = document.getElementById('groupImeiInner');
    const soldContainer = document.getElementById('groupImeiSold');
@@ -211,17 +213,29 @@ function renderImeiFields(stockUnits = []) {
    
    if (!container) return;
    
+   const prodId = document.getElementById('prodId').value;
+   let stockUnits = [];
+   if (prodId) {
+       const p = store.get('products').find(x => x.id == prodId);
+       if (p && p.stock_units) {
+           stockUnits = p.stock_units;
+       }
+   }
+   
    // Separate units
    const availableUnits = stockUnits.filter(u => u.status === 'available');
-   const soldUnits = stockUnits.filter(u => u.status === 'sold' || u.status === 'returned');
+   const soldUnits = stockUnits.filter(u => u.status !== 'available');
    
    // Keep existing input values to not wipe user typing if they just change quantity
-   const existingInputs = Array.from(document.querySelectorAll('.unit-imei-input')).map(el => el.value);
+   let existingInputs = [];
+   if (!forceRefresh) {
+       existingInputs = Array.from(document.querySelectorAll('.unit-imei-input')).map(el => el.value);
+   }
    
    let html = '';
    for(let i=0; i<stock; i++) {
       let val = '';
-      if (existingInputs.length > 0) {
+      if (!forceRefresh && existingInputs.length > i) {
          val = existingInputs[i] || '';
       } else if (availableUnits[i]) {
          val = availableUnits[i].imeis || '';
@@ -617,5 +631,64 @@ async function fetchBarcodeData() {
   } catch (error) {
     console.error(error);
     showToast('Network error looking up barcode.', 'error');
+  }
+}
+
+// ============================================================
+// LOSS REPORTING
+// ============================================================
+function openLossModal(id) {
+  const p = store.get('products').find(x => x.id == id);
+  if (!p) return;
+  document.getElementById('lossProdId').value = p.id;
+  document.getElementById('lossPurchasePrice').value = p.purchase || 0;
+  document.getElementById('lossQty').value = 1;
+  document.getElementById('lossQty').max = p.stock || 0;
+  calcLoss();
+  document.getElementById('lossModal').classList.remove('hidden');
+}
+
+function closeLossModal() {
+  document.getElementById('lossModal').classList.add('hidden');
+}
+
+function calcLoss() {
+  const qty = parseFloat(document.getElementById('lossQty').value) || 0;
+  const price = parseFloat(document.getElementById('lossPurchasePrice').value) || 0;
+  document.getElementById('lossTotalAmount').value = (qty * price).toFixed(2);
+}
+
+async function submitLoss() {
+  const id = document.getElementById('lossProdId').value;
+  const qty = document.getElementById('lossQty').value;
+  
+  if (!id || !qty || qty <= 0) {
+      toast('Please enter a valid quantity.', 'warning');
+      return;
+  }
+  
+  const p = store.get('products').find(x => x.id == id);
+  if (p && qty > p.stock) {
+      toast(`Maximum available stock is ${p.stock}`, 'warning');
+      return;
+  }
+
+  const btn = event.target;
+  const originalText = btn.innerHTML;
+  btn.innerHTML = 'Processing...';
+  btn.disabled = true;
+
+  try {
+      const formData = new FormData();
+      formData.append('qty', qty);
+      await api(`/shop/api/products/${id}/loss`, 'POST', formData);
+      toast('Loss reported successfully and expense added.', 'success');
+      closeLossModal();
+      syncData(); // Refresh inventory data
+  } catch (e) {
+      toast(e.message || 'Error reporting loss', 'danger');
+  } finally {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
   }
 }
