@@ -480,6 +480,43 @@
             btn.innerHTML = 'Create Installment';
         }
     }
+
+    // Listen for new product creation to auto-select it
+    document.addEventListener('productSaved', function(e) {
+        const products = store.get('products', []);
+        
+        let newProductId = null;
+        if (e.detail && e.detail.product && e.detail.product.id) {
+            newProductId = e.detail.product.id;
+        } else if (e.detail && e.detail.id) {
+            newProductId = e.detail.id;
+        } else if (products.length > 0) {
+            // fallback to the most recently added product by max ID
+            newProductId = products.reduce((max, p) => p.id > max.id ? p : max, products[0]).id;
+        }
+
+        if (instProdSelect) {
+            instProdSelect.destroy();
+        }
+        
+        const prodSelect = document.getElementById('newInstProduct');
+        prodSelect.innerHTML = '<option value="">Select Product</option>' + 
+            products.map(p => `<option value="${p.id}" data-price="${p.sale}" data-type="${p.type}" data-custom="${p.code || ''} ${p.barcode || ''}">${p.code ? '[' + p.code + '] ' : ''}${p.name} - PKR ${p.sale}</option>`).join('');
+            
+        instProdSelect = new TomSelect("#newInstProduct", {
+            create: false,
+            searchField: ['text', 'custom'],
+            sortField: { field: "text", direction: "asc" }
+        });
+
+        instProdSelect.on('change', function() {
+            onNewInstProductChange();
+        });
+        
+        if (newProductId && document.getElementById('newInstallmentModal') && !document.getElementById('newInstallmentModal').classList.contains('hidden')) {
+            instProdSelect.setValue(newProductId);
+        }
+    });
 </script>
 
 <!-- New Installment Modal -->
@@ -504,9 +541,14 @@
       
       <div class="form-group" style="width: 100%; padding: 0 10px; margin-bottom: 15px;">
         <label>Product</label>
-        <select id="newInstProduct" class="input" onchange="onNewInstProductChange()">
-          <option value="">Select Product</option>
-        </select>
+        <div style="display:flex; gap:4px; align-items:flex-start;">
+          <div class="tom-select-wrap">
+            <select id="newInstProduct" class="input" onchange="onNewInstProductChange()">
+              <option value="">Select Product</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="editProduct()" title="Add Product" style="padding:0 12px;font-size:18px;height:42px;">+</button>
+        </div>
       </div>
 
       <div class="form-group" style="width: 100%; padding: 0 10px; margin-bottom: 15px; display: none;" id="newInstStockDiv">

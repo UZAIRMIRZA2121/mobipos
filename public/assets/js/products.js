@@ -350,16 +350,18 @@ async function saveProduct() {
   }
 
   try {
+    let res;
     if (editId) {
       formData.append('_method', 'PUT');
-      await api('/shop/api/products/' + editId, 'POST', formData);
+      res = await api('/shop/api/products/' + editId, 'POST', formData);
       toast('Product updated!', 'success');
     } else {
-      await api('/shop/api/products', 'POST', formData);
+      res = await api('/shop/api/products', 'POST', formData);
       toast('Product added!', 'success');
     }
     closeProductModal();
     await syncData();
+    document.dispatchEvent(new CustomEvent('productSaved', { detail: res }));
   } catch (e) { toast(e.message || 'Error saving product', 'danger'); }
 }
 

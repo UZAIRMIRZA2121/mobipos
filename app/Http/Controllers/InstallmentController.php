@@ -166,7 +166,10 @@ class InstallmentController extends Controller
         $totalPaid = $installment->down_payment + $installment->payments->sum('amount');
         $remaining = $installment->total_amount - $totalPaid;
         
-        return view('installments.print', compact('installment', 'totalPaid', 'remaining'));
+        $printSettings = \App\Models\InvoiceSetting::where('user_id', Auth::id())->first();
+        $storeSetting = \App\Models\StoreSetting::where('user_id', Auth::id())->first();
+        
+        return view('installments.print', compact('installment', 'totalPaid', 'remaining', 'printSettings', 'storeSetting'));
     }
     public function update(Request $request, $id)
     {
