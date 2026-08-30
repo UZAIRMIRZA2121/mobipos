@@ -80,6 +80,11 @@
 @foreach($installment->order->items as $item)
     <div style="margin-bottom: 5px;">
         <div class="bold">{{ $item->product->name ?? 'Product' }}</div>
+        @if($item->product && $item->product->sale_price > $item->sell_price)
+            <div class="row" style="color: #666; font-size: 9.5px;">
+                <span><span style="text-decoration: line-through;">{{ number_format($item->product->sale_price, 0) }}</span> (-{{ number_format($item->product->sale_price - $item->sell_price, 0) }})</span>
+            </div>
+        @endif
         <div class="row">
             <span>{{ $item->qty }} x {{ number_format($item->sell_price, 0) }}</span>
             <span>PKR {{ number_format($item->qty * $item->sell_price, 0) }}</span>
@@ -150,8 +155,35 @@
     @if(isset($printSettings) && $printSettings->footer_text)
         {!! nl2br(e($printSettings->footer_text)) !!}<br>
     @endif
+    
+    @if(!isset($printSettings) || $printSettings->barcode_print)
+    <div style="text-align: center; margin: 10px 0;">
+        <svg id="barcode"></svg>
+    </div>
+    @endif
+    
     <div class="footer-thanks" style="margin-top: 4px;"></div>
 </div>
+
+@if(!isset($printSettings) || $printSettings->barcode_print)
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script>
+    // Generate barcode
+    try {
+        if (typeof JsBarcode !== 'undefined') {
+            JsBarcode("#barcode", "I{{ str_pad($installment->order_id, 6, '0', STR_PAD_LEFT) }}", {
+                format: "CODE128",
+                displayValue: true,
+                fontSize: 16,
+                height: 40,
+                margin: 0
+            });
+        }
+    } catch (e) {
+        console.error("Barcode generation failed", e);
+    }
+</script>
+@endif
 
 </body>
 </html>

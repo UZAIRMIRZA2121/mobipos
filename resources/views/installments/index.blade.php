@@ -219,7 +219,7 @@
                                 ];
                             @endphp
                             <tr class="installment-row" 
-                                data-search="{{ strtolower($installment->order_id . ' ' . ($installment->customer->name ?? '') . ' ' . ($installment->customer->phone ?? '')) }}"
+                                data-search="{{ strtolower(str_pad($installment->order_id, 6, '0', STR_PAD_LEFT) . ' ' . $installment->order_id . ' ' . ($installment->customer->name ?? '') . ' ' . ($installment->customer->phone ?? '')) }}"
                                 data-date="{{ $installment->created_at->format('Y-m-d') }}"
                                 data-month-status="{{ $paidThisMonth > 0 ? 'paid' : 'unpaid' }}">
                                 <td>{{ $installment->order_id }}</td>
@@ -561,6 +561,29 @@
         
         if (newProductId && document.getElementById('newInstallmentModal') && !document.getElementById('newInstallmentModal').classList.contains('hidden')) {
             instProdSelect.setValue(newProductId);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchParam = urlParams.get('search');
+        if (searchParam) {
+            const searchInput = document.getElementById('instSearch');
+            if (searchInput) {
+                searchInput.value = searchParam;
+                setTimeout(() => {
+                    if (typeof filterInstallments === 'function') filterInstallments();
+                    
+                    // Auto-open if exactly 1 match
+                    let visibleRows = Array.from(document.querySelectorAll('.installment-row')).filter(r => r.style.display !== 'none');
+                    if (visibleRows.length === 1) {
+                        let viewBtn = visibleRows[0].querySelector('.action-btn.view');
+                        if (viewBtn && viewBtn.href) {
+                            window.location.href = viewBtn.href;
+                        }
+                    }
+                }, 100);
+            }
         }
     });
 </script>

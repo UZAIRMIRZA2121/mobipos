@@ -18,6 +18,7 @@ class InvoiceSetting extends Model
         'footer_text',
         'logo',
         'logo_size',
+        'barcode_print',
     ];
 
     public function user()

@@ -23,7 +23,8 @@ class InvoiceSettingController extends Controller
             'phone' => '',
             'footer_text' => '',
             'logo' => null,
-            'logo_size' => 120
+            'logo_size' => 120,
+            'barcode_print' => true
         ]);
     }
 
@@ -37,6 +38,7 @@ class InvoiceSettingController extends Controller
             'footer_text' => 'nullable|string',
             'logo' => 'nullable|image|max:2048',
             'logo_size' => 'nullable|integer|min:40|max:250',
+            'barcode_print' => 'nullable|boolean',
         ]);
 
         if ($request->has('remove_logo') && $request->remove_logo == '1') {

@@ -218,6 +218,12 @@
                     @if($item->imeis)
                         <div class="item-imei">IMEI: {{ $item->imeis }}</div>
                     @endif
+                    @if($item->product && $item->product->sale_price > $item->sell_price)
+                        <div class="item-meta">
+                            <span style="text-decoration: line-through;">PKR {{ number_format($item->product->sale_price) }}</span>
+                            <span style="font-size: 0.9em; margin-left: 2px;">(-PKR {{ number_format($item->product->sale_price - $item->sell_price) }})</span>
+                        </div>
+                    @endif
                     <div class="item-meta">@ PKR {{ number_format($item->sell_price) }}</div>
                 </td>
                 <td class="text-center" style="vertical-align: top;">{{ $item->qty }}</td>
@@ -236,7 +242,7 @@
         </div>
         @if($order->discount > 0)
         <div class="info-row">
-            <span>Discount:</span>
+            <span>Discount @if($order->subtotal > 0)({{ round(($order->discount / $order->subtotal) * 100) }}%)@endif:</span>
             <span>- PKR {{ number_format($order->discount) }}</span>
         </div>
         @endif
@@ -314,6 +320,13 @@
         @else
             <p class="bold" style="margin-bottom: 10px; text-align: center;">THANK YOU FOR YOUR SHOPPING!</p>
         @endif
+        
+        @if(!isset($invoiceSettings) || $invoiceSettings->barcode_print)
+        <div style="text-align: center; margin: 10px 0;">
+            <svg id="barcode"></svg>
+        </div>
+        @endif
+
        <p class="mb-0 text-center">
     © <span id="currentYear"></span> All Rights Reserved |
     Developed with <span class="text-danger">❤</span> by
@@ -325,6 +338,26 @@
 
     <button class="btn-print" onclick="window.print()">Print Receipt</button>
 </div>
+
+@if(!isset($invoiceSettings) || $invoiceSettings->barcode_print)
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script>
+    // Generate barcode
+    try {
+        if (typeof JsBarcode !== 'undefined') {
+            JsBarcode("#barcode", "{{ str_pad($order->id, 6, '0', STR_PAD_LEFT) }}", {
+                format: "CODE128",
+                displayValue: true,
+                fontSize: 16,
+                height: 40,
+                margin: 0
+            });
+        }
+    } catch (e) {
+        console.error("Barcode generation failed", e);
+    }
+</script>
+@endif
 
 <script>
     // Set current year dynamically

@@ -200,7 +200,10 @@ function buildProdCard(p) {
     <div class="med-card-cat">${p.type || 'Phone'} - ${p.condition || 'Used'}</div>
     <div class="med-card-name" style="margin-bottom:2px; display:flex; justify-content:space-between; align-items:flex-start; gap:4px;">
       <span>${p.name} ${p.condition || p.color ? `<span style="font-size:12px; font-weight:normal; color:var(--primary);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Barcode: ${p.barcode})</span>` : '')}</span>
-      <span style="font-weight:800; font-size:14px; color:var(--primary);">${fmtCur(p.sale)}</span>
+      <div style="display:flex; flex-direction:column; align-items:flex-end; line-height:1.1;">
+        ${p.discount && p.discount > 0 ? `<span style="text-decoration:line-through; font-size:10px; color:var(--text-muted);">${fmtCur(p.sale)}</span>` : ''}
+        <span style="font-weight:800; font-size:14px; color:var(--primary);">${fmtCur(p.sale - (p.discount || 0))}</span>
+      </div>
     </div>
     ${p.storage || p.color || p.imei ? `<div class="med-card-generic" style="font-size:10.5px; color:var(--text-muted); line-height:1.2; margin-bottom:auto; padding-bottom:8px;">
       ${p.storage ? `<b>${p.storage}</b> ` : ''} ${p.color ? `· ${p.color}` : ''}
@@ -238,7 +241,10 @@ function buildProdRow(p) {
       </div>
       </div>
     </div>
-    <div class="med-row-price">${fmtCur(p.sale)}</div>
+    <div class="med-row-price" style="display:flex; flex-direction:column; align-items:flex-end; line-height:1.1;">
+      ${p.discount && p.discount > 0 ? `<span style="text-decoration:line-through; font-size:10px; color:var(--text-muted);">${fmtCur(p.sale)}</span>` : ''}
+      <span style="font-weight:800;">${fmtCur(p.sale - (p.discount || 0))}</span>
+    </div>
   </div>`;
 }
 
@@ -292,12 +298,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else {
                     const pName = exactMatch.name + (exactMatch.condition || exactMatch.color ? ` (${[exactMatch.condition, exactMatch.color].filter(Boolean).join(' - ')})` : '');
+                    const actualPrice = parseFloat(exactMatch.sale) - (parseFloat(exactMatch.discount) || 0);
                     cart.push({ 
                         prodId: exactMatch.id, 
                         name: pName, 
-                        price: parseFloat(exactMatch.sale), 
+                        price: actualPrice, 
                         qty: 1, 
-                        sub: parseFloat(exactMatch.sale), 
+                        sub: actualPrice, 
                         maxStock: exactMatch.stock,
                         stock_units: [matchedUnit.id],
                         type: exactMatch.type
@@ -445,7 +452,8 @@ function addToCart(prodId) {
     if (p.stock <= 0) { toast('Out of stock!', 'danger'); return; }
     const pName = p.name + (p.condition || p.color ? ` (${[p.condition, p.color].filter(Boolean).join(' - ')})` : '');
     const pBrand = p.meta_data && p.meta_data.brand ? p.meta_data.brand : null;
-    cart.push({ prodId: p.id, name: pName, price: parseFloat(p.sale), qty: 1, sub: parseFloat(p.sale), maxStock: p.stock, image: p.image, brand: pBrand });
+    const actualPrice = parseFloat(p.sale) - (parseFloat(p.discount) || 0);
+    cart.push({ prodId: p.id, name: pName, price: actualPrice, qty: 1, sub: actualPrice, maxStock: p.stock, image: p.image, brand: pBrand });
   }
   renderCart();
   renderProdGrid();
@@ -497,12 +505,13 @@ function confirmImeiSelection() {
       existing.sub = existing.qty * existing.price;
       existing.stock_units = selectedUnitIds;
   } else {
+      const actualPrice = parseFloat(p.sale) - (parseFloat(p.discount) || 0);
       cart.push({ 
           prodId: p.id, 
           name: p.name + (p.condition || p.color ? ` (${[p.condition, p.color].filter(Boolean).join(' - ')})` : ''), 
-          price: parseFloat(p.sale), 
+          price: actualPrice, 
           qty: selectedUnitIds.length, 
-          sub: parseFloat(p.sale) * selectedUnitIds.length, 
+          sub: actualPrice * selectedUnitIds.length, 
           maxStock: p.stock,
           stock_units: selectedUnitIds,
           type: p.type,

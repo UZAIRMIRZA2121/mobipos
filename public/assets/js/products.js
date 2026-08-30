@@ -161,6 +161,7 @@ function editProduct(id = null) {
 
     document.getElementById('prodPurchase').value = p.purchase;
     document.getElementById('prodSale').value = p.sale;
+    document.getElementById('prodDiscount').value = p.discount || '';
     document.getElementById('prodStatus').value = p.status;
     document.getElementById('prodStock').value = p.stock !== undefined ? p.stock : 1;
     // Dynamic IMEI Rendering
@@ -181,7 +182,7 @@ function editProduct(id = null) {
   } else {
     document.getElementById('prodModalTitle').textContent = 'Add Product';
     document.getElementById('prodId').value = '';
-    ['prodName', 'prodCode', 'prodBarcode', 'prodColor', 'prodStorage', 'prodBrand', 'prodSize', 'prodWeight', 'prodExpiry', 'prodPurchase', 'prodSale', 'prodImage', 'prodBuyer'].forEach(id => {
+    ['prodName', 'prodCode', 'prodBarcode', 'prodColor', 'prodStorage', 'prodBrand', 'prodSize', 'prodWeight', 'prodExpiry', 'prodPurchase', 'prodSale', 'prodDiscount', 'prodImage', 'prodBuyer'].forEach(id => {
       const el = document.getElementById(id);
       if(el) el.value = '';
     });
@@ -326,6 +327,7 @@ async function saveProduct() {
   formData.append('storage', document.getElementById('prodStorage') ? document.getElementById('prodStorage').value.trim() : '');
   formData.append('purchase_price', document.getElementById('prodPurchase').value || 0);
   formData.append('sale_price', sale);
+  if(document.getElementById('prodDiscount').value) formData.append('discount', document.getElementById('prodDiscount').value);
   formData.append('status', document.getElementById('prodStatus').value);
   formData.append('stock', document.getElementById('prodStock').value || 1);
   formData.append('delete_image', document.getElementById('prodImageDeleted').value);

@@ -127,6 +127,26 @@ const THERMAL_CSS = `
 `;
 
 function buildInvoiceHTML(inv, ledgerHtml = '') {
+  // Generate barcode image data URL if JsBarcode is available and setting is true
+  let barcodeImg = '';
+  if (window.printSettings?.barcode_print !== false) {
+    try {
+      if (typeof JsBarcode !== 'undefined') {
+        const canvas = document.createElement('canvas');
+        JsBarcode(canvas, inv.id, {
+          format: "CODE128",
+          displayValue: true,
+          fontSize: 16,
+          height: 40,
+          margin: 0
+        });
+        barcodeImg = canvas.toDataURL("image/png");
+      }
+    } catch (e) {
+      console.error("Barcode generation failed", e);
+    }
+  }
+
   // Build item rows
   const itemRows = inv.items.map(it => `
     <tr>
@@ -227,7 +247,7 @@ function buildInvoiceHTML(inv, ledgerHtml = '') {
     <div class="r-footer">
       ${sFooter}<br>
       <br>
-      <span class="r-barcode">${inv.id}</span>
+      ${barcodeImg ? `<img src="${barcodeImg}" style="max-width: 100%; height: 40px; margin-top: 5px;">` : (window.printSettings?.barcode_print !== false ? `<span class="r-barcode">${inv.id}</span>` : '')}
     </div>
 
     <div style="height:12px"></div>

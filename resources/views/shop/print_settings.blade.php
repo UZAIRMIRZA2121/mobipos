@@ -47,6 +47,11 @@
                             <label style="display: block; font-weight: 500; margin-bottom: 8px; color: var(--text-dark);">Footer Text</label>
                             <textarea id="settingFooterText" class="input" rows="2" placeholder="e.g. Thank you for your purchase!"></textarea>
                         </div>
+                        
+                        <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="settingBarcodePrint" checked style="width: 18px; height: 18px; cursor: pointer;">
+                            <label for="settingBarcodePrint" style="font-weight: 500; color: var(--text-dark); cursor: pointer; margin: 0;">Print Barcode on Invoice</label>
+                        </div>
 
                     </div>
 
@@ -195,6 +200,10 @@
                         <hr class="r-divider-solid"/>
 
                         <div class="r-footer" id="prevFooterText">Thank you for your shopping!</div>
+                        
+                        <div id="prevBarcodeContainer" style="text-align: center; margin: 10px 0;">
+                            <svg id="prevBarcode"></svg>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -203,8 +212,23 @@
     </div>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script>
 let removeLogoFlag = false;
+
+function renderPreviewBarcode() {
+    try {
+        if (typeof JsBarcode !== 'undefined') {
+            JsBarcode("#prevBarcode", "000057", {
+                format: "CODE128",
+                displayValue: true,
+                fontSize: 14,
+                height: 35,
+                margin: 0
+            });
+        }
+    } catch(e) { console.error("Barcode generation failed", e); }
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Setup Live Preview Sync
@@ -249,6 +273,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('logoSizeDisplay').textContent = data.logo_size;
                 document.getElementById('prevLogo').style.maxWidth = data.logo_size + 'px';
             }
+            if (data.barcode_print !== undefined) {
+                document.getElementById('settingBarcodePrint').checked = data.barcode_print;
+                document.getElementById('prevBarcodeContainer').style.display = data.barcode_print ? 'block' : 'none';
+            }
+            
+            renderPreviewBarcode();
+            
+            document.getElementById('settingBarcodePrint').addEventListener('change', function(e) {
+                document.getElementById('prevBarcodeContainer').style.display = e.target.checked ? 'block' : 'none';
+            });
             
             // Setup logo size slider listener
             document.getElementById('settingLogoSize').addEventListener('input', function(e) {
@@ -305,6 +339,7 @@ async function savePrintSettings() {
         formData.append('remove_logo', '1');
     }
     formData.append('logo_size', document.getElementById('settingLogoSize').value);
+    formData.append('barcode_print', document.getElementById('settingBarcodePrint').checked ? 1 : 0);
 
     const logoFile = document.getElementById('settingLogo').files[0];
     if (logoFile) {

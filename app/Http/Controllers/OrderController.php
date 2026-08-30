@@ -18,9 +18,16 @@ class OrderController extends Controller
         
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('id', 'like', "%{$search}%")
-                  ->orWhereHas('buyer', function($q2) use ($search) {
+            $numericSearch = ltrim($search, '0');
+            
+            $query->where(function($q) use ($search, $numericSearch) {
+                $q->where('id', 'like', "%{$search}%");
+                
+                if (is_numeric($search) && $numericSearch !== '') {
+                    $q->orWhere('id', $numericSearch);
+                }
+
+                $q->orWhereHas('buyer', function($q2) use ($search) {
                       $q2->where('name', 'like', "%{$search}%");
                   })
                   ->orWhere('customer_name', 'like', "%{$search}%")

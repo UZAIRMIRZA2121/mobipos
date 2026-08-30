@@ -201,6 +201,7 @@
         <div class="form-group module-field module-mobile" id="groupStorage"><label>Storage</label><input type="text" id="prodStorage" class="input" placeholder="e.g. 256GB"/></div>
         <div class="form-group"><label>Purchase Price (PKR)</label><input type="number" id="prodPurchase" class="input" min="0" step="0.01"/></div>
         <div class="form-group"><label>Sale Price (PKR) *</label><input type="number" id="prodSale" class="input" min="0" step="0.01"/></div>
+        <div class="form-group"><label>Discount (PKR)</label><input type="number" id="prodDiscount" class="input" min="0" step="0.01" placeholder="Flat discount amount"/></div>
         <div class="form-group"><label>Status *</label><select id="prodStatus" class="input"><option value="in_stock">In Stock</option><option value="sold">Sold</option><option value="in_repair">In Repair</option></select></div>
         <div class="form-group">
           <label>Category</label>

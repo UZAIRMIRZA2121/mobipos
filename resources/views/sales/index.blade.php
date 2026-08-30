@@ -60,4 +60,45 @@
 
 @section('scripts')
 <script src="{{ asset('assets/js/sales.js') }}?v={{ time() }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      
+      const searchParam = urlParams.get('search');
+      if (searchParam) {
+          const searchInput = document.getElementById('salesSearch');
+          if (searchInput) {
+              searchInput.value = searchParam;
+              setTimeout(() => {
+                  if (typeof renderSales === 'function') {
+                      renderSales(1);
+                      setTimeout(() => {
+                          let tbody = document.getElementById('salesTbody');
+                          if (tbody && tbody.children.length === 1 && tbody.children[0].querySelector('.btn-invoice')) {
+                              tbody.children[0].querySelector('.btn-invoice').click();
+                          }
+                      }, 500); // Wait for API fetch and render
+                  }
+              }, 100);
+          }
+      }
+
+      const invoiceId = urlParams.get('invoice');
+      if (invoiceId) {
+          // Open popup directly for the invoice
+          let parsedId = parseInt(invoiceId, 10);
+          if (!isNaN(parsedId)) {
+              window.open('/shop/orders/' + parsedId + '/invoice', 'InvoicePopup', 'width=400,height=600');
+          }
+      }
+      
+      // Initial render if no search param (as renderSales is usually called on load in sales.js or here, wait sales.js doesn't call it on load!)
+      // Wait, let's call renderSales if it wasn't called by search param
+      if (!searchParam) {
+          if (typeof renderSales === 'function') {
+              renderSales(1);
+          }
+      }
+  });
+</script>
 @endsection
