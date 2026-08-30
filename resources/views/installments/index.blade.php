@@ -13,60 +13,106 @@
 </style>
 <div class="pos-container" style="padding: 20px;">
 
+    <style>
+        .summary-flex-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin-right: -10px;
+            margin-left: -10px;
+            margin-bottom: 20px;
+        }
+        .summary-col {
+            flex: 0 0 33.333333%;
+            max-width: 33.333333%;
+            padding-right: 10px;
+            padding-left: 10px;
+            margin-bottom: 15px;
+        }
+        @media (max-width: 992px) {
+            .summary-col { flex: 0 0 50%; max-width: 50%; }
+        }
+        @media (max-width: 576px) {
+            .summary-col { flex: 0 0 100%; max-width: 100%; }
+        }
+    </style>
+
     <!-- Summary Cards -->
-    <div style="display:flex; gap:15px; margin-bottom: 20px; flex-wrap: wrap;">
+    <div class="summary-flex-row">
         <!-- Card 1 -->
-        <div class="card" style="flex:1; min-width:200px; border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-            <div style="width: 50px; height: 50px; border-radius: 12px; background: #dcfce7; color: #166534; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold;">
-                $
-            </div>
-            <div>
-                <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumTotalAmount, 2) }}</h4>
-                <p style="margin:0; font-size: 13px; color: #6b7280;">Total Amount</p>
+        <div class="summary-col">
+            <div class="card h-100" style="border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="width: 50px; height: 50px; border-radius: 12px; background: #dcfce7; color: #166534; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold; flex-shrink: 0;">
+                    $
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumTotalAmount, 2) }}</h4>
+                    <p style="margin:0; font-size: 13px; color: #6b7280;">Total Amount</p>
+                </div>
             </div>
         </div>
         
         <!-- Card 2 -->
-        <div class="card" style="flex:1; min-width:200px; border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-            <div style="width: 50px; height: 50px; border-radius: 12px; background: #ffedd5; color: #c2410c; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold;">
-                $
-            </div>
-            <div>
-                <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumTotalPaid, 2) }}</h4>
-                <p style="margin:0; font-size: 13px; color: #6b7280;">Total Paid</p>
+        <div class="summary-col">
+            <div class="card h-100" style="border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="width: 50px; height: 50px; border-radius: 12px; background: #ffedd5; color: #c2410c; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold; flex-shrink: 0;">
+                    $
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumTotalPaid, 2) }}</h4>
+                    <p style="margin:0; font-size: 13px; color: #6b7280;">Total Paid</p>
+                </div>
             </div>
         </div>
 
         <!-- Card 3 -->
-        <div class="card" style="flex:1; min-width:200px; border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-            <div style="width: 50px; height: 50px; border-radius: 12px; background: #ccfbf1; color: #0f766e; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold;">
-                $
-            </div>
-            <div>
-                <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumUnpaidAmount, 2) }}</h4>
-                <p style="margin:0; font-size: 13px; color: #6b7280;">Unpaid Amount</p>
+        <div class="summary-col">
+            <div class="card h-100" style="border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="width: 50px; height: 50px; border-radius: 12px; background: #ccfbf1; color: #0f766e; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold; flex-shrink: 0;">
+                    $
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumUnpaidAmount, 2) }}</h4>
+                    <p style="margin:0; font-size: 13px; color: #6b7280;">Unpaid Amount</p>
+                </div>
             </div>
         </div>
 
         <!-- Card 4 -->
-        <div class="card" style="flex:1; min-width:200px; border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-            <div style="width: 50px; height: 50px; border-radius: 12px; background: #e0e7ff; color: #4338ca; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold;">
-                $
-            </div>
-            <div>
-                <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumActualProfit ?? 0, 2) }}</h4>
-                <p style="margin:0; font-size: 13px; color: #6b7280;">Actual Profit</p>
+        <div class="summary-col">
+            <div class="card h-100" style="border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="width: 50px; height: 50px; border-radius: 12px; background: #e0e7ff; color: #4338ca; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold; flex-shrink: 0;">
+                    $
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumActualProfit ?? 0, 2) }}</h4>
+                    <p style="margin:0; font-size: 13px; color: #6b7280;">Actual Profit</p>
+                </div>
             </div>
         </div>
 
         <!-- Card 5 -->
-        <div class="card" style="flex:1; min-width:200px; border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-            <div style="width: 50px; height: 50px; border-radius: 12px; background: #fce7f3; color: #be185d; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold;">
-                $
+        <div class="summary-col">
+            <div class="card h-100" style="border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="width: 50px; height: 50px; border-radius: 12px; background: #fce7f3; color: #be185d; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold; flex-shrink: 0;">
+                    $
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumPendingProfit ?? 0, 2) }}</h4>
+                    <p style="margin:0; font-size: 13px; color: #6b7280;">Pending Profit</p>
+                </div>
             </div>
-            <div>
-                <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format($sumPendingProfit ?? 0, 2) }}</h4>
-                <p style="margin:0; font-size: 13px; color: #6b7280;">Pending Profit</p>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="summary-col">
+            <div class="card h-100" style="border-radius: 12px; padding: 20px; display:flex; flex-direction:row; align-items:center; gap:15px; border:none; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+                <div style="width: 50px; height: 50px; border-radius: 12px; background: #fef9c3; color: #a16207; display:flex; justify-content:center; align-items:center; font-size: 24px; font-weight:bold; flex-shrink: 0;">
+                    $
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size: 18px; font-weight:700; color: #111827;">PKR {{ number_format(($sumActualProfit ?? 0) + ($sumPendingProfit ?? 0), 2) }}</h4>
+                    <p style="margin:0; font-size: 13px; color: #6b7280;">Total Profit</p>
+                </div>
             </div>
         </div>
     </div>

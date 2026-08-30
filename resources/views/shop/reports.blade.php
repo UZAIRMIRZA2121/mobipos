@@ -40,28 +40,30 @@
             <p id="printDateRange" style="font-size: 14px; font-weight: normal; color: #555;"></p>
         </div>
 
-        <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
-            <h2 style="margin-bottom: 4px;">Reports</h2>
-            <div class="filters" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
-                <div class="quick-filters" style="display: flex; gap: 5px;">
+        <div class="page-header" style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h2 style="margin: 0;">Reports</h2>
+            <div class="filters" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; flex: 1; justify-content: flex-end;">
+                <div class="quick-filters" style="display: flex; flex-wrap: wrap; gap: 5px;">
                     <button class="btn btn-outline filter-btn" onclick="setReportDateRange('today', this)" style="height: 36px; padding: 0 10px; font-size: 13px;">Today</button>
                     <button class="btn btn-outline filter-btn" onclick="setReportDateRange('yesterday', this)" style="height: 36px; padding: 0 10px; font-size: 13px;">Last Day</button>
                     <button class="btn btn-outline filter-btn" onclick="setReportDateRange('this_month', this)" style="height: 36px; padding: 0 10px; font-size: 13px;">This Month</button>
                     <button class="btn btn-outline filter-btn" onclick="setReportDateRange('this_year', this)" style="height: 36px; padding: 0 10px; font-size: 13px;">This Year</button>
                 </div>
-                <div class="form-group" style="margin: 0; width: 160px;">
+                <div class="form-group" style="margin: 0; flex: 1; min-width: 130px; max-width: 160px;">
                     <label style="font-size: 12px; margin-bottom: 4px;">Start Date</label>
-                    <input type="date" id="reportStartDate" class="input" style="height: 36px;">
+                    <input type="date" id="reportStartDate" class="input" style="height: 36px; width: 100%;">
                 </div>
-                <div class="form-group" style="margin: 0; width: 160px;">
+                <div class="form-group" style="margin: 0; flex: 1; min-width: 130px; max-width: 160px;">
                     <label style="font-size: 12px; margin-bottom: 4px;">End Date</label>
-                    <input type="date" id="reportEndDate" class="input" style="height: 36px;">
+                    <input type="date" id="reportEndDate" class="input" style="height: 36px; width: 100%;">
                 </div>
-                <button class="btn btn-primary" onclick="generateReport()" style="height: 36px; padding: 0 16px;">Generate Report</button>
-                <button class="btn btn-secondary" onclick="printReport()" style="height: 36px; padding: 0 16px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px; vertical-align:middle;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                    Print
-                </button>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="generateReport()" style="height: 36px; padding: 0 16px;">Generate Report</button>
+                    <button class="btn btn-secondary" onclick="printReport()" style="height: 36px; padding: 0 16px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px; vertical-align:middle;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        Print
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -107,10 +109,25 @@
             </div>
         </div>
 
+        <style>
+            .report-col {
+                flex: 0 0 33.333333%;
+                max-width: 33.333333%;
+                padding-right: 12px;
+                padding-left: 12px;
+                min-width: 0;
+            }
+            @media (max-width: 992px) {
+                .report-col {
+                    flex: 0 0 100%;
+                    max-width: 100%;
+                }
+            }
+        </style>
         <div class="row" style="display: flex; flex-wrap: wrap; margin-right: -12px; margin-left: -12px;">
             <!-- Top Selling Products -->
-            <div class="col-md-4" style="flex: 0 0 33.3333%; max-width: 33.3333%; padding-right: 12px; padding-left: 12px;">
-                <div class="card" style="margin-bottom: 24px; height: calc(100% - 24px);">
+            <div class="report-col">
+                <div class="card" style="margin-bottom: 24px; height: calc(100% - 24px); overflow: hidden;">
                     <div class="card-header">
                         <h3>Top Selling Products</h3>
                     </div>
@@ -132,8 +149,8 @@
             </div>
 
             <!-- Expenses List -->
-            <div class="col-md-4" style="flex: 0 0 33.3333%; max-width: 33.3333%; padding-right: 12px; padding-left: 12px;">
-                <div class="card" style="margin-bottom: 24px; height: calc(100% - 24px);">
+            <div class="report-col">
+                <div class="card" style="margin-bottom: 24px; height: calc(100% - 24px); overflow: hidden;">
                     <div class="card-header">
                         <h3>Expenses List</h3>
                     </div>
@@ -155,8 +172,8 @@
             </div>
 
             <!-- Purchase Orders List -->
-            <div class="col-md-4" style="flex: 0 0 33.3333%; max-width: 33.3333%; padding-right: 12px; padding-left: 12px;">
-                <div class="card" style="margin-bottom: 24px; height: calc(100% - 24px);">
+            <div class="report-col">
+                <div class="card" style="margin-bottom: 24px; height: calc(100% - 24px); overflow: hidden;">
                     <div class="card-header">
                         <h3>Purchase Orders List</h3>
                     </div>

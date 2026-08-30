@@ -1123,7 +1123,7 @@ select.input { cursor: pointer; }
 
 .pos-premium-layout {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr 2fr;
   gap: 16px;
   padding: 16px;
   height: calc(100vh - 60px);
@@ -1293,7 +1293,7 @@ select.input { cursor: pointer; }
 /* RIGHT PANEL - Cart & Checkout */
 .pos-premium-right {
   display: grid;
-  grid-template-columns: 360px 320px;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
   height: 100%;
   min-height: 0;
@@ -1536,6 +1536,49 @@ select.input { cursor: pointer; }
   }
   .mobile-cart-close {
       display: block;
+  }
+  
+  /* Make checkout controls smaller on mobile to save space */
+  .checkout-premium-controls {
+      padding: 6px 8px;
+  }
+  .checkout-summary-box {
+      padding: 4px 6px;
+      margin-bottom: 4px;
+  }
+  .sum-label {
+      font-size: 12px;
+  }
+  .sum-val {
+      font-size: 13px;
+  }
+  .grand-total-row .sum-label {
+      font-size: 14px;
+  }
+  .grand-total-row .highlight {
+      font-size: 16px;
+  }
+  .sum-input, .sum-input-large {
+      height: 24px;
+      font-size: 12px;
+      padding: 2px 4px;
+  }
+  .sum-input-large {
+      width: 70px;
+  }
+  .change-row {
+      padding: 4px 6px;
+      margin-top: 4px;
+  }
+  .change-row .sum-label {
+      font-size: 13px;
+  }
+  .change-row .due {
+      font-size: 15px;
+  }
+  .btn-checkout {
+      padding: 8px;
+      font-size: 13px;
   }
 }
 

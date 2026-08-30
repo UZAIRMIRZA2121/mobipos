@@ -89,13 +89,14 @@ async function saveExpense() {
 }
 
 async function deleteExpense(id) {
-  if (!confirm('Delete this expense?')) return;
-  try {
-    const res = await api(`/shop/api/expenses/${id}`, 'DELETE');
-    toast('Expense deleted');
-    renderExpenses();
-  } catch (err) {
-    toast(err.message, 'danger');
-  }
+  confirmDelete('Delete this expense?', async () => {
+    try {
+      const res = await api(`/shop/api/expenses/${id}`, 'DELETE');
+      toast('Expense deleted');
+      renderExpenses();
+    } catch (err) {
+      toast(err.message, 'danger');
+    }
+  });
 }
 
