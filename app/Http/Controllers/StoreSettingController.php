@@ -32,7 +32,7 @@ class StoreSettingController extends Controller
         $validated = $request->validate([
             'discount' => 'nullable|numeric|min:0|max:100',
             'tax' => 'nullable|numeric|min:0|max:100',
-            'business_type' => 'nullable|string|in:mobile,cosmetics,garments,shoes,food',
+            'business_type' => 'nullable|string|in:mobile,cosmetics,garments,shoes,food,toys',
             'ultramsg_api_url' => 'nullable|string|max:255',
             'ultramsg_instance_id' => 'nullable|string|max:255',
             'ultramsg_token' => 'nullable|string|max:255',

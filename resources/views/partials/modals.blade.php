@@ -587,11 +587,12 @@
       <p style="margin-bottom: 15px; color: var(--text-dark);">Welcome! Please select your business type to configure the system.</p>
       <div class="form-group">
         <select id="onboardingBusinessType" class="input">
-            <option value="mobile">Mobile & Electronics</option>
-            <option value="cosmetics">Cosmetics</option>
-            <option value="garments">Garments</option>
-            <option value="shoes">Shoes</option>
-            <option value="food">Food & Grocery</option>
+            <option value="mobile">Mobile & Electronics (IMEIs, Serial Numbers)</option>
+            <option value="cosmetics">Cosmetics (Brands, Weights)</option>
+            <option value="garments">Garments (Sizes, Materials)</option>
+            <option value="shoes">Shoes (Sizes, Brands)</option>
+            <option value="food">Food & Grocery (Expiry Dates, Weight)</option>
+            <option value="toys">Toy Store</option>
         </select>
       </div>
     </div>

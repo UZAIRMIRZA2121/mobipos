@@ -18,6 +18,7 @@
                             <option value="garments">Garments</option>
                             <option value="shoes">Shoes</option>
                             <option value="food">Food & Grocery</option>
+                            <option value="toys">Toy Store</option>
                         </select>
                         <small style="color: var(--text-muted); font-size: 12px; margin-top: 4px; display: block;">Select your business type to customize features.</small>
                     </div>
