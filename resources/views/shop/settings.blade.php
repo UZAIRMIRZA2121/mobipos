@@ -16,6 +16,7 @@
                             <option value="mobile">Mobile & Electronics</option>
                             <option value="cosmetics">Cosmetics</option>
                             <option value="garments">Garments</option>
+                            <option value="cloth">Cloth Store</option>
                             <option value="shoes">Shoes</option>
                             <option value="food">Food & Grocery</option>
                             <option value="toys">Toy Store</option>
