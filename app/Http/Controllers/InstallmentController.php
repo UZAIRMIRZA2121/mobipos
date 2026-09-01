@@ -84,7 +84,7 @@ class InstallmentController extends Controller
 
     public function show($id)
     {
-        $installment = Installment::with(['customer', 'order', 'payments'])->where('user_id', Auth::id())->findOrFail($id);
+        $installment = Installment::with(['customer', 'order.items.product', 'payments'])->where('user_id', Auth::id())->findOrFail($id);
         
         $totalPaid = $installment->down_payment + $installment->payments->sum('amount');
         $remaining = $installment->total_amount - $totalPaid;

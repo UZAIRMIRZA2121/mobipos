@@ -47,6 +47,30 @@
                             </span>
                         </p>
                     </div>
+                    <div class="form-group" style="grid-column: 1 / -1; margin-top: 10px;">
+                        <label>Product(s) Detail</label>
+                        <div style="margin-top: 5px;">
+                            @if($installment->order && $installment->order->items)
+                                @foreach($installment->order->items as $item)
+                                    <span style="display: inline-block; background: #f3f4f6; padding: 6px 10px; border-radius: 4px; font-size: 13px; margin-right: 5px; margin-bottom: 5px;">
+                                        <strong>{{ $item->product->name ?? 'Unknown Product' }}</strong>
+                                        @if($item->product && $item->product->code)
+                                            - Code: {{ $item->product->code }}
+                                        @elseif($item->product && $item->product->barcode)
+                                            - Code: {{ $item->product->barcode }}
+                                        @endif
+                                        @if(!empty($item->imeis))
+                                            - IMEI: {{ $item->imeis }}
+                                        @elseif(!empty($item->imei_number))
+                                            - IMEI: {{ $item->imei_number }}
+                                        @elseif($item->product && !empty($item->product->imei_serial))
+                                            - IMEI: {{ $item->product->imei_serial }}
+                                        @endif
+                                    </span>
+                                @endforeach
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -106,6 +130,8 @@
             </div>
         </div>
     </div>
+
+
 
     <div class="pos-bottom-row" style="gap: 20px;">
         <!-- Left: Payment History -->
