@@ -16,6 +16,7 @@
                 <option value="used">Used</option>
                 <option value="refurbished">Refurbished</option>
             </select>
+            @if((Auth::user()->storeSetting->business_type ?? 'mobile') === 'mobile')
             <select class="input input-sm" id="prodTypeFilter" onchange="renderProducts()">
                 <option value="">All Types</option>
                 <option value="mobile">Mobile</option>
@@ -23,6 +24,7 @@
                 <option value="laptop">Laptop</option>
                 <option value="accessory">Accessory</option>
             </select>
+            @endif
             <select class="input input-sm" id="prodCategoryFilter" onchange="window.prodCurrentPage = 1; renderProducts()">
                 <option value="">All Categories</option>
             </select>
@@ -31,7 +33,7 @@
         </div>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>Image</th><th>Product Name</th><th>Type</th><th>Condition</th><th>Storage/Color</th><th>Sale Price</th><th>Status</th><th>Category</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Image</th><th>Product Name</th>@if((Auth::user()->storeSetting->business_type ?? 'mobile') === 'mobile')<th>Type</th>@endif<th>Condition</th><th>Storage/Color</th><th>Sale Price</th><th>Status</th><th>Category</th><th>Actions</th></tr></thead>
             <tbody id="prodTbody"></tbody>
           </table>
         </div>

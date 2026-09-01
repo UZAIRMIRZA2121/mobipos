@@ -26,7 +26,7 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:mobile,tablet,laptop,accessory',
+            'type' => 'nullable|string',
             'condition' => 'required|in:new,used,refurbished',
             'code' => [
                 'nullable',
@@ -95,7 +95,7 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:mobile,tablet,laptop,accessory',
+            'type' => 'nullable|string',
             'condition' => 'required|in:new,used,refurbished',
             'code' => [
                 'nullable',

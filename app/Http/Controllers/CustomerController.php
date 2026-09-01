@@ -24,12 +24,29 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:255',
+            'phone' => [
+                'nullable',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('customers')->where(function ($query) {
+                    return $query->where('user_id', Auth::id());
+                })
+            ],
             'address' => 'nullable|string',
-            'cnic_number' => 'nullable|string|max:255',
+            'cnic_number' => [
+                'nullable',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('customers')->where(function ($query) {
+                    return $query->where('user_id', Auth::id());
+                })
+            ],
             'cnic_front' => 'nullable|image|max:2048',
             'cnic_back' => 'nullable|image|max:2048',
             'agreements_images.*' => 'nullable|image|max:2048',
+        ], [
+            'phone.unique' => 'This phone number already exists.',
+            'cnic_number.unique' => 'This CNIC already exists.',
         ]);
 
         $validated['user_id'] = Auth::id();
@@ -62,12 +79,29 @@ class CustomerController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:255',
+            'phone' => [
+                'nullable',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('customers')->where(function ($query) {
+                    return $query->where('user_id', Auth::id());
+                })->ignore($customer->id)
+            ],
             'address' => 'nullable|string',
-            'cnic_number' => 'nullable|string|max:255',
+            'cnic_number' => [
+                'nullable',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('customers')->where(function ($query) {
+                    return $query->where('user_id', Auth::id());
+                })->ignore($customer->id)
+            ],
             'cnic_front' => 'nullable|image|max:2048',
             'cnic_back' => 'nullable|image|max:2048',
             'agreements_images.*' => 'nullable|image|max:2048',
+        ], [
+            'phone.unique' => 'This phone number already exists.',
+            'cnic_number.unique' => 'This CNIC already exists.',
         ]);
 
         if ($request->hasFile('cnic_front')) {

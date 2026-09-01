@@ -1,53 +1,107 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="pos-container" style="padding: 20px;">
-    <div class="card" style="margin-bottom: 20px;">
-        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <h3 style="margin: 0;">Installment Plan Details - Order #{{ $installment->order_id }}</h3>
-            <a href="{{ route('shop.installments.index') }}" class="btn btn-ghost">Back to List</a>
+<main class="page-content">
+<div class="page" style="padding: 20px; overflow-y: auto;">
+    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+        <div class="card" style="flex: 1; min-width: 300px; margin-bottom: 0;">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin: 0;">Installment Plan Details - Order #{{ $installment->order_id }}</h3>
+                <a href="{{ route('shop.installments.index') }}" class="btn btn-ghost">Back to List</a>
+            </div>
+            <div class="card-body" style="padding: 20px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                    <div class="form-group">
+                        <label>Total Amount</label>
+                        <p>
+                            <strong>PKR {{ number_format($installment->total_amount, 2) }}</strong>
+                            @if($installment->interest_percentage > 0)
+                                <br>
+                                <span style="font-size: 12px; color: #6b7280;">Base: PKR {{ number_format($installment->actual_price, 2) }}</span>
+                                <br>
+                                <span style="font-size: 12px; color: #6b7280;">Interest: {{ $installment->interest_percentage }}%</span>
+                            @endif
+                        </p>
+                    </div>
+                    <div class="form-group">
+                        <label>Down Payment (Advance)</label>
+                        <p><strong>PKR {{ number_format($installment->down_payment, 2) }}</strong></p>
+                    </div>
+                    <div class="form-group">
+                        <label>Agreed Monthly Installment</label>
+                        <p><strong>PKR {{ number_format($installment->agreed_monthly_amount, 2) }}</strong></p>
+                    </div>
+                    <div class="form-group">
+                        <label>Total Paid So Far</label>
+                        <p><strong>PKR {{ number_format($totalPaid, 2) }}</strong></p>
+                    </div>
+                    <div class="form-group">
+                        <label>Remaining Balance</label>
+                        <p><strong style="color: {{ $remaining > 0 ? 'var(--danger)' : 'var(--success)' }};">PKR {{ number_format($remaining, 2) }}</strong></p>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <p>
+                            <span class="badge {{ $installment->status === 'Completed' ? 'badge-success' : 'badge-warning' }}">
+                                {{ $installment->status }}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body" style="padding: 20px;">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                <div class="form-group">
-                    <label>Customer</label>
-                    <p><strong>{{ $installment->customer->name ?? 'Unknown' }}</strong></p>
-                </div>
-                <div class="form-group">
-                    <label>Total Amount</label>
-                    <p>
-                        <strong>PKR {{ number_format($installment->total_amount, 2) }}</strong>
-                        @if($installment->interest_percentage > 0)
-                            <br>
-                            <span style="font-size: 12px; color: #6b7280;">Base: PKR {{ number_format($installment->actual_price, 2) }}</span>
-                            <br>
-                            <span style="font-size: 12px; color: #6b7280;">Interest: {{ $installment->interest_percentage }}%</span>
-                        @endif
-                    </p>
-                </div>
-                <div class="form-group">
-                    <label>Down Payment (Advance)</label>
-                    <p><strong>PKR {{ number_format($installment->down_payment, 2) }}</strong></p>
-                </div>
-                <div class="form-group">
-                    <label>Agreed Monthly Installment</label>
-                    <p><strong>PKR {{ number_format($installment->agreed_monthly_amount, 2) }}</strong></p>
-                </div>
-                <div class="form-group">
-                    <label>Total Paid So Far</label>
-                    <p><strong>PKR {{ number_format($totalPaid, 2) }}</strong></p>
-                </div>
-                <div class="form-group">
-                    <label>Remaining Balance</label>
-                    <p><strong style="color: {{ $remaining > 0 ? 'var(--danger)' : 'var(--success)' }};">PKR {{ number_format($remaining, 2) }}</strong></p>
-                </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <p>
-                        <span class="badge {{ $installment->status === 'Completed' ? 'badge-success' : 'badge-warning' }}">
-                            {{ $installment->status }}
-                        </span>
-                    </p>
+
+        <div class="card" style="flex: 1; min-width: 300px; margin-bottom: 0;">
+            <div class="card-header">
+                <h3 style="margin: 0;">Customer Details</h3>
+            </div>
+            <div class="card-body" style="padding: 20px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <p><strong>{{ $installment->customer->name ?? 'N/A' }}</strong></p>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <p><strong>{{ $installment->customer->phone ?? 'N/A' }}</strong></p>
+                    </div>
+                    <div class="form-group">
+                        <label>CNIC Number</label>
+                        <p><strong>{{ $installment->customer->cnic_number ?? 'N/A' }}</strong></p>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Address</label>
+                        <p><strong>{{ $installment->customer->address ?? 'N/A' }}</strong></p>
+                    </div>
+                    @if(!empty($installment->customer->cnic_front) || !empty($installment->customer->cnic_back))
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>CNIC Images</label>
+                        <div style="display: flex; gap: 10px; margin-top: 5px;">
+                            @if(!empty($installment->customer->cnic_front))
+                                <a href="{{ asset('storage/' . $installment->customer->cnic_front) }}" target="_blank">
+                                    <img src="{{ asset('storage/' . $installment->customer->cnic_front) }}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc;">
+                                </a>
+                            @endif
+                            @if(!empty($installment->customer->cnic_back))
+                                <a href="{{ asset('storage/' . $installment->customer->cnic_back) }}" target="_blank">
+                                    <img src="{{ asset('storage/' . $installment->customer->cnic_back) }}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc;">
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+                    @if(!empty($installment->customer->agreements_images) && is_array($installment->customer->agreements_images))
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Agreement Images</label>
+                        <div style="display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap;">
+                            @foreach($installment->customer->agreements_images as $img)
+                                <a href="{{ asset('storage/' . $img) }}" target="_blank">
+                                    <img src="{{ asset('storage/' . $img) }}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ccc;">
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -155,6 +209,7 @@
         </div>
     </div>
 </div>
+</main>
 
 <!-- Edit Payment Modal -->
 <div class="modal-overlay hidden" id="editPaymentModal">

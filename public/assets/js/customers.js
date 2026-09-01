@@ -356,7 +356,7 @@ async function saveCustomer() {
     }
     closeCustModal();
     await syncData();
-  } catch (e) { toast('Error saving customer', 'danger'); }
+  } catch (e) { toast(e.message || 'Error saving customer', 'danger'); }
 }
 
 function deleteCustomer(id) {

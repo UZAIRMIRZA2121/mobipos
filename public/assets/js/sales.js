@@ -364,7 +364,7 @@ async function renderSales(page = 1) {
           <td style="white-space:nowrap">${fmtCur(i.discount)}</td>
           <td style="white-space:nowrap">${fmtCur(i.tax)}</td>
           <td style="white-space:nowrap;font-weight:700;color:var(--primary)">${fmtCur(i.total)}</td>
-          <td style="white-space:nowrap">${fmtCur(i.paid_amount)}</td>
+          <td style="white-space:nowrap">${fmtCur(Math.min(parseFloat(i.paid_amount) || 0, parseFloat(i.total) || 0))}</td>
           <td>
             <span class="badge ${i.payment_status === 'paid' ? 'badge-success' : (i.payment_status === 'refunded' ? 'badge-gray' : (i.payment_status === 'partial' ? 'badge-warning' : 'badge-danger'))}" style="text-transform:capitalize">${i.payment_status}</span>
           </td>

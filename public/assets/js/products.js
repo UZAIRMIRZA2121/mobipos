@@ -66,7 +66,7 @@ function renderProducts() {
           ${p.imei ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">IMEI/SN: ${p.imei}</div>` : ''}
           ${p.barcode ? `<div style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">Barcode: ${p.barcode}</div>` : ''}
         </td>
-        <td style="text-transform:capitalize">${p.type}</td>
+        ${window.ACTIVE_MODULE === 'mobile' ? `<td style="text-transform:capitalize">${p.type || '-'}</td>` : ''}
         <td style="text-transform:capitalize">${p.condition}</td>
         <td>${p.storage || '-'} / ${p.color || '-'}</td>
         <td style="font-weight:600">${fmtCur(p.sale)}</td>
@@ -306,11 +306,15 @@ function closeProductModal() {
 
 async function saveProduct() {
   const name = document.getElementById('prodName').value.trim();
-  const type = document.getElementById('prodType').value;
+  const activeModule = window.ACTIVE_MODULE || 'mobile';
+  let type = '';
+  if (activeModule === 'mobile') {
+      type = document.getElementById('prodType').value;
+  }
   const condition = document.getElementById('prodCondition').value;
   const sale = document.getElementById('prodSale').value;
 
-  if (!name || !type || !condition || !sale) { toast('Name, Type, Condition and Sale Price required!', 'warning'); return; }
+  if (!name || !condition || !sale || (activeModule === 'mobile' && !type)) { toast('Name, Condition, Sale Price and Type (for mobile) are required!', 'warning'); return; }
 
   const editId = document.getElementById('prodId').value;
   const formData = new FormData();

@@ -11,7 +11,8 @@
   .ts-dropdown .active { background-color: #f3f4f6; color: var(--text); }
   .tom-select-wrap { flex: 1; }
 </style>
-<div class="pos-container" style="padding: 20px;">
+<main class="page-content">
+<div class="page" id="page-installments" style="padding: 20px; overflow-y: auto;">
 
     <style>
         .summary-flex-row {
@@ -223,7 +224,12 @@
                                 data-date="{{ $installment->created_at->format('Y-m-d') }}"
                                 data-month-status="{{ $paidThisMonth > 0 ? 'paid' : 'unpaid' }}">
                                 <td>{{ $installment->order_id }}</td>
-                                <td>{{ $installment->customer->name ?? 'Unknown' }}</td>
+                                <td>
+                                    <div>{{ $installment->customer->name ?? 'Unknown' }}</div>
+                                    @if(!empty($installment->customer->phone))
+                                        <div style="font-size: 12px; color: #6b7280; margin-top: 2px;">{{ $installment->customer->phone }}</div>
+                                    @endif
+                                </td>
                                 <td>
                                     <div>PKR {{ number_format($installment->total_amount, 2) }}</div>
                                     @if($installment->interest_percentage > 0)
@@ -849,6 +855,7 @@
         }
     }
 </script>
+</main>
 @endsection
 
 @section('scripts')
