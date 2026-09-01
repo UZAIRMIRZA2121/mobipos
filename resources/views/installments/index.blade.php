@@ -466,6 +466,9 @@
         let monthly = 0;
         if (advanceIsFirst && advanceIsFirst.checked) {
             monthly = (total / months).toFixed(2);
+            document.getElementById('newInstAdvance').value = monthly;
+            const newRemaining = total - parseFloat(monthly);
+            document.getElementById('newInstRemaining').value = newRemaining.toFixed(2);
         } else {
             monthly = (remaining / months).toFixed(2);
         }
@@ -818,6 +821,9 @@
         let monthly = 0;
         if (advanceIsFirst && advanceIsFirst.checked) {
             monthly = (total / months).toFixed(2);
+            document.getElementById('editInstAdvance').value = monthly;
+            const newRemaining = total - parseFloat(monthly);
+            document.getElementById('editInstRemaining').value = newRemaining.toFixed(2);
         } else {
             monthly = (remaining / months).toFixed(2);
         }
