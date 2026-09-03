@@ -52,6 +52,8 @@ class ProductController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'units_imeis' => 'nullable|array',
             'units_imeis.*' => 'nullable|string',
+            'units_is_pta' => 'nullable|array',
+            'units_is_pta.*' => 'nullable|boolean',
             'meta_data' => 'nullable|json',
         ]);
 
@@ -72,11 +74,13 @@ class ProductController extends Controller
         if ($businessType === 'mobile' && in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
             $stock = (int) ($product->stock ?: 1);
             $imeisArray = $request->input('units_imeis', []);
+            $isPtaArray = $request->input('units_is_pta', []);
             
             for ($i = 0; $i < $stock; $i++) {
                 ProductStockUnit::create([
                     'product_id' => $product->id,
                     'imeis' => $imeisArray[$i] ?? null,
+                    'is_pta' => !empty($isPtaArray[$i]) && ($isPtaArray[$i] == '1' || $isPtaArray[$i] == 'true'),
                     'status' => 'available',
                 ]);
             }
@@ -121,6 +125,8 @@ class ProductController extends Controller
             'category_id' => 'nullable|exists:categories,id',
             'units_imeis' => 'nullable|array',
             'units_imeis.*' => 'nullable|string',
+            'units_is_pta' => 'nullable|array',
+            'units_is_pta.*' => 'nullable|boolean',
             'meta_data' => 'nullable|json',
         ]);
 
@@ -147,6 +153,7 @@ class ProductController extends Controller
         if ($businessType === 'mobile' && in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
             $stock = (int) ($product->stock ?: 1);
             $imeisArray = $request->input('units_imeis', []);
+            $isPtaArray = $request->input('units_is_pta', []);
             
             // Remove currently available units
             $product->stockUnits()->where('status', 'available')->delete();
@@ -156,6 +163,7 @@ class ProductController extends Controller
                 ProductStockUnit::create([
                     'product_id' => $product->id,
                     'imeis' => $imeisArray[$i] ?? null,
+                    'is_pta' => !empty($isPtaArray[$i]) && ($isPtaArray[$i] == '1' || $isPtaArray[$i] == 'true'),
                     'status' => 'available',
                 ]);
             }

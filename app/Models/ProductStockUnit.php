@@ -12,6 +12,7 @@ class ProductStockUnit extends Model
     protected $fillable = [
         'product_id',
         'imeis',
+        'is_pta',
         'status',
         'order_item_id'
     ];

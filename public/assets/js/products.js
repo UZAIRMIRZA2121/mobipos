@@ -229,8 +229,10 @@ function renderImeiFields(forceRefresh = false) {
    
    // Keep existing input values to not wipe user typing if they just change quantity
    let existingInputs = [];
+   let existingPtaInputs = [];
    if (!forceRefresh) {
        existingInputs = Array.from(document.querySelectorAll('.unit-imei-input')).map(el => el.value);
+       existingPtaInputs = Array.from(document.querySelectorAll('.unit-pta-input')).map(el => el.checked);
    }
    
    let html = '';
@@ -242,9 +244,19 @@ function renderImeiFields(forceRefresh = false) {
          val = availableUnits[i].imeis || '';
       }
       
-      html += `<div style="margin-bottom: 8px;">
-         <label style="font-size:11px; color: var(--text-muted);">Stock Unit ${i+1}</label>
-         <input type="text" class="input unit-imei-input" placeholder="e.g. 3589... , 3589..." value="${val}"/>
+      let isPtaChecked = '';
+      if (!forceRefresh && existingPtaInputs.length > i) {
+         isPtaChecked = existingPtaInputs[i] ? 'checked' : '';
+      } else if (availableUnits[i]) {
+         isPtaChecked = availableUnits[i].is_pta ? 'checked' : '';
+      }
+      
+      html += `<div style="margin-bottom: 8px; border: 1px solid #e5e7eb; padding: 10px; border-radius: 6px; background: white;">
+         <label style="font-size:11px; color: var(--text-muted); display:block; margin-bottom: 5px;">Stock Unit ${i+1}</label>
+         <input type="text" class="input unit-imei-input" placeholder="e.g. 3589... , 3589..." value="${val}" style="margin-bottom: 8px;"/>
+         <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; user-select: none;">
+            <input type="checkbox" class="unit-pta-input" ${isPtaChecked} /> Is PTA Approved
+         </label>
       </div>`;
    }
    container.innerHTML = html;
@@ -326,6 +338,9 @@ async function saveProduct() {
 
   const unitImeis = Array.from(document.querySelectorAll('.unit-imei-input')).map(el => el.value.trim());
   unitImeis.forEach(u => formData.append('units_imeis[]', u));
+
+  const unitPtas = Array.from(document.querySelectorAll('.unit-pta-input')).map(el => el.checked);
+  unitPtas.forEach(u => formData.append('units_is_pta[]', u ? '1' : '0'));
 
   formData.append('color', document.getElementById('prodColor') ? document.getElementById('prodColor').value.trim() : '');
   formData.append('storage', document.getElementById('prodStorage') ? document.getElementById('prodStorage').value.trim() : '');
