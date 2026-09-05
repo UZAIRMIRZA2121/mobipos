@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Addon extends Model
 {
     use HasFactory;
-    
-    protected $fillable = ['user_id', 'name'];
+
+    protected $fillable = ['user_id', 'cat_id', 'name'];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'cat_id');
+    }
 }

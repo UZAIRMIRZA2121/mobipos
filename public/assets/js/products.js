@@ -795,38 +795,63 @@ window.ffState = {
 function renderFastFoodMatrix() {
     const container = document.getElementById('fastFoodMatrixContainer');
     if (!container) return;
-    
+
+    // Get selected category ID from prodCategory dropdown
+    const selectedCatId = parseInt(document.getElementById('prodCategory')?.value) || null;
+
+    // Filter: show variation if cat_id is null (all categories) OR matches selected category
+    const filteredVariations = (window.globalVariations || []).filter(v =>
+        !v.cat_id || !selectedCatId || v.cat_id == selectedCatId
+    );
+
+    // Filter addons the same way
+    const filteredAddons = (window.globalAddons || []).filter(a =>
+        !a.cat_id || !selectedCatId || a.cat_id == selectedCatId
+    );
+
     let html = `<h4 style="margin-bottom:10px; font-size:14px;">1. Product Variations (Compulsory)</h4>`;
-    
-    // Variations
-    html += `<div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom: 20px;">`;
-    (window.globalVariations || []).forEach(v => {
-        const isChecked = window.ffState.variations.hasOwnProperty(v.id);
-        const price = isChecked ? window.ffState.variations[v.id] : '';
-        html += `<div style="border: 1px solid var(--border); padding: 10px; border-radius: 6px; flex: 1; min-width: 150px; background: white;">
-            <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; margin-bottom: 8px; cursor: pointer;">
-                <input type="checkbox" onchange="toggleFFVar(${v.id}, this.checked)" ${isChecked ? 'checked' : ''}> ${v.name}
-            </label>
-            ${isChecked ? `<input type="number" class="input input-sm ff-var-price" placeholder="Base Price (PKR)" value="${price}" oninput="updateFFVarPrice(${v.id}, this.value)">` : ''}
-        </div>`;
-    });
-    html += `</div>`;
-    
+
+    if (filteredVariations.length === 0) {
+        html += `<p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
+            No variations found for this category. 
+            <a href="/shop/variations" style="color:var(--primary);">Add variations →</a>
+        </p>`;
+    } else {
+        // Variations
+        html += `<div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom: 20px;">`;
+        filteredVariations.forEach(v => {
+            const isChecked = window.ffState.variations.hasOwnProperty(v.id);
+            const price = isChecked ? window.ffState.variations[v.id] : '';
+            html += `<div style="border: 1px solid var(--border); padding: 10px; border-radius: 6px; flex: 1; min-width: 150px; background: white;">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; margin-bottom: 8px; cursor: pointer;">
+                    <input type="checkbox" onchange="toggleFFVar(${v.id}, this.checked)" ${isChecked ? 'checked' : ''}> ${v.name}
+                </label>
+                ${isChecked ? `<input type="number" class="input input-sm ff-var-price" placeholder="Base Price (PKR)" value="${price}" oninput="updateFFVarPrice(${v.id}, this.value)">` : ''}
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
     // Addons
     html += `<h4 style="margin-bottom:10px; font-size:14px;">2. Add-ons (Optional)</h4>`;
-    
+
     const selectedVarIds = Object.keys(window.ffState.variations);
     if (selectedVarIds.length === 0) {
         html += `<p style="font-size: 12px; color: var(--text-muted);">Please select at least one variation above to set add-on prices.</p>`;
+    } else if (filteredAddons.length === 0) {
+        html += `<p style="font-size:12px; color:var(--text-muted);">
+            No add-ons found for this category.
+            <a href="/shop/addons" style="color:var(--primary);">Add add-ons →</a>
+        </p>`;
     } else {
         html += `<div style="display:flex; flex-direction:column; gap:10px;">`;
-        (window.globalAddons || []).forEach(a => {
+        filteredAddons.forEach(a => {
             const isChecked = window.ffState.addons.hasOwnProperty(a.id);
             html += `<div style="border: 1px solid var(--border); padding: 10px; border-radius: 6px; background: white;">
                 <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; margin-bottom: ${isChecked ? '10px' : '0'}; cursor: pointer;">
                     <input type="checkbox" onchange="toggleFFAddon(${a.id}, this.checked)" ${isChecked ? 'checked' : ''}> ${a.name}
                 </label>`;
-            
+
             if (isChecked) {
                 html += `<div style="display:flex; flex-wrap:wrap; gap:10px; margin-left: 24px; padding-left: 10px; border-left: 2px solid var(--border-color);">`;
                 selectedVarIds.forEach(vid => {
@@ -843,7 +868,7 @@ function renderFastFoodMatrix() {
         });
         html += `</div>`;
     }
-    
+
     container.innerHTML = html;
 }
 

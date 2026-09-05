@@ -13,8 +13,8 @@ class ProductController extends Controller
 {
     public function index()
     {
-        $variations = \App\Models\Variation::where('user_id', Auth::id())->get();
-        $addons = \App\Models\Addon::where('user_id', Auth::id())->get();
+        $variations = \App\Models\Variation::where('user_id', Auth::id())->get(['id','name','cat_id']);
+        $addons     = \App\Models\Addon::where('user_id', Auth::id())->get(['id','name','cat_id']);
         return view('products.index', compact('variations', 'addons'));
     }
 

@@ -158,6 +158,13 @@
       <input type="hidden" id="prodId"/>
       <div class="form-grid">
         <div class="form-group"><label>Product Name *</label><input type="text" id="prodName" class="input" placeholder="e.g. Product Name"/></div>
+        <div class="form-group">
+          <label>Category</label>
+          <div style="display: flex; gap: 8px;">
+            <select id="prodCategory" class="input" style="flex: 1;" onchange="if(typeof renderFastFoodMatrix === 'function') renderFastFoodMatrix()"><option value="">Select category</option></select>
+            <button type="button" class="btn btn-outline" style="padding: 0 12px; font-size: 18px;" onclick="openCatModal()" title="Add Category">+</button>
+          </div>
+        </div>
         <div class="form-group module-field module-mobile"><label>Type *</label><select id="prodType" class="input"><option value="mobile">Mobile</option><option value="tablet">Tablet</option><option value="laptop">Laptop</option><option value="accessory">Accessory</option></select></div>
         <div class="form-group module-field module-mobile"><label>Condition *</label><select id="prodCondition" class="input"><option value="new">New</option><option value="used">Used</option><option value="refurbished">Refurbished</option></select></div>
         <div class="form-group"><label>Code</label><input type="text" id="prodCode" class="input" placeholder="Product Code (optional)"/></div>
@@ -223,13 +230,6 @@
         </div>
 
         <div class="form-group"><label>Status *</label><select id="prodStatus" class="input"><option value="in_stock">In Stock</option><option value="sold">Sold</option><option value="in_repair">In Repair</option></select></div>
-        <div class="form-group">
-          <label>Category</label>
-          <div style="display: flex; gap: 8px;">
-            <select id="prodCategory" class="input" style="flex: 1;"><option value="">Select category</option></select>
-            <button type="button" class="btn btn-outline" style="padding: 0 12px; font-size: 18px;" onclick="openCatModal()" title="Add Category">+</button>
-          </div>
-        </div>
         <div class="form-group">
           <label>Sourced From (Buyer)</label>
           <div style="display: flex; gap: 8px;">
