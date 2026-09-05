@@ -72,16 +72,30 @@
     </div>
     <div class="nav-group">
       <span class="nav-group-label">Inventory</span>
-      @if(Auth::user()->hasPrivilege('shop.products.index'))
-      <a class="nav-item" href="{{ route('shop.products.index') }}">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-        Products
-      </a>
-      @endif
       @if(Auth::user()->hasPrivilege('shop.categories.index'))
       <a class="nav-item {{ request()->routeIs('shop.categories.index') ? 'active' : '' }}" href="{{ route('shop.categories.index') }}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
         Categories
+      </a>
+      @endif
+      
+      @if(Auth::user()->storeSetting && Auth::user()->storeSetting->business_type == 'fast_food')
+   
+      <a class="nav-item {{ request()->routeIs('shop.variations.*') ? 'active' : '' }}" href="{{ route('shop.variations.index') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Variations
+      </a>
+
+      <a class="nav-item {{ request()->routeIs('shop.addons.*') ? 'active' : '' }}" href="{{ route('shop.addons.index') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Add-ons
+      </a>
+      @endif
+
+      @if(Auth::user()->hasPrivilege('shop.products.index'))
+      <a class="nav-item {{ request()->routeIs('shop.products.*') ? 'active' : '' }}" href="{{ route('shop.products.index') }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        Products
       </a>
       @endif
       @if(Auth::user()->hasPrivilege('shop.purchase_orders.index'))

@@ -54,14 +54,18 @@ async function loadEditOrderIfAny() {
       const prod = item.product || allProducts.find(p => p.id === item.product_id);
       if (prod) {
         const p = parseFloat(item.sell_price || item.price || prod.sale);
-        const q = parseInt(item.qty);
+        const q = parseFloat(item.qty);
         cart.push({
           prodId: prod.id,
           name: prod.name,
           price: p,
           qty: q,
           sub: p * q,
-          maxStock: prod.stock + q
+          maxStock: prod.stock + q,
+          unit: prod.unit || 'pcs',
+          type: prod.type,
+          image: prod.image,
+          brand: prod.meta_data && prod.meta_data.brand ? prod.meta_data.brand : null
         });
       }
     });
@@ -185,14 +189,18 @@ function renderProdGrid() {
 
 function buildProdCard(p) {
   const inCart = cart.find(c => c.prodId == p.id);
-  const cartQty = inCart ? inCart.qty : 0;
-  const availStock = p.stock - cartQty;
+  const cartQty = inCart ? parseFloat(Number(inCart.qty).toFixed(3)) : 0;
+  const availStock = parseFloat(Number(p.stock - cartQty).toFixed(3));
 
-  const oos = availStock <= 0 || p.status === 'defective' || p.status === 'in_repair';
+  const oos = (window.ACTIVE_MODULE !== 'fast_food' && availStock <= 0) || p.status === 'defective' || p.status === 'in_repair';
 
   let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + availStock + ')';
-  if (oos) { stockBg = '#fee2e2'; stockColor = '#991b1b'; stockText = 'Out of Stock'; }
-  else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + availStock + ')'; }
+  if (window.ACTIVE_MODULE === 'fast_food') {
+      stockText = 'Available';
+  } else {
+      if (oos) { stockBg = '#fee2e2'; stockColor = '#991b1b'; stockText = 'Out of Stock'; }
+      else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + availStock + ')'; }
+  }
 
   return `<div class="med-card${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})" style="position:relative; overflow:hidden;">
     ${(posFilter.showImage && p.image) ? `<img src="/storage/${p.image}" alt="${p.name}" style="width:calc(100% + 24px); height:80px; object-fit:cover; margin:-12px -12px 12px -12px; display:block;">` : ''}
@@ -217,14 +225,18 @@ function buildProdCard(p) {
 
 function buildProdRow(p) {
   const inCart = cart.find(c => c.prodId == p.id);
-  const cartQty = inCart ? inCart.qty : 0;
-  const availStock = p.stock - cartQty;
+  const cartQty = inCart ? parseFloat(Number(inCart.qty).toFixed(3)) : 0;
+  const availStock = parseFloat(Number(p.stock - cartQty).toFixed(3));
 
-  const oos = availStock <= 0 || p.status === 'defective' || p.status === 'in_repair';
+  const oos = (window.ACTIVE_MODULE !== 'fast_food' && availStock <= 0) || p.status === 'defective' || p.status === 'in_repair';
 
   let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + availStock + ')';
-  if (oos) { stockBg = '#fee2e2'; stockColor = '#991b1b'; stockText = 'Out of Stock'; }
-  else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + availStock + ')'; }
+  if (window.ACTIVE_MODULE === 'fast_food') {
+      stockText = 'Available';
+  } else {
+      if (oos) { stockBg = '#fee2e2'; stockColor = '#991b1b'; stockText = 'Out of Stock'; }
+      else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + availStock + ')'; }
+  }
 
   return `<div class="med-row${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})">
     <div class="med-row-info" style="display:flex; align-items:center; gap:12px;">
@@ -410,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function addToCart(prodId) {
   const p = store.get('products').find(m => m.id == prodId);
   if (!p) return;
-  if (p.stock <= 0 || p.status === 'defective' || p.status === 'in_repair') { toast('Product is unavailable!', 'danger'); return; }
+  if ((window.ACTIVE_MODULE !== 'fast_food' && p.stock <= 0) || p.status === 'defective' || p.status === 'in_repair') { toast('Product is unavailable!', 'danger'); return; }
 
   // IF IT IS SERIALIZED, prompt for IMEI selection
   if (window.ACTIVE_MODULE === 'mobile' && ['mobile', 'tablet', 'laptop'].includes(p.type)) {
@@ -443,21 +455,192 @@ function addToCart(prodId) {
      return;
   }
 
-  const existing = cart.find(c => c.prodId == prodId);
+  // FAST FOOD: Variations & Addons Logic
+  if (window.ACTIVE_MODULE === 'fast_food' && p.meta_data && p.meta_data.fast_food && Object.keys(p.meta_data.fast_food.variations || {}).length > 0) {
+      openPosVariationModal(p);
+      return;
+  }
+
+  const bypassStock = (window.ACTIVE_MODULE === 'fast_food' && (!p.meta_data || !p.meta_data.fast_food || p.meta_data.fast_food.prepare_type !== 'readymade'));
+
+  const existing = cart.find(c => c.prodId == prodId && !c.ff_var_id); // Only match base items without variations here
   if (existing) {
-    if (existing.qty >= p.stock) { toast('Not enough stock!', 'warning'); return; }
+    if (!bypassStock && existing.qty >= p.stock) { toast('Not enough stock!', 'warning'); return; }
     existing.qty++;
     existing.sub = existing.qty * existing.price;
   } else {
-    if (p.stock <= 0) { toast('Out of stock!', 'danger'); return; }
+    if (!bypassStock && p.stock <= 0) { toast('Out of stock!', 'danger'); return; }
     const pName = p.name + (p.condition || p.color ? ` (${[p.condition, p.color].filter(Boolean).join(' - ')})` : '');
     const pBrand = p.meta_data && p.meta_data.brand ? p.meta_data.brand : null;
     const actualPrice = parseFloat(p.sale) - (parseFloat(p.discount) || 0);
-    cart.push({ prodId: p.id, name: pName, price: actualPrice, qty: 1, sub: actualPrice, maxStock: p.stock, image: p.image, brand: pBrand });
+    cart.push({ cartItemId: Date.now().toString(), prodId: p.id, name: pName, price: actualPrice, qty: 1, sub: actualPrice, maxStock: p.stock, image: p.image, brand: pBrand, unit: p.unit || 'pcs', type: p.type });
   }
   renderCart();
   renderProdGrid();
   toast(`${p.name} added`, 'success');
+}
+
+// FAST FOOD VARIATION MODAL FUNCTIONS
+let currentFFProduct = null;
+
+function openPosVariationModal(p) {
+    currentFFProduct = p;
+    document.getElementById('posVarProdId').value = p.id;
+    document.getElementById('posVariationModalTitle').textContent = p.name + " - Options";
+    
+    const ffData = p.meta_data.fast_food;
+    const varList = document.getElementById('posVarList');
+    const addonList = document.getElementById('posAddonList');
+    
+    // Render Variations
+    let varHtml = '';
+    let isFirst = true;
+    for (const [varId, varData] of Object.entries(ffData.variations || {})) {
+        const checked = isFirst ? 'checked' : '';
+        const vObj = window.globalVariations ? window.globalVariations.find(v => v.id == varId) : null;
+        const varName = vObj ? vObj.name : `Variation ${varId}`;
+        
+        // Handle both older object format and newer string format for base_price
+        const varPrice = typeof varData === 'object' ? varData.base_price : varData;
+        
+        varHtml += `<label class="ff-var-box" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 12px 8px; background: #fff; border-radius: 8px; cursor: pointer; text-align:center; position:relative;">
+            <input type="radio" name="ff_variation" value="${varId}" data-name="${varName}" data-price="${varPrice}" ${checked} onchange="updatePosVarTotal()" style="position:absolute; opacity:0; width:0; height:0;">
+            <span style="font-weight: 700; font-size:14px; margin-bottom:4px; color:var(--text);">${varName}</span>
+            <span style="color:var(--primary); font-weight:800; font-size:12px;">+${fmtCur(varPrice)}</span>
+        </label>`;
+        isFirst = false;
+    }
+    varList.innerHTML = varHtml;
+    
+    updatePosAddons(); // Will render addons based on first selected variation
+    document.getElementById('posVariationModal').classList.remove('hidden');
+}
+
+function updatePosAddons() {
+    if (!currentFFProduct) return;
+    
+    const selectedVarRadio = document.querySelector('input[name="ff_variation"]:checked');
+    if (!selectedVarRadio) return;
+    const varId = selectedVarRadio.value;
+    
+    const ffData = currentFFProduct.meta_data.fast_food;
+    const addonList = document.getElementById('posAddonList');
+    
+    let addonHtml = '';
+    for (const [addonId, addonPrices] of Object.entries(ffData.addons || {})) {
+        const price = addonPrices[varId];
+        if (price !== undefined && price !== null && price !== "") {
+            const aObj = window.globalAddons ? window.globalAddons.find(a => a.id == addonId) : null;
+            const addonName = aObj ? aObj.name : `Addon ${addonId}`;
+            
+            addonHtml += `<label class="ff-addon-box" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 12px 8px; background: #fff; border-radius: 8px; cursor: pointer; text-align:center; position:relative;">
+                <input type="checkbox" class="ff-addon-checkbox" value="${addonId}" data-name="${addonName}" data-price="${price}" onchange="updatePosVarTotal()" style="position:absolute; opacity:0; width:0; height:0;">
+                <span style="font-weight: 700; font-size:14px; margin-bottom:4px; color:var(--text);">${addonName}</span>
+                <span style="color:var(--success); font-weight:800; font-size:12px;">+${fmtCur(price)}</span>
+            </label>`;
+        }
+    }
+    
+    if (addonHtml === '') addonHtml = '<span style="color:var(--text-muted); font-size:13px;">No addons available for this size.</span>';
+    addonList.innerHTML = addonHtml;
+    updatePosVarTotal();
+}
+
+function updatePosVarTotal() {
+    const varRadio = document.querySelector('input[name="ff_variation"]:checked');
+    let total = 0;
+    
+    if (varRadio) {
+        total += parseFloat(varRadio.dataset.price || 0);
+        
+        // Ensure addons are updated if variation changed, but only if they don't already match the current var
+        // Since updatePosAddons is called on var change (need to bind it properly)
+    }
+    
+    const addonCheckboxes = document.querySelectorAll('.ff-addon-checkbox:checked');
+    addonCheckboxes.forEach(cb => {
+        total += parseFloat(cb.dataset.price || 0);
+    });
+    
+    document.getElementById('posVarTotalPrice').textContent = fmtCur(total);
+}
+
+// Bind updatePosAddons to radio change
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.name === 'ff_variation') {
+        updatePosAddons();
+    }
+});
+
+function closePosVariationModal() {
+    document.getElementById('posVariationModal').classList.add('hidden');
+    currentFFProduct = null;
+}
+
+function confirmPosVariation() {
+    if (!currentFFProduct) return;
+    
+    const varRadio = document.querySelector('input[name="ff_variation"]:checked');
+    if (!varRadio) {
+        toast('Please select a size/variation', 'warning');
+        return;
+    }
+    
+    const varId = varRadio.value;
+    const varName = varRadio.dataset.name;
+    const varPrice = parseFloat(varRadio.dataset.price || 0);
+    
+    const selectedAddons = [];
+    let addonsTotal = 0;
+    
+    const addonCheckboxes = document.querySelectorAll('.ff-addon-checkbox:checked');
+    addonCheckboxes.forEach(cb => {
+        const aId = cb.value;
+        const aName = cb.dataset.name;
+        const aPrice = parseFloat(cb.dataset.price || 0);
+        selectedAddons.push({ id: aId, name: aName, price: aPrice });
+        addonsTotal += aPrice;
+    });
+    
+    const finalPrice = varPrice + addonsTotal;
+    const addonsString = selectedAddons.map(a => a.id).sort().join('|'); // for grouping
+    
+    // Check if this exact combination exists in cart
+    const existing = cart.find(c => 
+        c.prodId === currentFFProduct.id && 
+        c.ff_var_id === varId && 
+        (c.ff_addons_string || '') === addonsString
+    );
+    
+    if (existing) {
+        existing.qty++;
+        existing.sub = existing.qty * existing.price;
+    } else {
+        cart.push({
+            cartItemId: Date.now().toString(),
+            prodId: currentFFProduct.id,
+            name: currentFFProduct.name,
+            price: finalPrice,
+            qty: 1,
+            sub: finalPrice,
+            maxStock: currentFFProduct.stock, // Bypassed anyway
+            image: currentFFProduct.image,
+            unit: currentFFProduct.unit || 'pcs',
+            type: currentFFProduct.type,
+            
+            // Fast Food Specific Data
+            ff_var_id: varId,
+            ff_var_name: varName,
+            ff_var_price: varPrice,
+            ff_addons: selectedAddons,
+            ff_addons_string: addonsString
+        });
+    }
+    
+    closePosVariationModal();
+    renderCart();
+    renderProdGrid();
+    toast(`${currentFFProduct.name} added`, 'success');
 }
 
 function closeImeiSelectModal() {
@@ -516,7 +699,8 @@ function confirmImeiSelection() {
           stock_units: selectedUnitIds,
           type: p.type,
           image: p.image,
-          brand: p.meta_data && p.meta_data.brand ? p.meta_data.brand : null
+          brand: p.meta_data && p.meta_data.brand ? p.meta_data.brand : null,
+          unit: p.unit || 'pcs'
       });
   }
   
@@ -526,19 +710,83 @@ function confirmImeiSelection() {
   toast(`${p.name} added`, 'success');
 }
 
-function changeQty(prodId, delta) {
-  const item = cart.find(c => c.prodId == prodId);
+function changeQty(identifier, delta, isCartItemId = false) {
+  let item = null;
+  if(isCartItemId) {
+      item = cart.find(c => c.cartItemId === identifier);
+  } else {
+      item = cart.find(c => c.prodId == identifier);
+  }
   if (!item) return;
   
   if (item.type && ['mobile', 'tablet', 'laptop'].includes(item.type)) {
-     addToCart(prodId); // Re-open IMEI selection modal
+     addToCart(item.prodId); // Re-open IMEI selection modal
      return;
   }
 
+  const p = store.get('products').find(x => x.id == item.prodId);
+  const bypassStock = (window.ACTIVE_MODULE === 'fast_food' && (!p || !p.meta_data || !p.meta_data.fast_food || p.meta_data.fast_food.prepare_type !== 'readymade'));
+
   const newQty = item.qty + delta;
-  if (newQty <= 0) { removeFromCart(prodId); return; }
-  if (newQty > item.maxStock) { toast('Not enough stock!', 'warning'); return; }
+  if (newQty <= 0) { removeFromCart(isCartItemId ? identifier : item.prodId, item.prodId); return; }
+  if (!bypassStock && newQty > item.maxStock) { toast('Not enough stock!', 'warning'); return; }
   item.qty = newQty;
+  item.sub = item.qty * item.price;
+  renderCart();
+  renderProdGrid();
+}
+
+function setTotal(prodId, newTotal) {
+  const item = cart.find(c => c.prodId == prodId);
+  if (!item) return;
+  
+  const total = parseFloat(newTotal);
+  if (isNaN(total) || total <= 0) {
+      removeFromCart(prodId);
+      return;
+  }
+  
+  const p = store.get('products').find(x => x.id == item.prodId);
+  const bypassStock = (window.ACTIVE_MODULE === 'fast_food' && (!p || !p.meta_data || !p.meta_data.fast_food || p.meta_data.fast_food.prepare_type !== 'readymade'));
+
+  if (item.price > 0) {
+      const q = total / item.price;
+      if (!bypassStock && q > item.maxStock) {
+          toast('Not enough stock!', 'warning');
+          item.qty = item.maxStock;
+          item.sub = item.qty * item.price;
+      } else {
+          item.qty = q;
+          item.sub = total;
+      }
+  } else {
+      item.sub = total;
+  }
+  
+  renderCart();
+  renderProdGrid();
+}
+
+function setQty(prodId, newQty) {
+  const item = cart.find(c => c.prodId == prodId);
+  if (!item) return;
+  
+  const q = parseFloat(newQty);
+  if (isNaN(q) || q <= 0) {
+      removeFromCart(prodId);
+      return;
+  }
+  
+  const p = store.get('products').find(x => x.id == item.prodId);
+  const bypassStock = (window.ACTIVE_MODULE === 'fast_food' && (!p || !p.meta_data || !p.meta_data.fast_food || p.meta_data.fast_food.prepare_type !== 'readymade'));
+
+  if (!bypassStock && q > item.maxStock) {
+      toast('Not enough stock!', 'warning');
+      item.qty = item.maxStock;
+  } else {
+      item.qty = q;
+  }
+  
   item.sub = item.qty * item.price;
   renderCart();
   renderProdGrid();
@@ -555,8 +803,12 @@ function changePrice(prodId, newPrice) {
   renderProdGrid();
 }
 
-function removeFromCart(prodId) {
-  cart = cart.filter(c => c.prodId != prodId);
+function removeFromCart(cartItemId, prodId = null) {
+  if(cartItemId && typeof cartItemId === 'string') {
+      cart = cart.filter(c => c.cartItemId !== cartItemId);
+  } else {
+      cart = cart.filter(c => c.prodId != (prodId || cartItemId));
+  }
   renderCart();
   renderProdGrid();
 }
@@ -585,6 +837,8 @@ function renderCart() {
     sumSub += item.price * item.qty;
     totalItems += item.qty;
   });
+  
+  totalItems = parseFloat(Number(totalItems).toFixed(3));
 
   if (badge) badge.textContent = totalItems + ' item' + (totalItems !== 1 ? 's' : '');
   if (mobileBadge) mobileBadge.textContent = totalItems;
@@ -592,7 +846,7 @@ function renderCart() {
   if (document.getElementById('sumSubtotal')) document.getElementById('sumSubtotal').textContent = fmtCur(sumSub);
 
   if (!cart.length) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="empty-cart-state">
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="empty-cart-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
         <p>Cart is empty</p>
         <span>Scan or click items to add</span>
@@ -608,21 +862,29 @@ function renderCart() {
             ${(posFilter.showImage && item.image) ? `<img src="/storage/${item.image}" style="width:32px; height:32px; object-fit:cover; border-radius:4px; flex-shrink:0;">` : `<div style="width:32px; height:32px; background:var(--border-light); border-radius:4px; flex-shrink:0; display:flex; align-items:center; justify-content:center;"><svg width="16" height="16" fill="none" stroke="#94a3b8" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>`}
             <div>
               ${item.brand ? `<div style="font-size:9px; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.5px; margin-bottom:1px; line-height:1;">${item.brand}</div>` : ''}
-              <div class="cart-item-name" style="margin:0; line-height:1.2;">${item.name}</div>
+              <div class="cart-item-name" style="margin:0; line-height:1.2; font-weight:600;">${item.name}</div>
+              ${item.ff_var_name ? `<div style="font-size:11px; color:var(--primary); font-weight:600; margin-top:2px;">Size: ${item.ff_var_name}</div>` : ''}
+              ${item.ff_addons && item.ff_addons.length > 0 ? `<div style="font-size:10px; color:var(--text-muted); margin-top:2px;">+ ${item.ff_addons.map(a => a.name).join(', ')}</div>` : ''}
             </div>
           </div>
         </td>
         <td style="text-align:center">
-          <div class="qty-control">
-            <button class="qty-btn" onclick="changeQty(${item.prodId}, -1)">−</button>
-            <span class="qty-display">${item.qty}</span>
-            <button class="qty-btn" onclick="changeQty(${item.prodId}, 1)">+</button>
+          <div class="qty-control" style="display:flex; align-items:center;">
+            <button class="qty-btn" onclick="changeQty(${item.cartItemId ? `'${item.cartItemId}'` : item.prodId}, -1, ${!!item.cartItemId})">−</button>
+            <input type="number" class="input input-sm qty-display" style="width: 60px; text-align: center; padding: 2px; margin: 0 4px;" step="any" value="${parseFloat(Number(item.qty).toFixed(3))}" onchange="setQty(${item.prodId}, this.value)">
+            <button class="qty-btn" onclick="changeQty(${item.cartItemId ? `'${item.cartItemId}'` : item.prodId}, 1, ${!!item.cartItemId})">+</button>
           </div>
         </td>
           <td style="text-align:right;">
              <input type="number" class="input input-sm" style="width: 75px; text-align: right; padding: 2px 4px; height: 26px; font-size: 13px; display: inline-block; font-weight: 600; color: var(--primary);" value="${item.price}" onchange="changePrice(${item.prodId}, this.value)" title="Edit Price">
           </td>
-          <td style="text-align:right"><button class="action-btn del" style="width:24px;height:24px;padding:4px;" onclick="removeFromCart(${item.prodId})">${DEL_SVG}</button></td>
+          <td style="text-align:right;">
+             <input type="number" class="input input-sm" style="width: 75px; text-align: right; padding: 2px 4px; height: 26px; font-size: 13px; display: inline-block; font-weight: 600; color: var(--success);" value="${item.sub.toFixed(2)}" onchange="setTotal(${item.prodId}, this.value)" title="Enter Total (Auto-calculates Qty)">
+          </td>
+          <td style="text-align:right">
+            ${['kg', 'liters', 'g'].includes(item.unit) ? `<button class="action-btn" style="width:24px;height:24px;padding:4px;color:var(--primary);margin-right:2px;" onclick="openQuickQtyModal(${item.prodId})" title="Quick Qty"><svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16.01" y2="14"></line><line x1="12" y1="14" x2="12.01" y2="14"></line><line x1="8" y1="14" x2="8.01" y2="14"></line><line x1="16" y1="18" x2="16.01" y2="18"></line><line x1="12" y1="18" x2="12.01" y2="18"></line><line x1="8" y1="18" x2="8.01" y2="18"></line></svg></button>` : ''}
+            <button class="action-btn del" style="width:24px;height:24px;padding:4px;" onclick="removeFromCart(${item.cartItemId ? `'${item.cartItemId}'` : item.prodId})">${DEL_SVG}</button>
+          </td>
         </tr>`
   ).join('');
   renderCartSummary();
@@ -641,7 +903,8 @@ function renderCartSummary() {
   const absDue = Math.abs(due);
   const elRet = document.getElementById('sumReturn');
 
-  const elItems = document.getElementById('sumItems'); if (elItems) elItems.textContent = cart.reduce((s, c) => s + c.qty, 0);
+  const formattedTotalItems = parseFloat(Number(cart.reduce((s, c) => s + c.qty, 0)).toFixed(3));
+  const elItems = document.getElementById('sumItems'); if (elItems) elItems.textContent = formattedTotalItems;
   const elSub = document.getElementById('sumSubtotal'); if (elSub) elSub.textContent = fmtCur(subtotal);
   const elGrand = document.getElementById('sumGrandTotal'); if (elGrand) elGrand.textContent = fmtCur(grand);
 
@@ -773,7 +1036,10 @@ async function checkout() {
       product_id: c.prodId,
       qty: c.qty,
       price: c.price,
-      stock_units: c.stock_units || []
+      stock_units: c.stock_units || [],
+      ff_var_name: c.ff_var_name || null,
+      ff_var_price: c.ff_var_price || 0,
+      ff_addons: c.ff_addons || []
     }))
   };
 
@@ -811,8 +1077,56 @@ async function checkout() {
   } catch (e) {
     toast(e.message || 'Error occurred', 'danger');
     const btn = document.getElementById('checkoutBtn');
-    btn.innerHTML = '<span>Pay Now</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
-    btn.disabled = false;
+    if (btn) {
+      btn.innerHTML = '<span>Pay Now</span> <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+      btn.disabled = false;
+    }
   }
 }
 
+// ============================================================
+// QUICK QUANTITY CALCULATOR
+// ============================================================
+window.quickQtyCurrentProdId = null;
+window.quickQtyCurrentValue = 0;
+
+function openQuickQtyModal(prodId) {
+    window.quickQtyCurrentProdId = prodId;
+    window.quickQtyCurrentValue = 0;
+    
+    const item = cart.find(c => c.prodId == prodId);
+    if (item) {
+        window.quickQtyCurrentValue = parseFloat(Number(item.qty).toFixed(3)) || 0;
+    }
+    
+    updateQuickQtyDisplay();
+    document.getElementById('quickQtyModal').classList.remove('hidden');
+}
+
+function addQuickQty(amount) {
+    window.quickQtyCurrentValue += amount;
+    updateQuickQtyDisplay();
+}
+
+function clearQuickQty() {
+    window.quickQtyCurrentValue = 0;
+    updateQuickQtyDisplay();
+}
+
+function updateQuickQtyDisplay() {
+    const displayEl = document.getElementById('quickQtyDisplay');
+    if (displayEl) {
+        displayEl.textContent = parseFloat(Number(window.quickQtyCurrentValue).toFixed(3));
+    }
+}
+
+function confirmQuickQty() {
+    if (window.quickQtyCurrentProdId) {
+        setQty(window.quickQtyCurrentProdId, window.quickQtyCurrentValue);
+    }
+    document.getElementById('quickQtyModal').classList.add('hidden');
+}
+
+function closeQuickQtyModal() {
+    document.getElementById('quickQtyModal').classList.add('hidden');
+}// 

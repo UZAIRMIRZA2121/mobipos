@@ -17,7 +17,12 @@ class OrderItem extends Model
         'buy_price',
         'sell_price',
         'user_id',
-        'imeis'
+        'imeis',
+        'meta_data'
+    ];
+
+    protected $casts = [
+        'meta_data' => 'array',
     ];
 
     public function order()

@@ -17,7 +17,7 @@
           <div style="display:flex; gap:10px; position:relative;">
             <div class="custom-searchable-dropdown" style="flex:1; position:relative;">
               <input type="hidden" id="poProductSelect" value="" />
-              <input type="text" id="poProductSearch" class="input" placeholder="Search by Code..." oninput="filterPoDropdown(this.value)" onclick="togglePoDropdown(true)" onblur="setTimeout(() => togglePoDropdown(false), 200)" autocomplete="off" style="width:100%;" />
+              <input type="text" id="poProductSearch" class="input" placeholder="Search by Code or type custom item name..." oninput="filterPoDropdown(this.value)" onclick="togglePoDropdown(true)" onblur="setTimeout(() => togglePoDropdown(false), 200)" onkeydown="if(event.key === 'Enter') { event.preventDefault(); addProdToPO(); }" autocomplete="off" style="width:100%;" />
               <div id="poProductDropdownList" style="display:none; position:absolute; top:100%; left:0; width:100%; max-height:200px; overflow-y:auto; background:#fff; border:1px solid var(--border); border-top:none; border-radius:0 0 6px 6px; z-index:100; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
                 <!-- options populated via JS -->
               </div>
@@ -35,7 +35,9 @@
               <th width="80">Qty</th>
               <th width="120">Purchase Price</th>
               <th width="120">Sale Price</th>
+              @if(isset($storeSetting) && $storeSetting->business_type === 'mobile')
               <th width="100">IMEI Setup</th>
+              @endif
               <th width="120">Amount</th>
               <th width="60" class="text-right">✕</th>
             </tr>
@@ -171,7 +173,8 @@
             </button>
           </div>
         </div>
-        <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" class="input" min="0" value="1" oninput="if(typeof renderImeiFields === 'function') renderImeiFields()"/></div>
+        <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" class="input" min="0" value="1" step="any" oninput="if(typeof renderImeiFields === 'function') renderImeiFields()"/></div>
+        <div class="form-group"><label>Unit</label><select id="prodUnit" class="input"><option value="pcs">Pieces (pcs)</option><option value="kg">Kilograms (kg)</option><option value="g">Grams (g)</option><option value="liters">Liters (L)</option></select></div>
         <div class="form-group module-field module-mobile" id="groupImei">
           <label>IMEI / Serial Numbers (Available)</label>
           <div id="groupImeiInner" style="max-height: 250px; overflow-y: auto; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: #fafafa; display: flex; flex-direction: column; gap: 10px;">
@@ -189,19 +192,36 @@
         </div>
         
         <!-- Module Specific Fields -->
-        <div class="form-group module-field module-cosmetics module-garments module-shoes module-food"><label>Brand</label><input type="text" id="prodBrand" class="input" placeholder="e.g. Nike, L'Oreal"/></div>
+        <div class="form-group module-field module-cosmetics module-garments module-shoes module-retail_grocery"><label>Brand</label><input type="text" id="prodBrand" class="input" placeholder="e.g. Nike, L'Oreal"/></div>
         
         <div class="form-group module-field module-garments module-shoes"><label>Size</label><input type="text" id="prodSize" class="input" placeholder="e.g. XL, 42"/></div>
         
-        <div class="form-group module-field module-cosmetics module-food"><label>Weight / Volume</label><input type="text" id="prodWeight" class="input" placeholder="e.g. 500g, 1L"/></div>
+        <div class="form-group module-field module-cosmetics module-retail_grocery"><label>Weight / Volume</label><input type="text" id="prodWeight" class="input" placeholder="e.g. 500g, 1L"/></div>
         
-        <div class="form-group module-field module-cosmetics module-food"><label>Expiry Date</label><input type="date" id="prodExpiry" class="input"/></div>
+        <div class="form-group module-field module-cosmetics module-retail_grocery"><label>Expiry Date</label><input type="date" id="prodExpiry" class="input"/></div>
 
         <div class="form-group module-field module-mobile module-garments module-shoes"><label>Color</label><input type="text" id="prodColor" class="input" placeholder="e.g. Space Black, Red"/></div>
         <div class="form-group module-field module-mobile" id="groupStorage"><label>Storage</label><input type="text" id="prodStorage" class="input" placeholder="e.g. 256GB"/></div>
         <div class="form-group"><label>Purchase Price (PKR)</label><input type="number" id="prodPurchase" class="input" min="0" step="0.01"/></div>
         <div class="form-group"><label>Sale Price (PKR) *</label><input type="number" id="prodSale" class="input" min="0" step="0.01"/></div>
         <div class="form-group"><label>Discount (PKR)</label><input type="number" id="prodDiscount" class="input" min="0" step="0.01" placeholder="Flat discount amount"/></div>
+        
+        <!-- Fast Food Specific Fields -->
+        <div class="form-group module-field module-fast_food" style="display: none;">
+            <label>Prepare Type *</label>
+            <select id="prodPrepareType" class="input">
+                <option value="made_to_order">Made to Order (No Stock Tracking)</option>
+                <option value="readymade">Ready-made (Track Stock)</option>
+            </select>
+        </div>
+
+        <!-- Fast Food Matrix Container -->
+        <div class="form-group module-field module-fast_food" style="grid-column: span 2; display: none;">
+            <div id="fastFoodMatrixContainer" style="background: #fafafa; border: 1px solid var(--border); border-radius: 6px; padding: 15px;">
+                <!-- Dynamically populated by JS -->
+            </div>
+        </div>
+
         <div class="form-group"><label>Status *</label><select id="prodStatus" class="input"><option value="in_stock">In Stock</option><option value="sold">Sold</option><option value="in_repair">In Repair</option></select></div>
         <div class="form-group">
           <label>Category</label>
@@ -363,6 +383,50 @@
       <button class="btn btn-ghost" onclick="closeCatModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveCategory()">Save Category</button>
     </div>
+  </div>
+</div>
+
+<!-- Variation Modal -->
+<div class="modal-overlay hidden" id="varModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="varModalTitle">Add Variation</h3>
+      <button class="modal-close" onclick="closeVarModal()">×</button>
+    </div>
+    <form action="{{ route('shop.variations.store') }}" method="POST">
+      @csrf
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group form-full"><label>Variation Name *</label><input type="text" name="name" class="input" placeholder="e.g. Small, Medium..." required/></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeVarModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Variation</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Addon Modal -->
+<div class="modal-overlay hidden" id="addonModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="addonModalTitle">Add Add-on</h3>
+      <button class="modal-close" onclick="closeAddonModal()">×</button>
+    </div>
+    <form action="{{ route('shop.addons.store') }}" method="POST">
+      @csrf
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group form-full"><label>Add-on Name *</label><input type="text" name="name" class="input" placeholder="e.g. Extra Cheese..." required/></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeAddonModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Add-on</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -591,8 +655,9 @@
             <option value="cosmetics">Cosmetics (Brands, Weights)</option>
             <option value="garments">Garments (Sizes, Materials)</option>
             <option value="shoes">Shoes (Sizes, Brands)</option>
-            <option value="food">Food & Grocery (Expiry Dates, Weight)</option>
+            <option value="retail_grocery">Retail & Groceries</option>
             <option value="toys">Toy Store</option>
+            <option value="fast_food">Fast Food</option>
         </select>
       </div>
     </div>

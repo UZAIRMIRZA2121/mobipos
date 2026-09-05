@@ -55,8 +55,9 @@ class PurchaseOrderController extends Controller
             'supplier_name' => 'nullable|string|max:255',
             'paid_amount' => 'required|numeric|min:0',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.qty' => 'required|integer|min:1',
+            'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.custom_name' => 'nullable|string|max:255',
+            'items.*.qty' => 'required|numeric|min:0.001',
             'items.*.price' => 'required|numeric|min:0',
         ]);
 
@@ -92,7 +93,8 @@ class PurchaseOrderController extends Controller
                 
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $po->id,
-                    'product_id' => $item['product_id'],
+                    'product_id' => $item['product_id'] ?? null,
+                    'custom_name' => $item['custom_name'] ?? null,
                     'qty' => $item['qty'],
                     'price' => $item['price'],
                     'amount' => $amount,
@@ -100,26 +102,28 @@ class PurchaseOrderController extends Controller
                 ]);
 
                 // Increment Stock, update prices, and save IMEIs
-                $product = Product::find($item['product_id']);
-                if ($product) {
-                    $product->stock += $item['qty'];
-                    if (isset($item['sale_price']) && is_numeric($item['sale_price'])) {
-                        $product->sale_price = $item['sale_price'];
-                    }
-                    // Optionally update purchase price to the latest PO price
-                    if (isset($item['price']) && is_numeric($item['price'])) {
-                        $product->purchase_price = $item['price'];
-                    }
-                    $product->save();
+                if (!empty($item['product_id'])) {
+                    $product = Product::find($item['product_id']);
+                    if ($product) {
+                        $product->stock += $item['qty'];
+                        if (isset($item['sale_price']) && is_numeric($item['sale_price'])) {
+                            $product->sale_price = $item['sale_price'];
+                        }
+                        // Optionally update purchase price to the latest PO price
+                        if (isset($item['price']) && is_numeric($item['price'])) {
+                            $product->purchase_price = $item['price'];
+                        }
+                        $product->save();
 
-                    if (in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
-                        $imeisArray = $item['imeis'] ?? [];
-                        for ($i = 0; $i < $item['qty']; $i++) {
-                            \App\Models\ProductStockUnit::create([
-                                'product_id' => $product->id,
-                                'imeis' => $imeisArray[$i] ?? null,
-                                'status' => 'available',
-                            ]);
+                        if (in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
+                            $imeisArray = $item['imeis'] ?? [];
+                            for ($i = 0; $i < $item['qty']; $i++) {
+                                \App\Models\ProductStockUnit::create([
+                                    'product_id' => $product->id,
+                                    'imeis' => $imeisArray[$i] ?? null,
+                                    'status' => 'available',
+                                ]);
+                            }
                         }
                     }
                 }
@@ -143,8 +147,9 @@ class PurchaseOrderController extends Controller
             'supplier_name' => 'nullable|string|max:255',
             'paid_amount' => 'required|numeric|min:0',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.qty' => 'required|integer|min:1',
+            'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.custom_name' => 'nullable|string|max:255',
+            'items.*.qty' => 'required|numeric|min:0.001',
             'items.*.price' => 'required|numeric|min:0',
         ]);
 
@@ -192,32 +197,35 @@ class PurchaseOrderController extends Controller
                 
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $purchaseOrder->id,
-                    'product_id' => $item['product_id'],
+                    'product_id' => $item['product_id'] ?? null,
+                    'custom_name' => $item['custom_name'] ?? null,
                     'qty' => $item['qty'],
                     'price' => $item['price'],
                     'amount' => $amount,
                     'user_id' => Auth::id(),
                 ]);
 
-                $product = Product::find($item['product_id']);
-                if ($product) {
-                    $product->stock += $item['qty'];
-                    if (isset($item['sale_price']) && is_numeric($item['sale_price'])) {
-                        $product->sale_price = $item['sale_price'];
-                    }
-                    if (isset($item['price']) && is_numeric($item['price'])) {
-                        $product->purchase_price = $item['price'];
-                    }
-                    $product->save();
+                if (!empty($item['product_id'])) {
+                    $product = Product::find($item['product_id']);
+                    if ($product) {
+                        $product->stock += $item['qty'];
+                        if (isset($item['sale_price']) && is_numeric($item['sale_price'])) {
+                            $product->sale_price = $item['sale_price'];
+                        }
+                        if (isset($item['price']) && is_numeric($item['price'])) {
+                            $product->purchase_price = $item['price'];
+                        }
+                        $product->save();
 
-                    if (in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
-                        $imeisArray = $item['imeis'] ?? [];
-                        for ($i = 0; $i < $item['qty']; $i++) {
-                            \App\Models\ProductStockUnit::create([
-                                'product_id' => $product->id,
-                                'imeis' => $imeisArray[$i] ?? null,
-                                'status' => 'available',
-                            ]);
+                        if (in_array($product->type, ['mobile', 'tablet', 'laptop'])) {
+                            $imeisArray = $item['imeis'] ?? [];
+                            for ($i = 0; $i < $item['qty']; $i++) {
+                                \App\Models\ProductStockUnit::create([
+                                    'product_id' => $product->id,
+                                    'imeis' => $imeisArray[$i] ?? null,
+                                    'status' => 'available',
+                                ]);
+                            }
                         }
                     }
                 }

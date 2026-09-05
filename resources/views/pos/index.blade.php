@@ -78,9 +78,9 @@
             <!-- Cart Items -->
             <div class="cart-premium-items-wrap scrollbar-thin">
               <table class="table cart-premium-table" id="cartTable">
-                <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th></th></tr></thead>
+                <thead><tr><th>Item</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Total</th><th></th></tr></thead>
                 <tbody id="cartTbody">
-                  <tr><td colspan="4" class="empty-cart-state">
+                  <tr><td colspan="5" class="empty-cart-state">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                     <p>Cart is empty</p>
                     <span>Scan or click items to add</span>
@@ -194,6 +194,69 @@
         </div>
     </div>
 
+    <!-- Quick Quantity Modal -->
+    <div class="modal-overlay hidden" id="quickQtyModal" style="z-index: 10000;">
+        <div class="modal" style="max-width: 350px;">
+            <div class="modal-header">
+                <h3>Quick Quantity Calculator</h3>
+                <button class="modal-close" onclick="closeQuickQtyModal()">✕</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div style="font-size: 42px; font-weight: 800; color: var(--primary); margin: 10px 0 20px 0; background: var(--surface); border-radius: 12px; padding: 10px;">
+                    <span id="quickQtyDisplay">0</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <button class="btn btn-outline" style="height: 50px; font-size: 16px; font-weight: 600;" onclick="addQuickQty(0.25)">+ 250g/ml</button>
+                    <button class="btn btn-outline" style="height: 50px; font-size: 16px; font-weight: 600;" onclick="addQuickQty(0.50)">+ 1/2 kg/L</button>
+                    <button class="btn btn-outline" style="height: 50px; font-size: 16px; font-weight: 600;" onclick="addQuickQty(1.00)">+ 1 kg/L</button>
+                    <button class="btn btn-outline" style="height: 50px; font-size: 16px; font-weight: 600;" onclick="addQuickQty(2.00)">+ 2 kg/L</button>
+                    <button class="btn btn-outline" style="grid-column: span 2; height: 50px; font-size: 16px; font-weight: 600;" onclick="addQuickQty(5.00)">+ 5 kg/L</button>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 10px;">
+                <button class="btn btn-danger" style="flex: 1;" onclick="clearQuickQty()">Clear</button>
+                <button class="btn btn-primary" style="flex: 1;" onclick="confirmQuickQty()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fast Food Variation Modal -->
+    <div class="modal-overlay hidden" id="posVariationModal" style="z-index: 10000;">
+        <div class="modal" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3 id="posVariationModalTitle">Select Options</h3>
+                <button class="modal-close" onclick="closePosVariationModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="posVarProdId" />
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block;">1. Size / Variation (Required)</label>
+                    <div id="posVarList" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                        <!-- Radio buttons for variations go here -->
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; font-size: 14px; margin-bottom: 8px; display: block;">2. Add-ons (Optional)</label>
+                    <div id="posAddonList" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                        <!-- Checkboxes for addons go here -->
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+                    <span style="font-weight: 600; font-size: 14px;">Total Price:</span>
+                    <span id="posVarTotalPrice" style="font-weight: 800; font-size: 18px; color: var(--primary);">PKR 0.00</span>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 10px;">
+                <button class="btn btn-ghost" style="flex: 1;" onclick="closePosVariationModal()">Cancel</button>
+                <button class="btn btn-primary" style="flex: 2;" onclick="confirmPosVariation()">Add to Cart</button>
+            </div>
+        </div>
+    </div>
+
     <!-- INVOICES HAVE BEEN MOVED TO THEIR OWN FILE -->
 </main>
 
@@ -220,7 +283,31 @@
             el.innerText = now.toLocaleDateString() + ' ' + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
         }
     }, 1000);
+
+    // Global variables for Fast Food
+    window.globalVariations = @json(isset($variations) ? $variations : []);
+    window.globalAddons = @json(isset($addons) ? $addons : []);
 </script>
+
+<style>
+/* Fast Food Variation Grid Styles */
+.ff-var-box {
+    border: 2px solid var(--border);
+    transition: all 0.2s ease;
+}
+.ff-var-box:has(input:checked) {
+    border-color: var(--primary);
+    background: rgba(var(--primary-rgb, 37, 99, 235), 0.05);
+}
+.ff-addon-box {
+    border: 2px solid var(--border);
+    transition: all 0.2s ease;
+}
+.ff-addon-box:has(input:checked) {
+    border-color: var(--success);
+    background: rgba(var(--success-rgb, 16, 185, 129), 0.05);
+}
+</style>
 @endsection
 
 @section('scripts')

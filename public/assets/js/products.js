@@ -157,6 +157,20 @@ function editProduct(id = null) {
        if(prodWeight) prodWeight.value = meta.weight || '';
        const prodExpiry = document.getElementById('prodExpiry');
        if(prodExpiry) prodExpiry.value = meta.expiry_date || '';
+       
+       if (meta.fast_food) {
+           window.ffState = meta.fast_food;
+           const prodPrepareType = document.getElementById('prodPrepareType');
+           if(prodPrepareType && meta.fast_food.prepare_type) prodPrepareType.value = meta.fast_food.prepare_type;
+       } else {
+           window.ffState = { variations: {}, addons: {}, prepare_type: 'made_to_order' };
+           const prodPrepareType = document.getElementById('prodPrepareType');
+           if(prodPrepareType) prodPrepareType.value = 'made_to_order';
+       }
+    } else {
+       window.ffState = { variations: {}, addons: {}, prepare_type: 'made_to_order' };
+       const prodPrepareType = document.getElementById('prodPrepareType');
+       if(prodPrepareType) prodPrepareType.value = 'made_to_order';
     }
 
     document.getElementById('prodPurchase').value = p.purchase;
@@ -164,6 +178,7 @@ function editProduct(id = null) {
     document.getElementById('prodDiscount').value = p.discount || '';
     document.getElementById('prodStatus').value = p.status;
     document.getElementById('prodStock').value = p.stock !== undefined ? p.stock : 1;
+    if (document.getElementById('prodUnit')) document.getElementById('prodUnit').value = p.unit || 'pcs';
     // Dynamic IMEI Rendering
     if (typeof renderImeiFields === 'function') {
       renderImeiFields(true);
@@ -193,7 +208,12 @@ function editProduct(id = null) {
     document.getElementById('prodCondition').value = 'new';
     document.getElementById('prodStatus').value = 'in_stock';
     document.getElementById('prodStock').value = '1';
+    if (document.getElementById('prodUnit')) document.getElementById('prodUnit').value = 'pcs';
     document.getElementById('prodCategory').value = '';
+    const prodPrepareType = document.getElementById('prodPrepareType');
+    if(prodPrepareType) prodPrepareType.value = 'made_to_order';
+    window.ffState = { variations: {}, addons: {}, prepare_type: 'made_to_order' };
+    
     
     if (document.getElementById('groupImeiSold')) {
        document.getElementById('groupImeiSold').style.display = 'none';
@@ -295,6 +315,40 @@ function toggleProductFields() {
       if (groupImei) groupImei.style.display = 'none';
       if (groupStorage) groupStorage.style.display = 'none';
   }
+  
+  if (activeModule === 'fast_food') {
+      renderFastFoodMatrix();
+      
+      const prepareType = document.getElementById('prodPrepareType')?.value || 'made_to_order';
+      
+      // Hide irrelevant fields for fast food
+      const stockField = document.getElementById('prodStock')?.closest('.form-group');
+      const purchaseField = document.getElementById('prodPurchase')?.closest('.form-group');
+      const unitField = document.getElementById('prodUnit')?.closest('.form-group');
+      const barcodeField = document.getElementById('prodBarcode')?.closest('.form-group');
+      const codeField = document.getElementById('prodCode')?.closest('.form-group');
+      
+      // Show stock if readymade
+      if (stockField) stockField.style.display = prepareType === 'readymade' ? 'block' : 'none';
+      if (purchaseField) purchaseField.style.display = prepareType === 'readymade' ? 'block' : 'none';
+      
+      if (unitField) unitField.style.display = 'none';
+      if (barcodeField) barcodeField.style.display = 'none';
+      if (codeField) codeField.style.display = 'none';
+  } else {
+      // Show fields for other modules
+      const stockField = document.getElementById('prodStock')?.closest('.form-group');
+      const purchaseField = document.getElementById('prodPurchase')?.closest('.form-group');
+      const unitField = document.getElementById('prodUnit')?.closest('.form-group');
+      const barcodeField = document.getElementById('prodBarcode')?.closest('.form-group');
+      const codeField = document.getElementById('prodCode')?.closest('.form-group');
+      
+      if (stockField) stockField.style.display = 'block';
+      if (purchaseField) purchaseField.style.display = 'block';
+      if (unitField) unitField.style.display = 'block';
+      if (barcodeField) barcodeField.style.display = 'block';
+      if (codeField) codeField.style.display = 'block';
+  }
 }
 
 function generateRandomBarcode() {
@@ -324,9 +378,13 @@ async function saveProduct() {
       type = document.getElementById('prodType').value;
   }
   const condition = document.getElementById('prodCondition').value;
-  const sale = document.getElementById('prodSale').value;
+  let sale = document.getElementById('prodSale').value;
+  
+  if (activeModule === 'fast_food') {
+      sale = sale || 0; // Sale price can be 0 if handled entirely by variations
+  }
 
-  if (!name || !condition || !sale || (activeModule === 'mobile' && !type)) { toast('Name, Condition, Sale Price and Type (for mobile) are required!', 'warning'); return; }
+  if (!name || !condition || sale === '' || (activeModule === 'mobile' && !type)) { toast('Name, Condition, Sale Price and Type (for mobile) are required!', 'warning'); return; }
 
   const editId = document.getElementById('prodId').value;
   const formData = new FormData();
@@ -349,6 +407,7 @@ async function saveProduct() {
   if(document.getElementById('prodDiscount').value) formData.append('discount', document.getElementById('prodDiscount').value);
   formData.append('status', document.getElementById('prodStatus').value);
   formData.append('stock', document.getElementById('prodStock').value || 1);
+  if (document.getElementById('prodUnit')) formData.append('unit', document.getElementById('prodUnit').value);
   formData.append('delete_image', document.getElementById('prodImageDeleted').value);
 
   const meta_data = {
@@ -357,6 +416,12 @@ async function saveProduct() {
     weight: document.getElementById('prodWeight') ? document.getElementById('prodWeight').value.trim() : '',
     expiry_date: document.getElementById('prodExpiry') ? document.getElementById('prodExpiry').value.trim() : '',
   };
+  
+  if (activeModule === 'fast_food') {
+      window.ffState.prepare_type = document.getElementById('prodPrepareType') ? document.getElementById('prodPrepareType').value : 'made_to_order';
+      meta_data.fast_food = window.ffState;
+  }
+  
   formData.append('meta_data', JSON.stringify(meta_data));
 
   const catId = parseInt(document.getElementById('prodCategory').value);
@@ -537,6 +602,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const pt = document.getElementById('prodType');
   if (pt) pt.addEventListener('change', toggleProductFields);
+
+  const prepareTypeSelect = document.getElementById('prodPrepareType');
+  if (prepareTypeSelect) prepareTypeSelect.addEventListener('change', toggleProductFields);
 });
 
 // ============================================================
@@ -715,3 +783,96 @@ async function submitLoss() {
       btn.disabled = false;
   }
 }
+
+// ============================================================
+// FAST FOOD MATRIX
+// ============================================================
+window.ffState = {
+  variations: {},
+  addons: {}
+};
+
+function renderFastFoodMatrix() {
+    const container = document.getElementById('fastFoodMatrixContainer');
+    if (!container) return;
+    
+    let html = `<h4 style="margin-bottom:10px; font-size:14px;">1. Product Variations (Compulsory)</h4>`;
+    
+    // Variations
+    html += `<div style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom: 20px;">`;
+    (window.globalVariations || []).forEach(v => {
+        const isChecked = window.ffState.variations.hasOwnProperty(v.id);
+        const price = isChecked ? window.ffState.variations[v.id] : '';
+        html += `<div style="border: 1px solid var(--border); padding: 10px; border-radius: 6px; flex: 1; min-width: 150px; background: white;">
+            <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; margin-bottom: 8px; cursor: pointer;">
+                <input type="checkbox" onchange="toggleFFVar(${v.id}, this.checked)" ${isChecked ? 'checked' : ''}> ${v.name}
+            </label>
+            ${isChecked ? `<input type="number" class="input input-sm ff-var-price" placeholder="Base Price (PKR)" value="${price}" oninput="updateFFVarPrice(${v.id}, this.value)">` : ''}
+        </div>`;
+    });
+    html += `</div>`;
+    
+    // Addons
+    html += `<h4 style="margin-bottom:10px; font-size:14px;">2. Add-ons (Optional)</h4>`;
+    
+    const selectedVarIds = Object.keys(window.ffState.variations);
+    if (selectedVarIds.length === 0) {
+        html += `<p style="font-size: 12px; color: var(--text-muted);">Please select at least one variation above to set add-on prices.</p>`;
+    } else {
+        html += `<div style="display:flex; flex-direction:column; gap:10px;">`;
+        (window.globalAddons || []).forEach(a => {
+            const isChecked = window.ffState.addons.hasOwnProperty(a.id);
+            html += `<div style="border: 1px solid var(--border); padding: 10px; border-radius: 6px; background: white;">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; margin-bottom: ${isChecked ? '10px' : '0'}; cursor: pointer;">
+                    <input type="checkbox" onchange="toggleFFAddon(${a.id}, this.checked)" ${isChecked ? 'checked' : ''}> ${a.name}
+                </label>`;
+            
+            if (isChecked) {
+                html += `<div style="display:flex; flex-wrap:wrap; gap:10px; margin-left: 24px; padding-left: 10px; border-left: 2px solid var(--border-color);">`;
+                selectedVarIds.forEach(vid => {
+                    const varName = window.globalVariations.find(x => x.id == vid)?.name || 'Unknown';
+                    const price = (window.ffState.addons[a.id] && window.ffState.addons[a.id][vid]) || '';
+                    html += `<div style="flex:1; min-width:120px;">
+                        <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Price for ${varName}</label>
+                        <input type="number" class="input input-sm" placeholder="Price (PKR)" value="${price}" oninput="updateFFAddonPrice(${a.id}, ${vid}, this.value)">
+                    </div>`;
+                });
+                html += `</div>`;
+            }
+            html += `</div>`;
+        });
+        html += `</div>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+window.toggleFFVar = function(id, checked) {
+    if (checked) {
+        window.ffState.variations[id] = '';
+    } else {
+        delete window.ffState.variations[id];
+        Object.keys(window.ffState.addons).forEach(aid => {
+            if(window.ffState.addons[aid]) delete window.ffState.addons[aid][id];
+        });
+    }
+    renderFastFoodMatrix();
+};
+
+window.updateFFVarPrice = function(id, val) {
+    window.ffState.variations[id] = val;
+};
+
+window.toggleFFAddon = function(id, checked) {
+    if (checked) {
+        window.ffState.addons[id] = {};
+    } else {
+        delete window.ffState.addons[id];
+    }
+    renderFastFoodMatrix();
+};
+
+window.updateFFAddonPrice = function(addonId, varId, val) {
+    if (!window.ffState.addons[addonId]) window.ffState.addons[addonId] = {};
+    window.ffState.addons[addonId][varId] = val;
+};

@@ -178,7 +178,7 @@ function viewPO(po) {
     tbody.innerHTML = po.items.map(item => `
           <tr>
               <td>
-                 <div style="font-weight:500">${item.product ? item.product.name + (item.product.condition || item.product.color ? ` (${[item.product.condition, item.product.color].filter(Boolean).join(' - ')})` : '') : 'Unknown Product'}</div>
+                 <div style="font-weight:500">${item.product ? item.product.name + (item.product.condition || item.product.color ? ` (${[item.product.condition, item.product.color].filter(Boolean).join(' - ')})` : '') : (item.custom_name || 'Unknown Item')}</div>
                  ${item.product && (item.product.code || item.product.barcode) ? `<div style="font-size:11px; color:var(--text-muted); font-family:monospace;">Code: ${item.product.code || item.product.barcode}</div>` : ''}
               </td>
               <td>${item.qty}</td>
@@ -211,7 +211,7 @@ function printPO() {
     itemsHtml = po.items.map(item => `
             <tr>
                 <td>
-                   <div style="font-weight:500">${item.product ? item.product.name + (item.product.condition || item.product.color ? ` (${[item.product.condition, item.product.color].filter(Boolean).join(' - ')})` : '') : 'Unknown Product'}</div>
+                   <div style="font-weight:500">${item.product ? item.product.name + (item.product.condition || item.product.color ? ` (${[item.product.condition, item.product.color].filter(Boolean).join(' - ')})` : '') : (item.custom_name || 'Unknown Item')}</div>
                    ${item.product && (item.product.code || item.product.barcode) ? `<div style="font-size:12px; color:#666; font-family:monospace;">Code: ${item.product.code || item.product.barcode}</div>` : ''}
                 </td>
                 <td>${item.qty}</td>
@@ -406,10 +406,11 @@ function editPO(po) {
   document.getElementById('poPaidAmount').value = po.paid_amount || '0';
 
   currentPOItems = po.items ? po.items.map(item => {
-    const p = (store.get('products') || []).find(x => x.id === item.product_id);
+    const p = item.product_id ? (store.get('products') || []).find(x => x.id === item.product_id) : null;
     return {
       product_id: item.product_id,
-      name: item.product ? item.product.name : 'Unknown Product',
+      custom_name: item.custom_name,
+      name: item.product ? item.product.name : (item.custom_name || 'Unknown Item'),
       code: item.product ? (item.product.code || item.product.barcode || '') : '',
       qty: item.qty,
       price: item.price,
@@ -436,24 +437,43 @@ function closePOModal() {
 
 function addProdToPO() {
   const hiddenInput = document.getElementById('poProductSelect');
-  if (!hiddenInput || !hiddenInput.value) return toast('Please select a product', 'warning');
-
-  const prodId = parseInt(hiddenInput.value);
-  const name = hiddenInput.dataset.name;
-  const code = hiddenInput.dataset.code || '';
-  const price = parseFloat(hiddenInput.dataset.price) || 0;
+  const searchInput = document.getElementById('poProductSearch');
   
-  const p = (store.get('products') || []).find(x => x.id === prodId);
-  const salePrice = p ? parseFloat(p.sale_price) || 0 : 0;
-  const type = p ? p.type : '';
+  if ((!hiddenInput || !hiddenInput.value) && (!searchInput || !searchInput.value.trim())) {
+    return toast('Please select a product or type a custom item name', 'warning');
+  }
+
+  let prodId = null;
+  let name = '';
+  let code = '';
+  let price = 0;
+  let salePrice = 0;
+  let type = '';
+  
+  if (hiddenInput && hiddenInput.value) {
+      prodId = parseInt(hiddenInput.value);
+      name = hiddenInput.dataset.name;
+      code = hiddenInput.dataset.code || '';
+      price = parseFloat(hiddenInput.dataset.price) || 0;
+      
+      const p = (store.get('products') || []).find(x => x.id === prodId);
+      salePrice = p ? parseFloat(p.sale_price) || 0 : 0;
+      type = p ? p.type : '';
+  } else {
+      name = searchInput.value.trim();
+  }
 
   // Check if already added
-  const existing = currentPOItems.find(i => i.product_id === prodId);
+  const existing = prodId 
+    ? currentPOItems.find(i => i.product_id === prodId)
+    : currentPOItems.find(i => !i.product_id && i.custom_name === name);
+
   if (existing) {
     existing.qty += 1;
   } else {
     currentPOItems.push({ 
        product_id: prodId, 
+       custom_name: prodId ? null : name,
        name: name, 
        code: code, 
        qty: 1, 
@@ -465,9 +485,8 @@ function addProdToPO() {
   }
 
   // Clear selection
-  hiddenInput.value = '';
-  const searchInput = document.getElementById('poProductSearch');
-  if(searchInput) searchInput.value = '';
+  if (hiddenInput) hiddenInput.value = '';
+  if (searchInput) searchInput.value = '';
 
   renderPOItemsTable();
 }
@@ -521,7 +540,7 @@ function updatePoImei(itemIndex, imeiIndex, val) {
 function renderPOItemsTable() {
   const tbody = document.getElementById('poItemsTbody');
   if (!currentPOItems.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-cell">No products added yet</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="${window.ACTIVE_MODULE === 'mobile' ? '7' : '6'}" class="empty-cell">No products added yet</td></tr>`;
     document.getElementById('poTotalAmount').value = '0';
     return;
   }
@@ -540,16 +559,17 @@ function renderPOItemsTable() {
         <td><input type="number" class="input" style="padding:4px; height:auto" min="1" value="${item.qty}" onchange="updatePOItemQty(${index}, this.value)"></td>
         <td><input type="number" class="input" style="padding:4px; height:auto" min="0" value="${item.price}" onchange="updatePOItemPrice(${index}, this.value)"></td>
         <td><input type="number" class="input" style="padding:4px; height:auto" min="0" value="${item.sale_price || 0}" onchange="updatePOItemSalePrice(${index}, this.value)"></td>
+        ${window.ACTIVE_MODULE === 'mobile' ? `
         <td>
            ${needsImei ? `<button class="btn btn-sm btn-outline" onclick="openPoImeiSetup(${index})">IMEIs (${imeisFilled}/${item.qty})</button>` : `<span class="text-muted" style="font-size:12px;">N/A</span>`}
-        </td>
+        </td>` : ''}
         <td>${fmtCur(amount)}</td>
         <td class="text-right">
           <button class="btn btn-ghost" style="color:var(--danger); padding:4px;" onclick="removeProdFromPO(${index})">✕</button>
         </td>
       </tr>
       <tr id="po-imei-row-${index}" style="display:none; background:#fafafa;">
-         <td colspan="7" style="padding: 10px; border-bottom: 2px solid var(--border);">
+         <td colspan="${window.ACTIVE_MODULE === 'mobile' ? '7' : '6'}" style="padding: 10px; border-bottom: 2px solid var(--border);">
              <div style="font-size:12px; font-weight:600; margin-bottom:8px;">Setup IMEIs for ${item.name}</div>
              <div id="po-imei-container-${index}" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px;">
                  <!-- IMEIs injected here -->
@@ -576,6 +596,7 @@ async function savePO() {
     paid_amount: parseFloat(document.getElementById('poPaidAmount').value) || 0,
     items: currentPOItems.map(i => ({
       product_id: i.product_id,
+      custom_name: i.custom_name,
       qty: i.qty,
       price: i.price,
       sale_price: i.sale_price,

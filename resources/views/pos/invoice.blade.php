@@ -212,6 +212,17 @@
                             ({{ collect([$item->product->condition, $item->product->color])->filter()->join(' - ') }})
                         @endif
                     </span>
+                    @if(isset($item->meta_data['ff_var_name']))
+                        <div class="item-meta" style="margin-top:2px; font-size: 0.9em; color: #333;">
+                            ({{ $item->meta_data['ff_var_name'] }} +PKR {{ number_format($item->meta_data['ff_var_price'] ?? 0) }}
+                            @if(!empty($item->meta_data['ff_addons']))
+                                @foreach($item->meta_data['ff_addons'] as $addon)
+                                    , +{{ $addon['name'] }} +PKR {{ number_format($addon['price'] ?? 0) }}
+                                @endforeach
+                            @endif
+                            )
+                        </div>
+                    @endif
                     @if($item->product && ($item->product->code || $item->product->barcode))
                         <div class="item-meta">Code: {{ $item->product->code ?? $item->product->barcode }}</div>
                     @endif
@@ -226,7 +237,12 @@
                     @endif
                     <div class="item-meta">@ PKR {{ number_format($item->sell_price) }}</div>
                 </td>
-                <td class="text-center" style="vertical-align: top;">{{ $item->qty }}</td>
+                <td class="text-center" style="vertical-align: top;">
+                    {{ floatval($item->qty) }}
+                    @if($item->product && $item->product->unit)
+                        <br><span style="font-size: 10px; color: #666;">({{ $item->product->unit }})</span>
+                    @endif
+                </td>
                 <td class="text-right" style="vertical-align: top;">PKR {{ number_format($item->sell_price * $item->qty) }}</td>
             </tr>
             @endforeach

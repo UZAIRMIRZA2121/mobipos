@@ -10,8 +10,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+
 class OrderController extends Controller
 {
+    private function shouldBypassStock($product)
+    {
+        if (!empty($product->meta_data) && isset($product->meta_data['fast_food'])) {
+            $ff = $product->meta_data['fast_food'];
+            if (isset($ff['prepare_type']) && $ff['prepare_type'] === 'readymade') {
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
     public function apiIndex(Request $request)
     {
         $query = Order::where('user_id', Auth::id())->where('is_installment', 0)->with(['items.product', 'buyer'])->orderBy('created_at', 'desc');
@@ -224,7 +237,7 @@ class OrderController extends Controller
                     $query->where('user_id', Auth::id());
                 }),
             ],
-            'items.*.qty' => 'required|integer|min:1',
+            'items.*.qty' => 'required|numeric|min:0.001',
             'items.*.price' => 'required|numeric',
             'items.*.stock_units' => 'nullable|array',
             'items.*.stock_units.*' => 'exists:product_stock_units,id',
@@ -257,6 +270,15 @@ class OrderController extends Controller
             foreach ($request->items as $itemData) {
                 $product = Product::findOrFail($itemData['product_id']);
 
+                $meta_data = [];
+                if (!empty($itemData['ff_var_name'])) {
+                    $meta_data['ff_var_name'] = $itemData['ff_var_name'];
+                    $meta_data['ff_var_price'] = $itemData['ff_var_price'] ?? 0;
+                }
+                if (!empty($itemData['ff_addons'])) {
+                    $meta_data['ff_addons'] = $itemData['ff_addons'];
+                }
+
                 $orderItem = OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
@@ -265,6 +287,7 @@ class OrderController extends Controller
                     'buy_price' => $product->purchase_price ?? 0, 
                     'sell_price' => $itemData['price'],
                     'user_id' => Auth::id(),
+                    'meta_data' => !empty($meta_data) ? $meta_data : null,
                 ]);
 
                 // Handle Stock Units (IMEIs)
@@ -296,17 +319,19 @@ class OrderController extends Controller
                 }
 
                 // Update product stock and status
-                if ($product->stock < $itemData['qty']) {
-                    throw new \Exception("Insufficient stock for product: {$product->name}");
-                }
+                if (!$this->shouldBypassStock($product)) {
+                    if ($product->stock < $itemData['qty']) {
+                        throw new \Exception("Insufficient stock for product: {$product->name}");
+                    }
+                    
+                    $product->stock -= $itemData['qty'];
+                    
+                    if ($product->stock <= 0) {
+                        $product->status = 'sold';
+                    }
                 
-                $product->stock -= $itemData['qty'];
-                
-                if ($product->stock <= 0) {
-                    $product->status = 'sold';
+                    $product->save();
                 }
-            
-                $product->save();
             }
 
             // Save to Ledger if checked
@@ -399,7 +424,7 @@ class OrderController extends Controller
             'payment_method' => 'required|string',
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.qty' => 'required|integer|min:1',
+            'items.*.qty' => 'required|numeric|min:0.001',
             'items.*.price' => 'required|numeric',
         ]);
 
@@ -415,7 +440,7 @@ class OrderController extends Controller
                     ]);
 
                     $product = $item->product;
-                    if ($product) {
+                    if ($product && !$this->shouldBypassStock($product)) {
                         $product->stock += $item->qty;
                         if ($product->status === 'sold') {
                             $product->status = 'in_stock';
@@ -448,6 +473,15 @@ class OrderController extends Controller
             foreach ($request->items as $itemData) {
                 $product = Product::findOrFail($itemData['product_id']);
 
+                $meta_data = [];
+                if (!empty($itemData['ff_var_name'])) {
+                    $meta_data['ff_var_name'] = $itemData['ff_var_name'];
+                    $meta_data['ff_var_price'] = $itemData['ff_var_price'] ?? 0;
+                }
+                if (!empty($itemData['ff_addons'])) {
+                    $meta_data['ff_addons'] = $itemData['ff_addons'];
+                }
+
                 OrderItem::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
@@ -455,21 +489,24 @@ class OrderController extends Controller
                     'qty' => $itemData['qty'],
                     'buy_price' => $product->purchase_price ?? 0, 
                     'sell_price' => $itemData['price'],
+                    'meta_data' => !empty($meta_data) ? $meta_data : null,
                 ]);
 
                 // Update product stock and status
-                if ($product->stock < $itemData['qty']) {
-                    throw new \Exception("Insufficient stock for product: {$product->name}");
+                if (!$this->shouldBypassStock($product)) {
+                    if ($product->stock < $itemData['qty']) {
+                        throw new \Exception("Insufficient stock for product: {$product->name}");
+                    }
+                    
+                    $product->stock -= $itemData['qty'];
+                    
+                    if (!empty($product->code) && $product->stock <= 0) {
+                        $product->status = 'sold';
+                    }
+                
+                    $product->save();
                 }
-                
-                $product->stock -= $itemData['qty'];
-                
-            if (!empty($product->code) && $product->stock <= 0) {
-                $product->status = 'sold';
             }
-            
-            $product->save();
-        }
 
         // Save to Ledger if checked
         if ($request->has('save_to_ledger') && $request->save_to_ledger == 1 && $request->buyer_id) {
@@ -581,7 +618,7 @@ class OrderController extends Controller
                     ]);
 
                     $product = $item->product;
-                    if ($product) {
+                    if ($product && !$this->shouldBypassStock($product)) {
                         $product->stock += $item->qty;
                         if ($product->status === 'sold') {
                             $product->status = 'in_stock';
@@ -613,7 +650,7 @@ class OrderController extends Controller
                 ]);
 
                 $product = $item->product;
-                if ($product) {
+                if ($product && !$this->shouldBypassStock($product)) {
                     $product->stock += $item->qty;
                     if ($product->status === 'sold') {
                         $product->status = 'in_stock';

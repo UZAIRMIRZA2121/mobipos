@@ -56,6 +56,10 @@
 @endsection
 
 @section('scripts')
+<script>
+    window.globalVariations = {!! json_encode($variations ?? []) !!};
+    window.globalAddons = {!! json_encode($addons ?? []) !!};
+</script>
 <script src="{{ asset('assets/js/products.js') }}?v={{ time() }}"></script>
 <script src="{{ asset('assets/js/categories.js') }}?v={{ time() }}"></script>
 <script src="{{ asset('assets/js/customers.js') }}?v={{ time() }}"></script>

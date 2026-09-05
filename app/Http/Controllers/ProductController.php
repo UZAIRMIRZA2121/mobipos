@@ -13,7 +13,9 @@ class ProductController extends Controller
 {
     public function index()
     {
-        return view('products.index');
+        $variations = \App\Models\Variation::where('user_id', Auth::id())->get();
+        $addons = \App\Models\Addon::where('user_id', Auth::id())->get();
+        return view('products.index', compact('variations', 'addons'));
     }
 
     public function apiIndex(Request $request)
@@ -46,7 +48,8 @@ class ProductController extends Controller
             'sale_price' => 'required|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
             'status' => 'required|in:in_stock,sold,in_repair',
-            'stock' => 'nullable|integer|min:0',
+            'stock' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:50',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'buyer_id' => 'nullable|exists:customers,id',
             'category_id' => 'nullable|exists:categories,id',
@@ -119,7 +122,8 @@ class ProductController extends Controller
             'sale_price' => 'required|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
             'status' => 'required|in:in_stock,sold,in_repair',
-            'stock' => 'nullable|integer|min:0',
+            'stock' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:50',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'buyer_id' => 'nullable|exists:customers,id',
             'category_id' => 'nullable|exists:categories,id',

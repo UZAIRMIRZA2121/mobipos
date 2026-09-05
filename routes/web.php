@@ -189,6 +189,8 @@ Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop'
     Route::get('/purchase-orders', [App\Http\Controllers\PurchaseOrderController::class, 'index'])->name('purchase_orders.index');
     Route::get('/medicines', function() { return 'Medicines UI Pending'; })->name('medicines.index');
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::resource('/variations', \App\Http\Controllers\VariationController::class);
+    Route::resource('/addons', \App\Http\Controllers\AddonController::class);
     Route::get('/alerts', function() { return 'Alerts UI Pending'; })->name('alerts.index');
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::get('/settings', [App\Http\Controllers\StoreSettingController::class, 'index'])->name('settings.index');

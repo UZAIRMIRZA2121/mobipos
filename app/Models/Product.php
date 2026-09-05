@@ -23,6 +23,7 @@ class Product extends Model
         'category_id',
         'buyer_id',
         'user_id',
+        'unit',
         'meta_data',
     ];
 
@@ -53,5 +54,15 @@ class Product extends Model
     public function stockUnits()
     {
         return $this->hasMany(ProductStockUnit::class);
+    }
+
+    public function variations()
+    {
+        return $this->hasMany(ProductVariation::class);
+    }
+
+    public function addons()
+    {
+        return $this->hasMany(ProductAddon::class);
     }
 }
