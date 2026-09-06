@@ -97,69 +97,55 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <script>
-    // Global Barcode Scanner Listener for Invoices
-    let barcodeBuffer = '';
-    let barcodeTimeout;
-    document.addEventListener('keydown', function(e) {
-        if (e.key.length === 1) {
-            barcodeBuffer += e.key;
-            clearTimeout(barcodeTimeout);
-            // Scanners type very fast (usually < 30ms per char). Human typing is slower.
-            barcodeTimeout = setTimeout(() => {
-                barcodeBuffer = '';
-            }, 50); 
-        } else if (e.key === 'Enter') {
-            if (barcodeBuffer.length >= 3) {
-                let code = barcodeBuffer.trim();
-                barcodeBuffer = '';
-                
-                if (code.toUpperCase().startsWith('I')) {
-                    // Installment invoice barcode
-                    let cleanCode = code.substring(1);
-                    if (window.location.pathname.includes('/installments')) {
-                        let searchInput = document.getElementById('instSearch');
-                        if (searchInput) {
-                            searchInput.value = cleanCode;
-                            if (typeof filterInstallments === 'function') {
-                                filterInstallments();
-                                setTimeout(() => {
-                                    let visibleRows = Array.from(document.querySelectorAll('.installment-row')).filter(r => r.style.display !== 'none');
-                                    if (visibleRows.length === 1) {
-                                        let viewBtn = visibleRows[0].querySelector('.action-btn.view');
-                                        if (viewBtn && viewBtn.href) {
-                                            window.location.href = viewBtn.href;
-                                        }
-                                    }
-                                }, 100);
+    // Global Search Function for Barcodes from the Search Modal
+    function processGlobalBarcode(code) {
+        if (!code || code.trim() === '') return;
+        code = code.trim();
+        
+        if (code.toUpperCase().startsWith('I')) {
+            // Installment invoice barcode
+            let cleanCode = code.substring(1);
+            if (window.location.pathname.includes('/installments')) {
+                let searchInput = document.getElementById('instSearch');
+                if (searchInput) {
+                    searchInput.value = cleanCode;
+                    if (typeof filterInstallments === 'function') {
+                        filterInstallments();
+                        setTimeout(() => {
+                            let visibleRows = Array.from(document.querySelectorAll('.installment-row')).filter(r => r.style.display !== 'none');
+                            if (visibleRows.length === 1) {
+                                let viewBtn = visibleRows[0].querySelector('.action-btn.view');
+                                if (viewBtn && viewBtn.href) {
+                                    window.location.href = viewBtn.href;
+                                }
                             }
-                        }
-                    } else {
-                        window.location.href = '/shop/installments?search=' + encodeURIComponent(cleanCode);
-                    }
-                } else {
-                    // Regular sale invoice barcode
-                    if (window.location.pathname.includes('/sales')) {
-                        let searchInput = document.getElementById('salesSearch');
-                        if (searchInput) {
-                            searchInput.value = code;
-                            if (typeof renderSales === 'function') {
-                                renderSales(1);
-                                setTimeout(() => {
-                                    let tbody = document.getElementById('salesTbody');
-                                    if (tbody && tbody.children.length === 1 && tbody.children[0].querySelector('.btn-invoice')) {
-                                        tbody.children[0].querySelector('.btn-invoice').click();
-                                    }
-                                }, 500); // Wait for API fetch and render
-                            }
-                        }
-                    } else {
-                        window.location.href = '/shop/sales?search=' + encodeURIComponent(code);
+                        }, 100);
                     }
                 }
+            } else {
+                window.location.href = '/shop/installments?search=' + encodeURIComponent(cleanCode);
             }
-            barcodeBuffer = '';
+        } else {
+            // Regular sale invoice barcode
+            if (window.location.pathname.includes('/sales')) {
+                let searchInput = document.getElementById('salesSearch');
+                if (searchInput) {
+                    searchInput.value = code;
+                    if (typeof renderSales === 'function') {
+                        renderSales(1);
+                        setTimeout(() => {
+                            let tbody = document.getElementById('salesTbody');
+                            if (tbody && tbody.children.length === 1 && tbody.children[0].querySelector('.btn-invoice')) {
+                                tbody.children[0].querySelector('.btn-invoice').click();
+                            }
+                        }, 500); // Wait for API fetch and render
+                    }
+                }
+            } else {
+                window.location.href = '/shop/sales?search=' + encodeURIComponent(code);
+            }
         }
-    });
+    }
 </script>
 </body>
 </html>

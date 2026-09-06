@@ -666,3 +666,23 @@
     </div>
   </div>
 </div>
+
+<!-- Global Search Modal -->
+<div class="modal-overlay hidden" id="globalSearchModal" style="z-index: 10000;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Search Invoice or Code</h3>
+      <button class="modal-close" onclick="document.getElementById('globalSearchModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Enter your invoice number or code number</label>
+        <input type="text" id="globalSearchInput" class="input" placeholder="Scan barcode or type code..." onkeydown="if(event.key === 'Enter') { processGlobalBarcode(this.value); document.getElementById('globalSearchModal').classList.add('hidden'); this.value = ''; }">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('globalSearchModal').classList.add('hidden')">Cancel</button>
+      <button class="btn btn-primary" onclick="processGlobalBarcode(document.getElementById('globalSearchInput').value); document.getElementById('globalSearchModal').classList.add('hidden'); document.getElementById('globalSearchInput').value = '';">Search</button>
+    </div>
+  </div>
+</div>
