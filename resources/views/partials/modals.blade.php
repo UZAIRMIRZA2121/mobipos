@@ -180,9 +180,7 @@
             </button>
           </div>
         </div>
-        <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" class="input" min="0" value="1" step="any" oninput="if(typeof renderImeiFields === 'function') renderImeiFields()"/></div>
-        <div class="form-group"><label>Unit</label><select id="prodUnit" class="input"><option value="pcs">Pieces (pcs)</option><option value="kg">Kilograms (kg)</option><option value="g">Grams (g)</option><option value="liters">Liters (L)</option></select></div>
-        <div class="form-group module-field module-mobile" id="groupImei">
+        <div class="form-group module-field module-mobile" id="groupImei" style="grid-column: span 2;">
           <label>IMEI / Serial Numbers (Available)</label>
           <div id="groupImeiInner" style="max-height: 250px; overflow-y: auto; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: #fafafa; display: flex; flex-direction: column; gap: 10px;">
              <!-- populated dynamically by JS -->
@@ -197,6 +195,8 @@
             </div>
           </div>
         </div>
+        <div class="form-group"><label>Stock Quantity</label><input type="number" id="prodStock" class="input" min="0" value="1" step="any" oninput="if(typeof renderImeiFields === 'function') renderImeiFields()"/></div>
+        <div class="form-group module-field module-cosmetics module-garments module-shoes module-retail_grocery module-toys module-fast_food"><label>Unit</label><select id="prodUnit" class="input"><option value="pcs">Pieces (pcs)</option><option value="kg">Kilograms (kg)</option><option value="g">Grams (g)</option><option value="liters">Liters (L)</option></select></div>
         
         <!-- Module Specific Fields -->
         <div class="form-group module-field module-cosmetics module-garments module-shoes module-retail_grocery"><label>Brand</label><input type="text" id="prodBrand" class="input" placeholder="e.g. Nike, L'Oreal"/></div>

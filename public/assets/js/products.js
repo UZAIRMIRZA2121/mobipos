@@ -345,7 +345,7 @@ function toggleProductFields() {
       
       if (stockField) stockField.style.display = 'block';
       if (purchaseField) purchaseField.style.display = 'block';
-      if (unitField) unitField.style.display = 'block';
+      if (unitField) unitField.style.display = (activeModule === 'mobile') ? 'none' : 'block';
       if (barcodeField) barcodeField.style.display = 'block';
       if (codeField) codeField.style.display = 'block';
   }
