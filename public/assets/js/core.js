@@ -361,8 +361,8 @@ function getCategory(id) { return store.get('categories').find(c => c.id == id) 
 function getProdBadge(p) {
   if (p.status === 'in_repair') return `<span class="badge badge-warning">IN REPAIR</span>`;
   if (p.stock <= 0 || p.status === 'defective') return `<span class="badge badge-danger">OUT OF STOCK</span>`;
-  if (p.stock < 10) return `<span class="badge badge-warning">LOW STOCK (${p.stock})</span>`;
-  return `<span class="badge badge-success">IN STOCK (${p.stock})</span>`;
+  if (p.stock < 10) return `<span class="badge badge-warning">LOW STOCK (${parseInt(p.stock)})</span>`;
+  return `<span class="badge badge-success">IN STOCK (${parseInt(p.stock)})</span>`;
 }
 function getSupplier(id) { return store.get('suppliers').find(s => s.id == id) || {}; }
 function getCustomer(id) { return store.get('customers').find(c => c.id == id) || {}; }

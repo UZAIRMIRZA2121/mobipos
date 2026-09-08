@@ -194,12 +194,12 @@ function buildProdCard(p) {
 
   const oos = (window.ACTIVE_MODULE !== 'fast_food' && availStock <= 0) || p.status === 'defective' || p.status === 'in_repair';
 
-  let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + availStock + ')';
+  let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + parseInt(availStock) + ')';
   if (window.ACTIVE_MODULE === 'fast_food') {
       stockText = 'Available';
   } else {
       if (oos) { stockBg = '#fee2e2'; stockColor = '#991b1b'; stockText = 'Out of Stock'; }
-      else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + availStock + ')'; }
+      else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + parseInt(availStock) + ')'; }
   }
 
   return `<div class="med-card${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})" style="position:relative; overflow:hidden;">
@@ -230,12 +230,12 @@ function buildProdRow(p) {
 
   const oos = (window.ACTIVE_MODULE !== 'fast_food' && availStock <= 0) || p.status === 'defective' || p.status === 'in_repair';
 
-  let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + availStock + ')';
+  let stockBg = '#d1fae5'; let stockColor = '#065f46'; let stockText = 'In Stock (' + parseInt(availStock) + ')';
   if (window.ACTIVE_MODULE === 'fast_food') {
       stockText = 'Available';
   } else {
       if (oos) { stockBg = '#fee2e2'; stockColor = '#991b1b'; stockText = 'Out of Stock'; }
-      else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + availStock + ')'; }
+      else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + parseInt(availStock) + ')'; }
   }
 
   return `<div class="med-row${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})">
