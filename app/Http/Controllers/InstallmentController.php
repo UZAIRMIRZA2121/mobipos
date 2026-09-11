@@ -114,27 +114,6 @@ class InstallmentController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            // Add to Customer Ledger
-            $lastLedger = CustomerLedger::where('customer_id', $installment->customer_id)
-                ->orderBy('date', 'desc')
-                ->orderBy('id', 'desc')
-                ->first();
-                
-            $previousBalance = $lastLedger ? $lastLedger->balance : 0;
-            $newBalance = $previousBalance - $request->amount; // payment reduces balance
-
-            CustomerLedger::create([
-                'customer_id' => $installment->customer_id,
-                'user_id' => Auth::id(),
-                'date' => $request->payment_date,
-                'type' => 'Installment Payment (Order #' . $installment->order_id . ')',
-                'debit' => 0,
-                'credit' => $request->amount,
-                'balance' => $newBalance,
-                'note' => $request->notes ?? 'Installment payment received',
-                'payment_proof' => null
-            ]);
-
             // Check if fully paid
             $totalPaid = $installment->down_payment + $installment->payments()->sum('amount');
             
@@ -256,28 +235,6 @@ class InstallmentController extends Controller
                 'notes' => $request->notes,
             ]);
 
-            if ($difference != 0) {
-                // Adjust Ledger
-                $lastLedger = CustomerLedger::where('customer_id', $installment->customer_id)
-                    ->orderBy('date', 'desc')
-                    ->orderBy('id', 'desc')
-                    ->first();
-                $previousBalance = $lastLedger ? $lastLedger->balance : 0;
-                $newBalance = $previousBalance - $difference;
-
-                CustomerLedger::create([
-                    'customer_id' => $installment->customer_id,
-                    'user_id' => Auth::id(),
-                    'date' => now()->toDateString(),
-                    'type' => 'Installment Payment Adjustment (Order #' . $installment->order_id . ')',
-                    'debit' => $difference < 0 ? abs($difference) : 0,
-                    'credit' => $difference > 0 ? $difference : 0,
-                    'balance' => $newBalance,
-                    'note' => 'Adjusted payment amount for ' . $payment->payment_date,
-                    'payment_proof' => null
-                ]);
-            }
-
             // Update status
             $totalPaid = $installment->down_payment + $installment->payments()->sum('amount');
             if ($totalPaid >= $installment->total_amount) {
@@ -303,26 +260,6 @@ class InstallmentController extends Controller
             DB::beginTransaction();
 
             $amount = $payment->amount;
-            
-            // Reversal in Ledger
-            $lastLedger = CustomerLedger::where('customer_id', $installment->customer_id)
-                ->orderBy('date', 'desc')
-                ->orderBy('id', 'desc')
-                ->first();
-            $previousBalance = $lastLedger ? $lastLedger->balance : 0;
-            $newBalance = $previousBalance + $amount;
-
-            CustomerLedger::create([
-                'customer_id' => $installment->customer_id,
-                'user_id' => Auth::id(),
-                'date' => now()->toDateString(),
-                'type' => 'Installment Payment Reversal (Order #' . $installment->order_id . ')',
-                'debit' => $amount,
-                'credit' => 0,
-                'balance' => $newBalance,
-                'note' => 'Payment reversed for ' . $payment->payment_date,
-                'payment_proof' => null
-            ]);
 
             $payment->delete();
 
