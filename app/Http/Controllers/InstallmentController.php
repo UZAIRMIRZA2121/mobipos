@@ -152,7 +152,9 @@ class InstallmentController extends Controller
                 \App\Services\UltramsgService::sendMessage(Auth::id(), $installment->customer->phone, $msg);
             }
 
-            return redirect()->route('installments.show', $installment->id)->with('success', 'Payment added successfully.');
+            return redirect()->route('shop.installments.show', $installment->id)
+                ->with('success', 'Payment added successfully.')
+                ->with('print_payment_id', $payment->id);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Error adding payment: ' . $e->getMessage());
@@ -171,6 +173,21 @@ class InstallmentController extends Controller
         
         return view('installments.print', compact('installment', 'totalPaid', 'remaining', 'printSettings', 'storeSetting'));
     }
+
+    public function printPayment($paymentId)
+    {
+        $payment = InstallmentPayment::findOrFail($paymentId);
+        $installment = Installment::with(['customer', 'order.items.product', 'payments'])->where('user_id', Auth::id())->findOrFail($payment->installment_id);
+        
+        $totalPaid = $installment->down_payment + $installment->payments->sum('amount');
+        $remaining = max(0, $installment->total_amount - $totalPaid);
+        
+        $printSettings = \App\Models\InvoiceSetting::where('user_id', Auth::id())->first();
+        $storeSetting = \App\Models\StoreSetting::where('user_id', Auth::id())->first();
+        
+        return view('installments.print_payment', compact('payment', 'installment', 'totalPaid', 'remaining', 'printSettings', 'storeSetting'));
+    }
+
     public function update(Request $request, $id)
     {
         $installment = Installment::where('user_id', Auth::id())->findOrFail($id);

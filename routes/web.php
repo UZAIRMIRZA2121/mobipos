@@ -200,6 +200,7 @@ Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop'
     Route::get('/installments', [App\Http\Controllers\InstallmentController::class, 'index'])->name('installments.index');
     Route::get('/installments/{id}', [App\Http\Controllers\InstallmentController::class, 'show'])->name('installments.show');
     Route::get('/installments/{id}/print', [App\Http\Controllers\InstallmentController::class, 'print'])->name('installments.print');
+    Route::get('/installments/payment/{paymentId}/print', [App\Http\Controllers\InstallmentController::class, 'printPayment'])->name('installments.payment.print');
     Route::post('/installments/{id}/payment', [App\Http\Controllers\InstallmentController::class, 'addPayment'])->name('installments.addPayment');
     Route::put('/installments/{id}', [App\Http\Controllers\InstallmentController::class, 'update'])->name('installments.update');
     Route::put('/installments/payment/{paymentId}', [App\Http\Controllers\InstallmentController::class, 'updatePayment'])->name('installments.updatePayment');
