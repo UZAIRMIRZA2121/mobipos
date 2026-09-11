@@ -202,6 +202,21 @@ function buildProdCard(p) {
       else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + parseInt(availStock) + ')'; }
   }
 
+  let ffVariationsHtml = '';
+  if (window.ACTIVE_MODULE === 'fast_food' && p.meta_data && p.meta_data.fast_food && Object.keys(p.meta_data.fast_food.variations || {}).length > 0) {
+      const vars = p.meta_data.fast_food.variations;
+      ffVariationsHtml = '<div style="margin-top: 4px; display: flex; flex-direction: column; gap: 2px;">';
+      for (const [varId, varData] of Object.entries(vars)) {
+          const varPrice = typeof varData === 'object' ? varData.base_price : varData;
+          const vObj = window.globalVariations ? window.globalVariations.find(v => v.id == varId) : null;
+          const varName = vObj ? vObj.name : `Var ${varId}`;
+          ffVariationsHtml += `<div style="font-size:10px; display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding-bottom:2px;">
+              <span style="color:var(--text-muted);">${varName}</span> <span style="font-weight:700;">${fmtCur(varPrice)}</span>
+          </div>`;
+      }
+      ffVariationsHtml += '</div>';
+  }
+
   return `<div class="med-card${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})" style="position:relative; overflow:hidden;">
     ${(posFilter.showImage && p.image) ? `<img src="/storage/${p.image}" alt="${p.name}" style="width:calc(100% + 24px); height:80px; object-fit:cover; margin:-12px -12px 12px -12px; display:block;">` : ''}
     ${inCart ? `<div class="med-card-incart" style="position:absolute; right:8px; top:8px; background:var(--success); color:white; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; z-index:2; box-shadow:0 2px 4px rgba(0,0,0,0.2);">${cartQty}</div>` : ''}
@@ -217,6 +232,7 @@ function buildProdCard(p) {
       ${p.storage ? `<b>${p.storage}</b> ` : ''} ${p.color ? `· ${p.color}` : ''}
       ${p.imei ? `<br><span style="font-family:monospace; font-size:9.5px;">SN: ${p.imei}</span>` : ''}
     </div>` : ''}
+    ${ffVariationsHtml}
     <div class="med-card-footer" style="margin-top:auto; padding-top:6px; border-top:1px dashed var(--border-light); display:flex; justify-content:flex-end; align-items:center;">
       <span class="med-stock" style="font-size:10px; font-weight:600; padding:2px 6px; border-radius:10px; background:${stockBg}; color:${stockColor};">${stockText}</span>
     </div>
@@ -238,6 +254,21 @@ function buildProdRow(p) {
       else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + parseInt(availStock) + ')'; }
   }
 
+  let ffVariationsHtml = '';
+  if (window.ACTIVE_MODULE === 'fast_food' && p.meta_data && p.meta_data.fast_food && Object.keys(p.meta_data.fast_food.variations || {}).length > 0) {
+      const vars = p.meta_data.fast_food.variations;
+      ffVariationsHtml = '<div style="margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap;">';
+      for (const [varId, varData] of Object.entries(vars)) {
+          const varPrice = typeof varData === 'object' ? varData.base_price : varData;
+          const vObj = window.globalVariations ? window.globalVariations.find(v => v.id == varId) : null;
+          const varName = vObj ? vObj.name : `Var ${varId}`;
+          ffVariationsHtml += `<div style="font-size:10px; padding:2px 6px; border:1px solid var(--border-light); border-radius:4px; background:#f8fafc; color:var(--text);">
+              <span style="color:var(--text-muted);">${varName}:</span> <span style="font-weight:700;">${fmtCur(varPrice)}</span>
+          </div>`;
+      }
+      ffVariationsHtml += '</div>';
+  }
+
   return `<div class="med-row${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})">
     <div class="med-row-info" style="display:flex; align-items:center; gap:12px;">
       ${(posFilter.showImage && p.image) ? `<img src="/storage/${p.image}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0;">` : `<div style="width:40px; height:40px; background:var(--border-light); border-radius:6px; flex-shrink:0; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>`}
@@ -251,6 +282,7 @@ function buildProdRow(p) {
         ${p.color ? p.color + ' · ' : ''}
         <span style="font-size:10px; font-weight:600; padding:2px 6px; border-radius:10px; background:${stockBg}; color:${stockColor};">${stockText}</span>
       </div>
+      ${ffVariationsHtml}
       </div>
     </div>
     <div class="med-row-price" style="display:flex; flex-direction:column; align-items:flex-end; line-height:1.1;">
