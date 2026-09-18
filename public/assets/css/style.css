@@ -1501,8 +1501,8 @@ select.input { cursor: pointer; }
   .pos-premium-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } 
 }
 @media (max-width: 768px) { 
-  .pos-premium-layout { grid-template-columns: 1fr; height: auto; overflow: auto; padding: 10px; } 
-  .pos-premium-grid { height: auto; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } 
+  .pos-premium-layout { grid-template-columns: 1fr; padding: 10px; } 
+  .pos-premium-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); } 
   
   .pos-premium-right { 
       position: fixed;
@@ -1584,4 +1584,13 @@ select.input { cursor: pointer; }
 
 .pos-premium-left { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
 .pos-grid-wrapper { flex: 1; padding: 12px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.pos-premium-grid { flex: 1; overflow-y: auto !important; height: auto !important; min-height: 0; }
+.pos-premium-grid { flex: 1; overflow-y: auto; min-height: 0; }
+
+@media (max-width: 768px) { .pos-premium-header .brand-badge span { display: none !important; } .pos-premium-header .pos-clock { display: none !important; } }
+
+
+@media (max-width: 768px) { .pos-premium-grid { grid-auto-rows: max-content !important; } .med-card { height: auto !important; min-height: max-content !important; } }
+
+
+.pos-premium-grid { grid-auto-rows: max-content !important; } .med-card { height: auto !important; min-height: max-content !important; }
+

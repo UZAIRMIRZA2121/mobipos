@@ -230,6 +230,7 @@ class OrderController extends Controller
             'due_amount' => 'required|numeric',
             'payment_status' => 'required|string',
             'payment_method' => 'required|string',
+            'order_type' => 'nullable|string|in:dine_in,delivery,pickup',
             'items' => 'required|array',
             'items.*.product_id' => [
                 'required',
@@ -262,6 +263,7 @@ class OrderController extends Controller
                 'due_amount' => $order_due,
                 'payment_status' => $is_ledger ? 'paid' : $request->payment_status,
                 'payment_method' => $request->payment_method,
+                'order_type' => $request->order_type,
                 'is_installment' => ($request->payment_method === 'installment' || $request->is_installment == 1) ? 1 : 0,
                 'user_id' => Auth::id(),
             ]);
@@ -466,6 +468,7 @@ class OrderController extends Controller
                 'due_amount' => $order_due,
                 'payment_status' => $is_ledger ? 'paid' : $request->payment_status,
                 'payment_method' => $request->payment_method,
+                'order_type' => $request->order_type,
                 'is_installment' => ($request->payment_method === 'installment' || $request->is_installment == 1) ? 1 : 0,
             ]);
 

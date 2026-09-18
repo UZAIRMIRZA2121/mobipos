@@ -49,12 +49,15 @@
             <div class="pos-med-header" style="border-bottom: none; padding-bottom: 4px;">
               <span id="posProdCount" class="pos-med-count">All products</span>
               <div class="pos-view-toggle">
+                <button class="view-btn" id="viewGrid" onclick="setPosView('grid')" title="Grid view">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </button>
                 <button class="view-btn active" id="viewList" onclick="setPosView('list')" title="List view" style="cursor:default;">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                 </button>
               </div>
             </div>
-            <div id="posProdGrid" class="pos-premium-grid"></div>
+            <div id="posProdGrid" class="pos-premium-grid" style="overflow-y: auto; padding-bottom: 20px;"></div>
           </div>
 
         </div>
@@ -114,8 +117,16 @@
                 </div>
             </div>
             
-            <div class="form-group" style="padding: 0 20px; margin-bottom: 16px; margin-top: -4px;">
-                <input type="text" id="posCustomerName" class="input input-sm" placeholder="Walk-in Customer Name (optional)" style="width: 100%;">
+            <div class="form-group" style="padding: 0 20px; margin-bottom: 16px; margin-top: -4px; display: flex; gap: 4px;">
+                <input type="text" id="posCustomerName" class="input input-sm" placeholder="Walk-in Customer Name (optional)" style="flex: 1; width: 100%;">
+                @if(auth()->user()->storeSetting && auth()->user()->storeSetting->business_type == 'fast_food')
+                <select id="posOrderType" class="input input-sm" style="flex: 1;">
+                    <option value="" disabled selected>Order Type</option>
+                    <option value="dine_in">Dine In</option>
+                    <option value="delivery">Delivery</option>
+                    <option value="pickup">Pickup</option>
+                </select>
+                @endif
             </div>
 
             <div class="checkout-summary-box">

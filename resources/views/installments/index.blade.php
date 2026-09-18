@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<link href="{{ asset('assets/css/tom-select.css') }}" rel="stylesheet">
+<script src="{{ asset('assets/js/tom-select.complete.min.js') }}"></script>
 <style>
   .ts-control { border-radius: 8px; border: 1px solid var(--border); padding: 8px 12px; font-size: 14px; min-height: 42px; background: #fff; }
   .ts-control > input { font-family: inherit; font-size: 14px; }
@@ -437,42 +437,59 @@
     function calcNewInstallment() {
         const base = parseFloat(document.getElementById('newInstBasePrice').value || 0);
         const pct = parseFloat(document.getElementById('newInstPercentage').value || 0);
-        
-        let total = parseFloat(document.getElementById('newInstTotal').value || 0);
-        
-        if (document.activeElement.id === 'newInstPercentage' || document.activeElement.id === 'newInstProduct' || document.activeElement.id === '') {
-            total = base + (base * (pct / 100));
-            document.getElementById('newInstTotal').value = total.toFixed(2);
-        } else if (document.activeElement.id === 'newInstTotal') {
-            total = parseFloat(document.getElementById('newInstTotal').value || 0);
-        }
-
         let advance = parseFloat(document.getElementById('newInstAdvance').value || 0);
-        if (advance > total) {
-            advance = total;
-            document.getElementById('newInstAdvance').value = advance;
-        }
-
-        const remaining = total - advance;
-        document.getElementById('newInstRemaining').value = remaining.toFixed(2);
-
+        const method = document.querySelector('input[name="newInstCalcMethod"]:checked') ? document.querySelector('input[name="newInstCalcMethod"]:checked').value : 'method1';
         let months = parseInt(document.getElementById('newInstMonths').value || 1);
         if (months < 1) {
             months = 1;
             document.getElementById('newInstMonths').value = months;
         }
+        let advanceIsFirst = document.getElementById('newAdvanceIsFirst') ? document.getElementById('newAdvanceIsFirst').checked : false;
 
-        let advanceIsFirst = document.getElementById('newAdvanceIsFirst');
-        let monthly = 0;
-        if (advanceIsFirst && advanceIsFirst.checked) {
-            monthly = (total / months).toFixed(2);
-            document.getElementById('newInstAdvance').value = monthly;
-            const newRemaining = total - parseFloat(monthly);
-            document.getElementById('newInstRemaining').value = newRemaining.toFixed(2);
+        let total = parseFloat(document.getElementById('newInstTotal').value || 0);
+        
+        // Calculate Total
+        if (document.activeElement.id !== 'newInstTotal') {
+            if (method === 'method1') {
+                total = base + (base * (pct / 100));
+            } else { // method2
+                if (advanceIsFirst) {
+                     let pctDec = pct / 100;
+                     total = (base + base * pctDec) / (1 + pctDec / months);
+                } else {
+                     let remainingBase = base - advance;
+                     if (remainingBase < 0) remainingBase = 0;
+                     total = base + (remainingBase * (pct / 100));
+                }
+            }
+            document.getElementById('newInstTotal').value = total.toFixed(2);
         } else {
-            monthly = (remaining / months).toFixed(2);
+            // User manually changing total, recalculate percentage
+            if(base > 0 && method === 'method1') {
+                let newPct = ((total - base) / base) * 100;
+                document.getElementById('newInstPercentage').value = newPct.toFixed(2);
+            } else if (base > 0 && method === 'method2') {
+                let remainingBase = advanceIsFirst ? (base - (total / months)) : (base - advance);
+                if (remainingBase > 0) {
+                     let newPct = ((total - base) / remainingBase) * 100;
+                     document.getElementById('newInstPercentage').value = newPct.toFixed(2);
+                }
+            }
         }
-        document.getElementById('newInstMonthlyAmount').value = monthly;
+
+        if (advanceIsFirst) {
+            advance = total / months;
+            document.getElementById('newInstAdvance').value = advance.toFixed(2);
+            document.getElementById('newInstRemaining').value = (total - advance).toFixed(2);
+            document.getElementById('newInstMonthlyAmount').value = advance.toFixed(2);
+        } else {
+            if (advance > total) {
+                advance = total;
+                document.getElementById('newInstAdvance').value = advance.toFixed(2);
+            }
+            document.getElementById('newInstRemaining').value = (total - advance).toFixed(2);
+            document.getElementById('newInstMonthlyAmount').value = ((total - advance) / months).toFixed(2);
+        }
     }
 
     async function submitNewInstallment() {
@@ -635,9 +652,23 @@
         </select>
       </div>
 
+      <div class="form-group" style="width: 100%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Calculation Method</label>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top: 5px;">
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size: 13px;">
+            <input type="radio" name="newInstCalcMethod" value="method1" checked onchange="calcNewInstallment()">
+            Method 1 (Total = Base + (Base * %))
+          </label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size: 13px;">
+            <input type="radio" name="newInstCalcMethod" value="method2" onchange="calcNewInstallment()">
+            Method 2 (Remaining = Base - Adv, Total = Base + (Remaining * %))
+          </label>
+        </div>
+      </div>
+
       <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
         <label>Actual Price (Base)</label>
-        <input type="number" id="newInstBasePrice" class="input" readonly>
+        <input type="number" id="newInstBasePrice" class="input" oninput="calcNewInstallment()">
       </div>
       
       <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
@@ -707,10 +738,24 @@
         <label>Unit / IMEI</label>
         <div id="editInstImei" style="padding: 10px 12px; background: #f9fafb; border-radius: 8px; border: 1px solid var(--border); font-weight: 500;"></div>
       </div>
+
+      <div class="form-group" style="width: 100%; padding: 0 10px; margin-bottom: 15px;">
+        <label>Calculation Method</label>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top: 5px;">
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size: 13px;">
+            <input type="radio" name="editInstCalcMethod" value="method1" checked onchange="calcEditInstallment()">
+            Method 1 (Total = Base + (Base * %))
+          </label>
+          <label style="display:flex; align-items:center; gap:5px; cursor:pointer; font-size: 13px;">
+            <input type="radio" name="editInstCalcMethod" value="method2" onchange="calcEditInstallment()">
+            Method 2 (Remaining = Base - Adv, Total = Base + (Remaining * %))
+          </label>
+        </div>
+      </div>
       
       <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
         <label>Actual Price (Base)</label>
-        <input type="number" id="editInstBasePrice" class="input" readonly>
+        <input type="number" id="editInstBasePrice" class="input" oninput="calcEditInstallment()">
       </div>
       
       <div class="form-group" style="width: 50%; padding: 0 10px; margin-bottom: 15px;">
@@ -789,45 +834,58 @@
     function calcEditInstallment() {
         const base = parseFloat(document.getElementById('editInstBasePrice').value || 0);
         const pct = parseFloat(document.getElementById('editInstPercentage').value || 0);
-        let total = parseFloat(document.getElementById('editInstTotal').value || 0);
-        
-        if (document.activeElement.id === 'editInstPercentage' || document.activeElement.id === '') {
-            total = base + (base * (pct / 100));
-            document.getElementById('editInstTotal').value = total.toFixed(2);
-        } else if (document.activeElement.id === 'editInstTotal') {
-            total = parseFloat(document.getElementById('editInstTotal').value || 0);
-            if(base > 0) {
-                let newPct = ((total - base) / base) * 100;
-                document.getElementById('editInstPercentage').value = newPct.toFixed(2);
-            }
-        }
-
         let advance = parseFloat(document.getElementById('editInstAdvance').value || 0);
-        if (advance > total) {
-            advance = total;
-        }
-
-        let remaining = total - advance;
-        if(remaining < 0) remaining = 0;
-        document.getElementById('editInstRemaining').value = remaining.toFixed(2);
-
+        const method = document.querySelector('input[name="editInstCalcMethod"]:checked') ? document.querySelector('input[name="editInstCalcMethod"]:checked').value : 'method1';
         let months = parseInt(document.getElementById('editInstMonths').value || 1);
         if (months < 1) {
             months = 1;
             document.getElementById('editInstMonths').value = months;
         }
+        let advanceIsFirst = document.getElementById('editAdvanceIsFirst') ? document.getElementById('editAdvanceIsFirst').checked : false;
 
-        let advanceIsFirst = document.getElementById('editAdvanceIsFirst');
-        let monthly = 0;
-        if (advanceIsFirst && advanceIsFirst.checked) {
-            monthly = (total / months).toFixed(2);
-            document.getElementById('editInstAdvance').value = monthly;
-            const newRemaining = total - parseFloat(monthly);
-            document.getElementById('editInstRemaining').value = newRemaining.toFixed(2);
+        let total = parseFloat(document.getElementById('editInstTotal').value || 0);
+        
+        if (document.activeElement.id !== 'editInstTotal') {
+            if (method === 'method1') {
+                total = base + (base * (pct / 100));
+            } else { // method2
+                if (advanceIsFirst) {
+                     let pctDec = pct / 100;
+                     total = (base + base * pctDec) / (1 + pctDec / months);
+                } else {
+                     let remainingBase = base - advance;
+                     if (remainingBase < 0) remainingBase = 0;
+                     total = base + (remainingBase * (pct / 100));
+                }
+            }
+            document.getElementById('editInstTotal').value = total.toFixed(2);
         } else {
-            monthly = (remaining / months).toFixed(2);
+            // User manually changing total, recalculate percentage
+            if(base > 0 && method === 'method1') {
+                let newPct = ((total - base) / base) * 100;
+                document.getElementById('editInstPercentage').value = newPct.toFixed(2);
+            } else if (base > 0 && method === 'method2') {
+                let remainingBase = advanceIsFirst ? (base - (total / months)) : (base - advance);
+                if (remainingBase > 0) {
+                     let newPct = ((total - base) / remainingBase) * 100;
+                     document.getElementById('editInstPercentage').value = newPct.toFixed(2);
+                }
+            }
         }
-        document.getElementById('editInstMonthlyAmount').value = monthly;
+
+        if (advanceIsFirst) {
+            advance = total / months;
+            document.getElementById('editInstAdvance').value = advance.toFixed(2);
+            document.getElementById('editInstRemaining').value = (total - advance).toFixed(2);
+            document.getElementById('editInstMonthlyAmount').value = advance.toFixed(2);
+        } else {
+            if (advance > total) {
+                advance = total;
+                document.getElementById('editInstAdvance').value = advance.toFixed(2);
+            }
+            document.getElementById('editInstRemaining').value = (total - advance).toFixed(2);
+            document.getElementById('editInstMonthlyAmount').value = ((total - advance) / months).toFixed(2);
+        }
     }
 
     function closeEditInstallmentModal() {

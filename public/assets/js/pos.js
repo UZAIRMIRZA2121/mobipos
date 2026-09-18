@@ -111,7 +111,7 @@ async function loadEditOrderIfAny() {
 
 // State for POS filters
 let posFilter = {
-  view: 'list',
+  view: localStorage.getItem('posView') || 'list',
   showImage: true,
   q: '',
   catId: ''
@@ -128,8 +128,11 @@ function filterPosCat(btn, catId) {
 
 function setPosView(v) {
   posFilter.view = v;
-  document.getElementById('viewGrid').classList.toggle('active', v === 'grid');
-  document.getElementById('viewList').classList.toggle('active', v === 'list');
+  localStorage.setItem('posView', v);
+  const btnGrid = document.getElementById('viewGrid');
+  const btnList = document.getElementById('viewList');
+  if (btnGrid) btnGrid.classList.toggle('active', v === 'grid');
+  if (btnList) btnList.classList.toggle('active', v === 'list');
   const grid = document.getElementById('posProdGrid');
   if (grid) grid.classList.toggle('list-view', v === 'list');
   renderProdGrid();
@@ -188,6 +191,10 @@ function renderProdGrid() {
 }
 
 function buildProdCard(p) {
+  if (typeof p.meta_data === 'string') {
+      try { p.meta_data = JSON.parse(p.meta_data); } catch(e) {}
+  }
+
   const inCart = cart.find(c => c.prodId == p.id);
   const cartQty = inCart ? parseFloat(Number(inCart.qty).toFixed(3)) : 0;
   const availStock = parseFloat(Number(p.stock - cartQty).toFixed(3));
@@ -202,19 +209,69 @@ function buildProdCard(p) {
       else if (availStock < 10) { stockBg = '#fef3c7'; stockColor = '#92400e'; stockText = 'Low Stock (' + parseInt(availStock) + ')'; }
   }
 
-  let ffVariationsHtml = '';
-  if (window.ACTIVE_MODULE === 'fast_food' && p.meta_data && p.meta_data.fast_food && Object.keys(p.meta_data.fast_food.variations || {}).length > 0) {
-      const vars = p.meta_data.fast_food.variations;
-      ffVariationsHtml = '<div style="margin-top: 4px; display: flex; flex-direction: column; gap: 2px;">';
-      for (const [varId, varData] of Object.entries(vars)) {
-          const varPrice = typeof varData === 'object' ? varData.base_price : varData;
-          const vObj = window.globalVariations ? window.globalVariations.find(v => v.id == varId) : null;
-          const varName = vObj ? vObj.name : `Var ${varId}`;
-          ffVariationsHtml += `<div style="font-size:10px; display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding-bottom:2px;">
-              <span style="color:var(--text-muted);">${varName}</span> <span style="font-weight:700;">${fmtCur(varPrice)}</span>
-          </div>`;
+  if (window.ACTIVE_MODULE === 'fast_food') {
+      const saleVal = p.sale !== undefined ? p.sale : p.sale_price;
+      const finalPrice = parseFloat(saleVal) - (parseFloat(p.discount) || 0);
+      let cardPriceHtml = '';
+      if (finalPrice > 0) {
+          cardPriceHtml = `<div style="font-weight:800; font-size:14px; color:var(--primary); margin-top: auto; text-align: center;">${fmtCur(finalPrice)}</div>`;
       }
-      ffVariationsHtml += '</div>';
+
+      let vars = null;
+      if (p.meta_data && p.meta_data.fast_food && p.meta_data.fast_food.variations && Object.keys(p.meta_data.fast_food.variations).length > 0) {
+          vars = p.meta_data.fast_food.variations;
+      }
+      
+      let ffVariationsHtml = '';
+      if (vars) {
+          ffVariationsHtml = '<div style="margin-top: 6px; display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed var(--border-light); padding-top: 6px; flex-grow: 1; justify-content: flex-end;">';
+          for (const [varId, varData] of Object.entries(vars)) {
+              const varPrice = typeof varData === 'object' ? varData.base_price : varData;
+              const vObj = window.globalVariations ? window.globalVariations.find(v => v.id == varId) : null;
+              const varName = vObj ? vObj.name : `Var ${varId}`;
+              ffVariationsHtml += `<div style="font-size:11px; display:flex; justify-content:space-between; align-items:center;">
+                  <span style="color:var(--text-muted);">${varName}</span> <span style="font-weight:700; color:var(--primary);">${fmtCur(varPrice)}</span>
+              </div>`;
+          }
+          ffVariationsHtml += '</div>';
+      }
+
+      return `<div class="med-card${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})" style="height: auto; min-height: 100%; box-sizing: border-box; position:relative; overflow:hidden; display: flex; flex-direction: column; align-items: stretch; text-align: center; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: #fff; cursor: pointer; transition: all 0.2s;">
+        ${(posFilter.showImage && p.image) ? `<img src="/storage/${p.image}" alt="${p.name.replace(/"/g, '&quot;')}" style="width:100%; height:120px; object-fit:cover; border-radius: 8px; margin-bottom: 8px; flex-shrink: 0;">` : `<div style="width:100%; height:120px; flex-shrink: 0; background:var(--surface2); border-radius:8px; margin-bottom:8px; display:flex; align-items:center; justify-content:center;"><svg width="32" height="32" fill="none" stroke="#94a3b8" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`}
+        ${inCart ? `<div class="med-card-incart" style="position:absolute; right:16px; top:16px; background:var(--success); color:white; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; z-index:2; box-shadow:0 2px 4px rgba(0,0,0,0.2);">${cartQty}</div>` : ''}
+        <div class="med-card-name" style="font-weight: 700; font-size: 14px; color: var(--text); margin-bottom: 2px;">
+          ${p.name}
+        </div>
+        ${p.barcode ? `<div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">(Barcode: ${p.barcode})</div>` : ''}
+        ${cardPriceHtml}
+        ${ffVariationsHtml}
+      </div>`;
+  }
+
+  let ffVariationsHtml = '';
+  let listPriceHtml = '';
+  if (window.ACTIVE_MODULE === 'fast_food') {
+      const saleVal = p.sale !== undefined ? p.sale : p.sale_price;
+      const finalPrice = parseFloat(saleVal) - (parseFloat(p.discount) || 0);
+      if (finalPrice > 0) {
+          listPriceHtml = `<span style="font-weight:800; font-size:14px; color:var(--primary);">${fmtCur(finalPrice)}</span>`;
+      }
+      
+      if (p.meta_data && p.meta_data.fast_food && p.meta_data.fast_food.variations && Object.keys(p.meta_data.fast_food.variations).length > 0) {
+          const vars = p.meta_data.fast_food.variations;
+          ffVariationsHtml = '<div style="margin-top: 4px; display: flex; flex-direction: column; gap: 2px;">';
+          for (const [varId, varData] of Object.entries(vars)) {
+              const varPrice = typeof varData === 'object' ? varData.base_price : varData;
+              const vObj = window.globalVariations ? window.globalVariations.find(v => v.id == varId) : null;
+              const varName = vObj ? vObj.name : `Var ${varId}`;
+              ffVariationsHtml += `<div style="font-size:10px; display:flex; justify-content:space-between; align-items:center;">
+                  <span style="color:var(--text-muted);">${varName}</span> <span style="font-weight:600; color:var(--primary);">${fmtCur(varPrice)}</span>
+              </div>`;
+          }
+          ffVariationsHtml += '</div>';
+      }
+  } else {
+      listPriceHtml = `<span style="font-weight:800; font-size:14px; color:var(--primary);">${fmtCur(p.sale - (p.discount || 0))}</span>`;
   }
 
   return `<div class="med-card${oos ? ' out-of-stock' : ''}${inCart ? ' in-cart' : ''}" onclick="addToCart(${p.id})" style="position:relative; overflow:hidden;">
@@ -225,7 +282,7 @@ function buildProdCard(p) {
       <span>${p.name} ${p.condition || p.color ? `<span style="font-size:12px; font-weight:normal; color:var(--primary);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Barcode: ${p.barcode})</span>` : '')}</span>
       <div style="display:flex; flex-direction:column; align-items:flex-end; line-height:1.1;">
         ${p.discount && p.discount > 0 ? `<span style="text-decoration:line-through; font-size:10px; color:var(--text-muted);">${fmtCur(p.sale)}</span>` : ''}
-        <span style="font-weight:800; font-size:14px; color:var(--primary);">${fmtCur(p.sale - (p.discount || 0))}</span>
+        ${listPriceHtml}
       </div>
     </div>
     ${p.storage || p.color || p.imei ? `<div class="med-card-generic" style="font-size:10.5px; color:var(--text-muted); line-height:1.2; margin-bottom:auto; padding-bottom:8px;">
@@ -295,6 +352,8 @@ function buildProdRow(p) {
 // POS Search
 let posSearchTimeout = null;
 document.addEventListener('DOMContentLoaded', () => {
+  setPosView(posFilter.view); // Apply saved view on load
+
   const posSearchEl = document.getElementById('posSearch');
   if (posSearchEl) {
     posSearchEl.addEventListener('keydown', function (e) {
@@ -1017,6 +1076,7 @@ async function checkout() {
   const custName = document.getElementById('posCustomerName')?.value || null;
   const payment = document.getElementById('posPayment')?.value || 'Cash';
   const notes = document.getElementById('posNotes')?.value || '';
+  const orderType = document.getElementById('posOrderType')?.value || null;
 
   let subtotal = 0;
   cart.forEach(c => { subtotal += c.qty * c.price; });
@@ -1064,6 +1124,7 @@ async function checkout() {
     installment_payment_day: (window.installmentData ? window.installmentData.payment_day : 10),
     installment_interest_percentage: (window.installmentData ? window.installmentData.interest_percentage : 0),
     installment_actual_price: (window.installmentData ? window.installmentData.actual_price : 0),
+    order_type: orderType,
     items: cart.map(c => ({
       product_id: c.prodId,
       qty: c.qty,
