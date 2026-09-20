@@ -266,6 +266,7 @@ class OrderController extends Controller
                 'order_type' => $request->order_type,
                 'is_installment' => ($request->payment_method === 'installment' || $request->is_installment == 1) ? 1 : 0,
                 'user_id' => Auth::id(),
+                'installment_calculation_method' => $request->installment_calculation_method ?? 'method1',
             ]);
 
             // Create Items & Deduct Stock

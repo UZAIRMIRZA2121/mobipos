@@ -179,7 +179,7 @@ class InstallmentController extends Controller
 
         $basePrice = $installment->actual_price;
         $interest = $request->interest_percentage;
-        $total = $basePrice + ($basePrice * ($interest / 100));
+        $total = $request->has('total_amount') ? $request->total_amount : ($basePrice + ($basePrice * ($interest / 100)));
         
         $totalPaid = $installment->down_payment + $installment->payments()->sum('amount');
         $remainingForInstallments = $total - $installment->down_payment;
@@ -204,7 +204,8 @@ class InstallmentController extends Controller
                 'installment_months' => $request->installment_months,
                 'installment_monthly_amount' => $monthlyAmount,
                 'installment_interest_percentage' => $interest,
-                'installment_payment_day' => $request->payment_day
+                'installment_payment_day' => $request->payment_day,
+                'installment_calculation_method' => $request->calculation_method ?? 'method1'
             ]);
         }
 

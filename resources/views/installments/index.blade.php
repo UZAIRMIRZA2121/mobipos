@@ -216,7 +216,8 @@
                                     'total_amount' => $installment->total_amount,
                                     'down_payment' => $installment->down_payment,
                                     'months' => $installment->order->installment_months ?? 1,
-                                    'payment_day' => $installment->payment_day
+                                    'payment_day' => $installment->payment_day,
+                                    'calculation_method' => $installment->order->installment_calculation_method ?? 'method1'
                                 ];
                             @endphp
                             <tr class="installment-row" 
@@ -511,6 +512,7 @@
         const payment_day = parseInt(document.getElementById('newInstPaymentDay').value || 10);
         const percentage = parseFloat(document.getElementById('newInstPercentage').value || 0);
         const base_price = parseFloat(document.getElementById('newInstBasePrice').value || 0);
+        const calc_method = document.querySelector('input[name="newInstCalcMethod"]:checked') ? document.querySelector('input[name="newInstCalcMethod"]:checked').value : 'method1';
 
         const payload = {
             buyer_id: custId,
@@ -530,6 +532,7 @@
             installment_payment_day: payment_day,
             installment_interest_percentage: percentage,
             installment_actual_price: base_price,
+            installment_calculation_method: calc_method,
             items: [{
                 product_id: prodId,
                 qty: 1,
@@ -823,6 +826,14 @@
         document.getElementById('editInstBasePrice').value = data.actual_price;
         document.getElementById('editInstPercentage').value = data.interest_percentage;
         document.getElementById('editInstTotal').value = data.total_amount;
+        
+        const method = data.calculation_method || 'method1';
+        const methodRadios = document.getElementsByName('editInstCalcMethod');
+        for (let i = 0; i < methodRadios.length; i++) {
+            if (methodRadios[i].value === method) {
+                methodRadios[i].checked = true;
+            }
+        }
         document.getElementById('editInstAdvance').value = data.down_payment;
         document.getElementById('editInstMonths').value = data.months;
         document.getElementById('editInstPaymentDay').value = data.payment_day;
@@ -897,11 +908,15 @@
         const interest = document.getElementById('editInstPercentage').value;
         const months = document.getElementById('editInstMonths').value;
         const paymentDay = document.getElementById('editInstPaymentDay').value;
+        const calc_method = document.querySelector('input[name="editInstCalcMethod"]:checked') ? document.querySelector('input[name="editInstCalcMethod"]:checked').value : 'method1';
+        const total = document.getElementById('editInstTotal').value;
         
         const payload = {
             interest_percentage: interest,
             installment_months: months,
-            payment_day: paymentDay
+            payment_day: paymentDay,
+            calculation_method: calc_method,
+            total_amount: total
         };
 
         const btn = document.getElementById('btnSubmitEditInst');

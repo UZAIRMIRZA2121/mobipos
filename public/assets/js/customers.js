@@ -363,9 +363,11 @@ function deleteCustomer(id) {
   confirmDelete('Delete this customer?', async () => {
     try {
       await api('/shop/api/customers/' + id, 'DELETE');
-      toast('Customer deleted', 'danger');
+      toast('Customer deleted', 'success');
       await syncData();
-    } catch (e) { toast('Error deleting', 'danger'); }
+    } catch (e) { 
+      toast(e.message || 'Error deleting customer', 'danger'); 
+    }
   });
 }
 

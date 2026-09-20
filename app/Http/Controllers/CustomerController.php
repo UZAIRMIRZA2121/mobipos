@@ -137,6 +137,21 @@ class CustomerController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // Check for active installments
+        $activeInstallments = \App\Models\Installment::where('customer_id', $customer->id)
+            ->where('status', '!=', 'Completed')
+            ->exists();
+
+        if ($activeInstallments) {
+            return response()->json(['message' => 'Cannot delete customer because they have an active installment. Please clear or complete the installment first.'], 422);
+        }
+
+        // Check for outstanding balance
+        $balance = $customer->balance;
+        if (abs($balance) > 0.01) {
+            return response()->json(['message' => 'Cannot delete customer because they have an outstanding balance (PKR ' . number_format($balance, 2) . '). Please settle the account first.'], 422);
+        }
+
         if ($customer->cnic_front) {
             Storage::disk('public')->delete($customer->cnic_front);
         }
