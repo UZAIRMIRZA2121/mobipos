@@ -156,8 +156,9 @@ function renderProdGrid() {
   let prods = store.get('products');
   const q = posFilter.q.toLowerCase();
   if (q) prods = prods.filter(p =>
-    (p.code || '').toLowerCase().includes(q) ||
-    (p.barcode || '').toLowerCase().includes(q)
+    (p.name || '').toLowerCase().includes(q) ||
+    (p.code || '').toLowerCase() === q ||
+    (p.barcode || '').toLowerCase() === q
   );
   // We don't have categories mapped exactly yet, skipping category filter unless implemented
   // if (posFilter.catId) prods = prods.filter(p => p.catId == posFilter.catId);
@@ -242,6 +243,7 @@ function buildProdCard(p) {
         <div class="med-card-name" style="font-weight: 700; font-size: 14px; color: var(--text); margin-bottom: 2px;">
           ${p.name}
         </div>
+        ${p.code ? `<div style="font-size:11px; color:var(--text-muted); margin-bottom:2px;">(Code: ${p.code})</div>` : ''}
         ${p.barcode ? `<div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">(Barcode: ${p.barcode})</div>` : ''}
         ${cardPriceHtml}
         ${ffVariationsHtml}
@@ -279,7 +281,7 @@ function buildProdCard(p) {
     ${inCart ? `<div class="med-card-incart" style="position:absolute; right:8px; top:8px; background:var(--success); color:white; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; z-index:2; box-shadow:0 2px 4px rgba(0,0,0,0.2);">${cartQty}</div>` : ''}
     <div class="med-card-cat">${p.type || 'Phone'} - ${p.condition || 'Used'}</div>
     <div class="med-card-name" style="margin-bottom:2px; display:flex; justify-content:space-between; align-items:flex-start; gap:4px;">
-      <span>${p.name} ${p.condition || p.color ? `<span style="font-size:12px; font-weight:normal; color:var(--primary);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal;"> (Barcode: ${p.barcode})</span>` : '')}</span>
+      <span>${p.name} ${p.condition || p.color ? `<span style="font-size:12px; font-weight:normal; color:var(--primary);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Code: ${p.code})</span>` : ''} ${p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Barcode: ${p.barcode})</span>` : ''}</span>
       <div style="display:flex; flex-direction:column; align-items:flex-end; line-height:1.1;">
         ${p.discount && p.discount > 0 ? `<span style="text-decoration:line-through; font-size:10px; color:var(--text-muted);">${fmtCur(p.sale)}</span>` : ''}
         ${listPriceHtml}
@@ -332,7 +334,7 @@ function buildProdRow(p) {
       <div>
         <div class="med-row-name">
           ${p.meta_data && p.meta_data.brand ? `<div style="font-size:10px; text-transform:uppercase; color:var(--text-muted); font-weight:700; letter-spacing:0.5px; margin-bottom:2px; line-height:1;">${p.meta_data.brand}</div>` : ''}
-          ${p.name} ${p.condition || p.color ? `<span style="font-size:11px; font-weight:normal; color:var(--primary);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Code: ${p.code})</span>` : (p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Barcode: ${p.barcode})</span>` : '')} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart ✕${inCart.qty}</span>` : ''}
+          ${p.name} ${p.condition || p.color ? `<span style="font-size:11px; font-weight:normal; color:var(--primary);">(${[p.condition, p.color].filter(Boolean).join(' - ')})</span>` : ''} ${p.code ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Code: ${p.code})</span>` : ''} ${p.barcode ? `<span style="font-size:12px; color:var(--text-muted); font-weight:normal; margin-left:4px;">(Barcode: ${p.barcode})</span>` : ''} ${inCart ? `<span class="badge badge-success" style="font-size:10px">In cart ✕${inCart.qty}</span>` : ''}
         </div>
         <div class="med-row-meta" style="margin-top: 4px;">
         ${p.storage ? p.storage + ' · ' : ''}
