@@ -18,11 +18,15 @@ class OrderItem extends Model
         'sell_price',
         'user_id',
         'imeis',
-        'meta_data'
+        'meta_data',
+        'is_refunded',
+        'refunded_at',
     ];
 
     protected $casts = [
         'meta_data' => 'array',
+        'is_refunded' => 'boolean',
+        'refunded_at' => 'datetime',
     ];
 
     public function order()
@@ -38,5 +42,10 @@ class OrderItem extends Model
     public function seller()
     {
         return $this->belongsTo(Customer::class, 'seller_id');
+    }
+
+    public function stockUnits()
+    {
+        return $this->hasMany(ProductStockUnit::class, 'order_item_id');
     }
 }

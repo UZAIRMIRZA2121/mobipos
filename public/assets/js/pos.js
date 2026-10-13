@@ -49,8 +49,15 @@ async function loadEditOrderIfAny() {
     window.editingOrderId = order.id;
     cart = [];
 
+    const refundedItems = order.items.filter(item => item.is_refunded);
+    if (refundedItems.length > 0) {
+      const names = refundedItems.map(item => (item.product ? item.product.name : 'Product') + (item.imeis ? ` (${item.imeis})` : '')).join(', ');
+      toast(`Order #${order.id}: Refunded product(s) [${names}] excluded from active cart.`, 'warning');
+    }
+
     const allProducts = store.get('products');
     order.items.forEach(item => {
+      if (item.is_refunded) return;
       const prod = item.product || allProducts.find(p => p.id === item.product_id);
       if (prod) {
         const p = parseFloat(item.sell_price || item.price || prod.sale);

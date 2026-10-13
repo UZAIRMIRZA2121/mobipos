@@ -201,12 +201,18 @@
         </thead>
         <tbody>
             @foreach($order->items as $item)
-            <tr>
+            @php $isItemRefunded = (bool)($item->is_refunded || $order->payment_status === 'refunded'); @endphp
+            <tr @if($isItemRefunded) style="background: #fff5f5;" @endif>
                 <td style="width: 60%">
+                    @if($isItemRefunded)
+                        <div style="margin-bottom: 2px;">
+                            <span style="display:inline-block; background:#dc2626; color:#ffffff; font-size:9px; font-weight:800; padding:1px 5px; border-radius:3px; letter-spacing:0.5px;">REFUNDED</span>
+                        </div>
+                    @endif
                     @if($item->product && isset($item->product->meta_data['brand']) && !empty($item->product->meta_data['brand']))
                         <div class="item-meta" style="text-transform: uppercase; font-weight: bold; font-size: 0.85em; margin-bottom: 1px;">{{ $item->product->meta_data['brand'] }}</div>
                     @endif
-                    <span class="item-name">
+                    <span class="item-name" @if($isItemRefunded) style="text-decoration: line-through; color: #b91c1c;" @endif>
                         {{ $item->product ? $item->product->name : 'Unknown Product' }}
                         @if($item->product && ($item->product->condition || $item->product->color))
                             ({{ collect([$item->product->condition, $item->product->color])->filter()->join(' - ') }})
@@ -227,7 +233,7 @@
                         <div class="item-meta">Code: {{ $item->product->code ?? $item->product->barcode }}</div>
                     @endif
                     @if($item->imeis)
-                        <div class="item-imei">IMEI: {{ $item->imeis }}</div>
+                        <div class="item-imei" @if($isItemRefunded) style="text-decoration: line-through; color: #999;" @endif>IMEI: {{ $item->imeis }}</div>
                     @endif
                     @if($item->product && $item->product->sale_price > $item->sell_price)
                         <div class="item-meta">
@@ -237,13 +243,20 @@
                     @endif
                     <div class="item-meta">@ PKR {{ number_format($item->sell_price) }}</div>
                 </td>
-                <td class="text-center" style="vertical-align: top;">
+                <td class="text-center" style="vertical-align: top; @if($isItemRefunded) text-decoration: line-through; color: #dc2626; @endif">
                     {{ floatval($item->qty) }}
                     @if($item->product && $item->product->unit)
                         <br><span style="font-size: 10px; color: #666;">({{ $item->product->unit }})</span>
                     @endif
                 </td>
-                <td class="text-right" style="vertical-align: top;">PKR {{ number_format($item->sell_price * $item->qty) }}</td>
+                <td class="text-right" style="vertical-align: top;">
+                    @if($isItemRefunded)
+                        <span style="text-decoration: line-through; color: #9ca3af;">PKR {{ number_format($item->sell_price * $item->qty) }}</span>
+                        <div style="color: #dc2626; font-size: 9px; font-weight: bold; margin-top: 1px;">(REFUNDED)</div>
+                    @else
+                        PKR {{ number_format($item->sell_price * $item->qty) }}
+                    @endif
+                </td>
             </tr>
             @endforeach
         </tbody>
@@ -268,6 +281,20 @@
             <span>+ PKR {{ number_format($order->tax) }}</span>
         </div>
         @endif
+        @php
+            $hasRefundedItems = $order->items->contains(function($i) use ($order) {
+                return $i->is_refunded || $order->payment_status === 'refunded';
+            });
+            $refundedSum = $order->items->where('is_refunded', true)->sum(function($i) {
+                return $i->sell_price * $i->qty;
+            });
+        @endphp
+        @if($hasRefundedItems && $refundedSum > 0 && $order->payment_status !== 'refunded')
+        <div class="info-row" style="color: #dc2626;">
+            <span>Refunded Items:</span>
+            <span>- PKR {{ number_format($refundedSum) }}</span>
+        </div>
+        @endif
         
         <div class="info-row grand-total">
             <span>TOTAL:</span>
@@ -284,7 +311,7 @@
         </div>
         <div class="info-row" style="margin-top: 5px; font-weight: bold;">
             <span>Status:</span>
-            <span style="text-transform: uppercase;">{{ $order->payment_status }}</span>
+            <span style="text-transform: uppercase; color: {{ $order->payment_status === 'refunded' ? '#dc2626' : 'inherit' }}">{{ $order->payment_status }}</span>
         </div>
     </div>
 

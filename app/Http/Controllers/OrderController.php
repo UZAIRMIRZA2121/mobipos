@@ -648,6 +648,10 @@ class OrderController extends Controller
 
         DB::transaction(function () use ($order) {
             foreach ($order->items as $item) {
+                $item->is_refunded = true;
+                $item->refunded_at = now();
+                $item->save();
+
                 \App\Models\ProductStockUnit::where('order_item_id', $item->id)->update([
                     'status' => 'available',
                     'order_item_id' => null
@@ -664,9 +668,214 @@ class OrderController extends Controller
             }
             $this->removeOrderLedgers($order);
             $order->payment_status = 'refunded';
+            $order->subtotal = 0;
+            $order->total = 0;
+            $order->paid_amount = 0;
+            $order->due_amount = 0;
             $order->save();
+
+            $installment = \App\Models\Installment::where('order_id', $order->id)->first();
+            if ($installment) {
+                $installment->status = 'Refunded';
+                $installment->save();
+            }
         });
 
         return response()->json(['success' => true, 'message' => 'Order refunded successfully']);
+    }
+
+    public function refundItem(Request $request, OrderItem $item)
+    {
+        $order = $item->order;
+        if (!$order || $order->user_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        if ($item->is_refunded) {
+            return response()->json(['success' => false, 'message' => 'This product is already refunded.'], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $refundQty = (float)($request->input('qty') ?: $item->qty);
+            if ($refundQty <= 0) {
+                return response()->json(['success' => false, 'message' => 'Invalid refund quantity.'], 400);
+            }
+            if ($refundQty > $item->qty) {
+                $refundQty = (float)$item->qty;
+            }
+
+            $isFullRefund = ($refundQty >= $item->qty);
+            $selectedUnitIds = $request->input('stock_unit_ids', []);
+            $selectedImeis = $request->input('refund_imeis', []);
+
+            $product = $item->product;
+
+            if ($isFullRefund) {
+                // Full item refund
+                $item->is_refunded = true;
+                $item->refunded_at = now();
+                $item->save();
+
+                // Restore all linked stock units
+                \App\Models\ProductStockUnit::where('order_item_id', $item->id)->update([
+                    'status' => 'available',
+                    'order_item_id' => null
+                ]);
+
+                // Also check if units exist with matching IMEI for this product
+                if (!empty($item->imeis)) {
+                    $allImeis = preg_split('/[\s\|\,]+/', $item->imeis);
+                    $allImeis = array_values(array_filter(array_map('trim', $allImeis)));
+                    \App\Models\ProductStockUnit::where('product_id', $item->product_id)
+                        ->whereIn('imeis', $allImeis)
+                        ->where('status', 'sold')
+                        ->update(['status' => 'available', 'order_item_id' => null]);
+                }
+
+                // Restore product stock
+                if ($product && !$this->shouldBypassStock($product)) {
+                    $product->stock += $item->qty;
+                    if ($product->status === 'sold') {
+                        $product->status = 'in_stock';
+                    }
+                    $product->save();
+                }
+            } else {
+                // Partial refund - split into active item and refunded item
+                $remainingQty = $item->qty - $refundQty;
+
+                // Identify units to refund
+                $refundedImeisList = [];
+                if (!empty($selectedUnitIds)) {
+                    $unitsToRefund = \App\Models\ProductStockUnit::whereIn('id', $selectedUnitIds)
+                        ->where(function($q) use ($item) {
+                            $q->where('order_item_id', $item->id)
+                              ->orWhere('product_id', $item->product_id);
+                        })
+                        ->get();
+                    foreach ($unitsToRefund as $u) {
+                        $refundedImeisList[] = $u->imeis;
+                        $u->update(['status' => 'available', 'order_item_id' => null]);
+                    }
+                } elseif (!empty($selectedImeis)) {
+                    $unitsToRefund = \App\Models\ProductStockUnit::where('product_id', $item->product_id)
+                        ->whereIn('imeis', $selectedImeis)
+                        ->get();
+                    foreach ($unitsToRefund as $u) {
+                        $refundedImeisList[] = $u->imeis;
+                        $u->update(['status' => 'available', 'order_item_id' => null]);
+                    }
+                    foreach ($selectedImeis as $sImei) {
+                        if (!in_array($sImei, $refundedImeisList)) {
+                            $refundedImeisList[] = $sImei;
+                        }
+                    }
+                } else {
+                    $unitsToRefund = \App\Models\ProductStockUnit::where('order_item_id', $item->id)
+                        ->take((int)$refundQty)
+                        ->get();
+                    foreach ($unitsToRefund as $u) {
+                        $refundedImeisList[] = $u->imeis;
+                        $u->update(['status' => 'available', 'order_item_id' => null]);
+                    }
+                }
+
+                // If no ProductStockUnit records exist, fallback to parsing item->imeis
+                if (!empty($item->imeis)) {
+                    $allImeis = preg_split('/[\s\|\,]+/', $item->imeis);
+                    $allImeis = array_values(array_filter(array_map('trim', $allImeis)));
+                    if (empty($refundedImeisList)) {
+                        $refundedImeisList = array_slice($allImeis, 0, (int)$refundQty);
+                    }
+                    $remainingImeisList = array_values(array_diff($allImeis, $refundedImeisList));
+                    $refundedImeisStr = implode(' | ', $refundedImeisList);
+                    $remainingImeisStr = implode(' | ', $remainingImeisList);
+                } else {
+                    $refundedImeisStr = implode(' | ', array_filter($refundedImeisList));
+                    $remainingUnits = \App\Models\ProductStockUnit::where('order_item_id', $item->id)->get();
+                    $remainingImeisStr = $remainingUnits->pluck('imeis')->filter()->implode(' | ');
+                }
+
+                // Create the refunded split OrderItem
+                \App\Models\OrderItem::create([
+                    'order_id' => $item->order_id,
+                    'product_id' => $item->product_id,
+                    'seller_id' => $item->seller_id,
+                    'qty' => $refundQty,
+                    'buy_price' => $item->buy_price,
+                    'sell_price' => $item->sell_price,
+                    'user_id' => $item->user_id,
+                    'imeis' => $refundedImeisStr ?: null,
+                    'meta_data' => $item->meta_data,
+                    'is_refunded' => true,
+                    'refunded_at' => now(),
+                ]);
+
+                // Update original active item
+                $item->qty = $remainingQty;
+                $item->imeis = $remainingImeisStr ?: null;
+                $item->save();
+
+                // Restore product stock
+                if ($product && !$this->shouldBypassStock($product)) {
+                    $product->stock += $refundQty;
+                    if ($product->status === 'sold') {
+                        $product->status = 'in_stock';
+                    }
+                    $product->save();
+                }
+            }
+
+            // Check remaining non-refunded items in this order
+            $activeItems = $order->items()->where('is_refunded', false)->get();
+            $refundedValue = $refundQty * $item->sell_price;
+
+            if ($activeItems->count() === 0) {
+                $order->payment_status = 'refunded';
+                $order->subtotal = 0;
+                $order->total = 0;
+                $order->paid_amount = 0;
+                $order->due_amount = 0;
+                $this->removeOrderLedgers($order);
+
+                $installment = \App\Models\Installment::where('order_id', $order->id)->first();
+                if ($installment) {
+                    $installment->status = 'Refunded';
+                    $installment->save();
+                }
+            } else {
+                $newSubtotal = $activeItems->sum(fn($it) => $it->qty * $it->sell_price);
+                $order->subtotal = $newSubtotal;
+                $order->total = max(0, $newSubtotal - $order->discount + $order->tax);
+                $order->paid_amount = min($order->paid_amount, $order->total);
+                $order->due_amount = max(0, $order->total - $order->paid_amount);
+
+                $installment = \App\Models\Installment::where('order_id', $order->id)->first();
+                if ($installment) {
+                    $installment->actual_price = max(0, $installment->actual_price - $refundedValue);
+                    $interest = $installment->interest_percentage ?? 0;
+                    $installment->total_amount = $installment->actual_price + ($installment->actual_price * ($interest / 100));
+                    $months = $order->installment_months ?: 1;
+                    $remainingAfterDown = max(0, $installment->total_amount - $installment->down_payment);
+                    $installment->agreed_monthly_amount = $months > 0 ? ($remainingAfterDown / $months) : 0;
+                    $installment->save();
+                }
+            }
+            $order->save();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully refunded {$refundQty} unit(s).",
+                'order' => $order->fresh(['items.product', 'buyer']),
+                'product' => $product ? $product->fresh('stockUnits') : null
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }

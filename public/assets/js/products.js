@@ -286,9 +286,12 @@ function renderImeiFields(forceRefresh = false) {
       soldContainer.style.display = 'block';
       let soldHtml = '';
       soldUnits.forEach((u, i) => {
-         soldHtml += `<div style="font-family: var(--mono); font-size: 11px; padding: 4px 0; border-bottom: 1px solid #ffcccc; display: flex; justify-content: space-between;">
-            <span>${u.imeis || 'Unknown IMEI'}</span>
-            <span style="font-weight: bold; font-size: 10px; color: #cc0000; text-transform: uppercase;">${u.status}</span>
+         soldHtml += `<div style="font-family: var(--mono); font-size: 11px; padding: 6px 8px; border-bottom: 1px solid #ffcccc; display: flex; justify-content: space-between; align-items: center; background: #fff; margin-bottom: 4px; border-radius: 4px;">
+            <span style="font-weight: 500;">${u.imeis || 'Unknown IMEI'}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+               <button type="button" class="btn btn-xs" style="background:#fee2e2; color:#dc2626; border:1px solid #f87171; padding:2px 8px; font-size:11px; font-weight:600; border-radius:4px; cursor:pointer;" onclick="refundStockUnitAction(${u.id}, ${prodId})" title="Refund this IMEI/Unit">Refund</button>
+               <span style="font-weight: bold; font-size: 10px; color: #cc0000; text-transform: uppercase;">${u.status}</span>
+            </div>
          </div>`;
       });
       soldInner.innerHTML = soldHtml;
@@ -296,6 +299,35 @@ function renderImeiFields(forceRefresh = false) {
       soldContainer.style.display = 'none';
       soldInner.innerHTML = '';
    }
+}
+
+function refundStockUnitAction(unitId, prodId) {
+   confirmDelete('Are you sure you want to refund this IMEI? It will return to available stock and be refunded from its invoice.', async () => {
+      try {
+         const res = await api(`/shop/api/stock-units/${unitId}/refund`, 'POST');
+         toast(res.message || 'IMEI refunded successfully', 'success');
+
+         // Update the product in store
+         if (res.product) {
+            let products = store.get('products') || [];
+            const idx = products.findIndex(p => p.id == prodId);
+            if (idx !== -1) {
+               products[idx] = res.product;
+               store.set('products', products);
+            }
+            // Update prodStock input if open
+            const stockEl = document.getElementById('prodStock');
+            if (stockEl) stockEl.value = res.product.stock;
+         }
+
+         // Refresh IMEI fields in the modal
+         renderImeiFields(true);
+         if (typeof renderProducts === 'function') renderProducts();
+      } catch (err) {
+         toast(err.message || 'Error refunding IMEI', 'danger');
+         console.error(err);
+      }
+   });
 }
 
 function toggleProductFields() {
@@ -545,19 +577,35 @@ function confirmPrintBarcode() {
   closePrintBarcodeModal();
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+window.currentProdSales = [];
+window.currentProdSalesProductId = null;
+
 async function openProdSalesModal(id) {
   const p = store.get('products').find(x => x.id == id);
   if (!p) return;
   
+  window.currentProdSalesProductId = id;
   document.getElementById('prodSalesModalTitle').textContent = `Sales History: ${p.name}`;
-  document.getElementById('prodSalesTbody').innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 20px;">Loading...</td></tr>';
+  document.getElementById('prodSalesTbody').innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 20px;">Loading...</td></tr>';
   document.getElementById('prodSalesModal').classList.remove('hidden');
   document.getElementById('prodSalesTfoot').innerHTML = '';
 
   try {
     const sales = await api('/shop/api/products/' + id + '/sales');
-    if (sales.length === 0) {
-      document.getElementById('prodSalesTbody').innerHTML = '<tr><td colspan="6" class="empty-cell">No sales found for this product.</td></tr>';
+    window.currentProdSales = sales || [];
+
+    if (!sales || sales.length === 0) {
+      document.getElementById('prodSalesTbody').innerHTML = '<tr><td colspan="8" class="empty-cell">No sales found for this product.</td></tr>';
       return;
     }
 
@@ -565,30 +613,288 @@ async function openProdSalesModal(id) {
     let totalRevenue = 0;
 
     document.getElementById('prodSalesTbody').innerHTML = sales.map(s => {
-      totalQty += Number(s.qty);
-      totalRevenue += Number(s.total);
+      const isRef = !!s.is_refunded;
+      if (!isRef) {
+        totalQty += Number(s.qty);
+        totalRevenue += Number(s.total);
+      }
+
+      let imeiDisplay = '';
+      if (s.imeis) {
+        const imeiList = s.imeis.split('|').map(x => x.trim()).filter(Boolean);
+        imeiDisplay = `<div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">` +
+          imeiList.map(im => `<span style="font-family: monospace; font-size: 10px; background: ${isRef ? '#fee2e2' : '#f3f4f6'}; color: ${isRef ? '#b91c1c' : '#374151'}; padding: 1px 6px; border-radius: 4px; border: 1px solid ${isRef ? '#fca5a5' : '#e5e7eb'};">${escapeHtml(im)}</span>`).join('') +
+          `</div>`;
+      }
+
       return `
-      <tr>
+      <tr style="${isRef ? 'background: #fff5f5; opacity: 0.85;' : ''}">
         <td>${fmtDateTime(s.date)}</td>
-        <td><a href="/shop/orders/${s.order_id}/invoice" target="_blank" style="color:var(--primary);text-decoration:underline;">#${s.order_id}</a></td>
+        <td><a href="/shop/orders/${s.order_id}/invoice" target="_blank" style="color:var(--primary);text-decoration:underline; font-weight:600;">#${s.order_id}</a></td>
+        <td><span class="badge ${s.is_installment ? 'badge-warning' : 'badge-primary'}" style="font-size:11px;">${s.order_type || (s.is_installment ? 'Installment' : 'Billing')}</span></td>
         <td>${s.customer}</td>
-        <td>${s.qty}</td>
+        <td style="${isRef ? 'text-decoration: line-through; color: #dc2626;' : 'font-weight: 600;'}">
+          ${s.qty}
+          ${imeiDisplay}
+        </td>
         <td class="text-right">${fmtCur(s.price)}</td>
-        <td class="text-right" style="font-weight:bold">${fmtCur(s.total)}</td>
+        <td class="text-right" style="${isRef ? 'text-decoration: line-through; color: #9ca3af;' : 'font-weight:bold'}">${fmtCur(s.total)}</td>
+        <td class="text-center">
+          ${isRef ? '<span class="badge badge-danger" style="font-size:10px; padding:3px 8px;">Refunded</span>' : `<button type="button" class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger); padding:2px 8px; font-size:11px; font-weight:600; border-radius:4px;" onclick="refundOrderItemAction(${s.id})">Refund</button>`}
+        </td>
       </tr>
       `;
     }).join('');
 
     document.getElementById('prodSalesTfoot').innerHTML = `
       <tr>
-        <td colspan="3" class="text-right"><strong>Total:</strong></td>
+        <td colspan="4" class="text-right"><strong>Total:</strong></td>
         <td><strong>${totalQty}</strong></td>
         <td></td>
         <td class="text-right" style="color: var(--primary);"><strong>${fmtCur(totalRevenue)}</strong></td>
+        <td></td>
       </tr>
     `;
   } catch (err) {
-    document.getElementById('prodSalesTbody').innerHTML = '<tr><td colspan="6" style="color:red" class="text-center">Error loading sales data</td></tr>';
+    document.getElementById('prodSalesTbody').innerHTML = '<tr><td colspan="8" style="color:red" class="text-center">Error loading sales data</td></tr>';
+  }
+}
+
+function refundOrderItemAction(itemId) {
+  const item = (window.currentProdSales || []).find(x => x.id == itemId);
+  if (!item) return;
+
+  const hasMultipleImeis = item.imei_units && item.imei_units.length > 1;
+  const hasImeis = (item.imei_units && item.imei_units.length > 0) || (item.imeis && item.imeis.includes('|'));
+  const isMultiQty = Number(item.qty) > 1;
+
+  // If quantity > 1 OR there are multiple IMEIs, open the selection/partial refund modal:
+  if (isMultiQty || hasMultipleImeis) {
+    openRefundItemModal(item);
+    return;
+  }
+
+  // If single quantity with a single IMEI or no IMEI:
+  const imeiText = (item.imei_units && item.imei_units[0] && item.imei_units[0].imeis) 
+    ? ` (IMEI: ${item.imei_units[0].imeis})` 
+    : (item.imeis ? ` (IMEI: ${item.imeis})` : '');
+
+  confirmDelete(`Are you sure you want to refund this product${imeiText} from Order #${item.order_id}? This will return it to stock.`, async () => {
+    try {
+      const payload = { qty: 1 };
+      if (item.imei_units && item.imei_units[0]) {
+        if (item.imei_units[0].id) {
+          payload.stock_unit_ids = [item.imei_units[0].id];
+        }
+        if (item.imei_units[0].imeis) {
+          payload.refund_imeis = [item.imei_units[0].imeis];
+        }
+      } else if (item.imeis) {
+        payload.refund_imeis = [item.imeis.trim()];
+      }
+
+      const res = await api(`/shop/api/order-items/${item.id}/refund`, 'POST', payload);
+      toast(res.message || 'Product refunded successfully', 'success');
+
+      // Refresh products from backend so stock numbers are accurate
+      try {
+        const freshProds = await api('/shop/api/products');
+        store.set('products', freshProds);
+        if (typeof renderProducts === 'function') renderProducts();
+      } catch (e) {}
+
+      // Refresh this sales modal
+      if (window.currentProdSalesProductId) {
+        openProdSalesModal(window.currentProdSalesProductId);
+      }
+    } catch (err) {
+      toast(err.message || 'Error refunding product', 'danger');
+      console.error(err);
+    }
+  });
+}
+
+function openRefundItemModal(item) {
+  document.getElementById('refundItemId').value = item.id;
+  document.getElementById('refundOrderId').value = item.order_id;
+  document.getElementById('refundProdId').value = window.currentProdSalesProductId || '';
+  document.getElementById('refundMaxQty').value = item.qty;
+  document.getElementById('refundUnitPrice').value = item.price;
+
+  document.getElementById('refundModalTitle').textContent = `Refund Item - Order #${item.order_id}`;
+  document.getElementById('refundModalSubtitle').textContent = `Sold Qty: ${item.qty} | Price: ${fmtCur(item.price)} each`;
+
+  const imeiUnits = item.imei_units || [];
+  const hasImeis = imeiUnits.length > 0;
+  const imeiSection = document.getElementById('refundImeiSection');
+  const qtySection = document.getElementById('refundQtySection');
+  const imeiList = document.getElementById('refundImeiList');
+
+  if (hasImeis) {
+    imeiSection.style.display = 'block';
+    qtySection.style.display = 'none';
+
+    imeiList.innerHTML = imeiUnits.map((unit, index) => `
+      <label style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <input type="checkbox" class="refund-imei-chk" 
+                 data-unit-id="${unit.id || ''}" 
+                 data-imei="${escapeHtml(unit.imeis || '')}" 
+                 onchange="updateRefundSummary()" 
+                 style="width: 17px; height: 17px; accent-color: #dc2626; cursor: pointer;">
+          <div>
+            <div style="font-family: monospace; font-size: 13px; font-weight: 700; color: #111827;">${escapeHtml(unit.imeis || 'N/A')}</div>
+            <div style="font-size: 11px; color: #6b7280;">Unit #${index + 1}</div>
+          </div>
+        </div>
+        <span class="badge ${unit.is_pta ? 'badge-success' : 'badge-danger'}" style="font-size: 10px; padding: 3px 8px;">
+          ${unit.is_pta ? 'PTA Approved' : 'Non-PTA'}
+        </span>
+      </label>
+    `).join('');
+
+    const btnSelectAll = document.getElementById('btnSelectAllRefundImeis');
+    if (btnSelectAll) btnSelectAll.textContent = 'Select All';
+  } else {
+    imeiSection.style.display = 'none';
+    qtySection.style.display = 'block';
+
+    const qtyInput = document.getElementById('refundQtyInput');
+    qtyInput.min = '1';
+    qtyInput.max = String(item.qty);
+    qtyInput.value = '1';
+    document.getElementById('refundQtyHelp').textContent = `Max available to refund: ${item.qty}`;
+  }
+
+  updateRefundSummary();
+  document.getElementById('refundItemModal').classList.remove('hidden');
+}
+
+function closeRefundItemModal() {
+  document.getElementById('refundItemModal').classList.add('hidden');
+}
+
+function toggleSelectAllRefundImeis() {
+  const checkboxes = document.querySelectorAll('.refund-imei-chk');
+  const allChecked = Array.from(checkboxes).length > 0 && Array.from(checkboxes).every(cb => cb.checked);
+  checkboxes.forEach(cb => cb.checked = !allChecked);
+
+  const btn = document.getElementById('btnSelectAllRefundImeis');
+  if (btn) btn.textContent = allChecked ? 'Select All' : 'Deselect All';
+
+  updateRefundSummary();
+}
+
+function setRefundAllQty() {
+  const max = document.getElementById('refundMaxQty').value;
+  const input = document.getElementById('refundQtyInput');
+  if (input) input.value = max;
+  updateRefundSummary();
+}
+
+function updateRefundSummary() {
+  const unitPrice = parseFloat(document.getElementById('refundUnitPrice').value) || 0;
+  const imeiSection = document.getElementById('refundImeiSection');
+  let selectedQty = 0;
+
+  if (imeiSection && imeiSection.style.display !== 'none') {
+    const checked = document.querySelectorAll('.refund-imei-chk:checked');
+    selectedQty = checked.length;
+
+    const allCheckboxes = document.querySelectorAll('.refund-imei-chk');
+    const btn = document.getElementById('btnSelectAllRefundImeis');
+    if (btn && allCheckboxes.length > 0) {
+      btn.textContent = (checked.length === allCheckboxes.length) ? 'Deselect All' : 'Select All';
+    }
+  } else {
+    const qtyInput = document.getElementById('refundQtyInput');
+    const max = parseFloat(document.getElementById('refundMaxQty').value) || 1;
+    selectedQty = parseFloat(qtyInput ? qtyInput.value : 1) || 0;
+    if (selectedQty > max) {
+      selectedQty = max;
+      if (qtyInput) qtyInput.value = max;
+    }
+    if (selectedQty < 0) {
+      selectedQty = 0;
+      if (qtyInput) qtyInput.value = 0;
+    }
+  }
+
+  const refundAmount = selectedQty * unitPrice;
+  document.getElementById('refundSummaryQty').textContent = `${selectedQty} unit(s)`;
+  document.getElementById('refundSummaryAmount').textContent = fmtCur(refundAmount);
+
+  const btnConfirm = document.getElementById('btnConfirmRefund');
+  if (btnConfirm) {
+    btnConfirm.disabled = (selectedQty <= 0);
+    btnConfirm.style.opacity = (selectedQty <= 0) ? '0.5' : '1';
+    btnConfirm.style.cursor = (selectedQty <= 0) ? 'not-allowed' : 'pointer';
+  }
+}
+
+async function submitRefundItem() {
+  const itemId = document.getElementById('refundItemId').value;
+  const prodId = document.getElementById('refundProdId').value;
+  const imeiSection = document.getElementById('refundImeiSection');
+
+  let qty = 0;
+  let stockUnitIds = [];
+  let refundImeis = [];
+
+  if (imeiSection && imeiSection.style.display !== 'none') {
+    const checked = document.querySelectorAll('.refund-imei-chk:checked');
+    qty = checked.length;
+    if (qty <= 0) {
+      toast('Please select at least 1 IMEI to refund', 'warning');
+      return;
+    }
+    checked.forEach(cb => {
+      const uId = cb.dataset.unitId;
+      const imei = cb.dataset.imei;
+      if (uId) stockUnitIds.push(uId);
+      if (imei) refundImeis.push(imei);
+    });
+  } else {
+    qty = parseFloat(document.getElementById('refundQtyInput').value) || 0;
+    if (qty <= 0) {
+      toast('Please enter a quantity greater than 0', 'warning');
+      return;
+    }
+  }
+
+  const btnConfirm = document.getElementById('btnConfirmRefund');
+  const originalText = btnConfirm.innerHTML;
+  btnConfirm.disabled = true;
+  btnConfirm.innerHTML = 'Processing...';
+
+  try {
+    const payload = {
+      qty: qty,
+      stock_unit_ids: stockUnitIds,
+      refund_imeis: refundImeis
+    };
+
+    const res = await api(`/shop/api/order-items/${itemId}/refund`, 'POST', payload);
+    toast(res.message || 'Refund processed successfully', 'success');
+    closeRefundItemModal();
+
+    // Refresh products in memory
+    try {
+      const freshProds = await api('/shop/api/products');
+      store.set('products', freshProds);
+      if (typeof renderProducts === 'function') renderProducts();
+    } catch (e) {}
+
+    // Reload sales history modal
+    if (prodId) {
+      openProdSalesModal(prodId);
+    }
+  } catch (err) {
+    toast(err.message || 'Error processing refund', 'danger');
+    console.error(err);
+  } finally {
+    btnConfirm.disabled = false;
+    btnConfirm.innerHTML = originalText;
   }
 }
 

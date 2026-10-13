@@ -42,7 +42,7 @@
                     <div class="form-group">
                         <label>Status</label>
                         <p>
-                            <span class="badge {{ $installment->status === 'Completed' ? 'badge-success' : 'badge-warning' }}">
+                            <span class="badge {{ $installment->status === 'Completed' ? 'badge-success' : ($installment->status === 'Refunded' ? 'badge-danger' : 'badge-warning') }}">
                                 {{ $installment->status }}
                             </span>
                         </p>
@@ -52,8 +52,11 @@
                         <div style="margin-top: 5px;">
                             @if($installment->order && $installment->order->items)
                                 @foreach($installment->order->items as $item)
-                                    <span style="display: inline-block; background: #f3f4f6; padding: 6px 10px; border-radius: 4px; font-size: 13px; margin-right: 5px; margin-bottom: 5px;">
-                                        <strong>{{ $item->product->name ?? 'Unknown Product' }}</strong>
+                                    <span style="display: inline-block; background: {{ $item->is_refunded ? '#fee2e2' : '#f3f4f6' }}; padding: 6px 10px; border-radius: 4px; font-size: 13px; margin-right: 5px; margin-bottom: 5px;">
+                                        @if($item->is_refunded)
+                                            <span style="color:#dc2626; font-weight:bold; font-size:10px; margin-right:4px;">[REFUNDED]</span>
+                                        @endif
+                                        <strong @if($item->is_refunded) style="text-decoration: line-through;" @endif>{{ $item->product->name ?? 'Unknown Product' }}</strong>
                                         @if($item->product && $item->product->code)
                                             - Code: {{ $item->product->code }}
                                         @elseif($item->product && $item->product->barcode)
@@ -201,7 +204,11 @@
                 <h3 style="margin: 0;">Receive Payment</h3>
             </div>
             <div class="card-body" style="padding: 20px;">
-                @if($installment->status === 'Completed' || $remaining <= 0)
+                @if($installment->status === 'Refunded')
+                    <div style="padding:20px; background:#fee2e2; color:#991b1b; border-radius:8px; text-align:center; font-weight:600;">
+                        This installment plan has been refunded. No further payments can be recorded.
+                    </div>
+                @elseif($installment->status === 'Completed' || $remaining <= 0)
                     <div style="padding:20px; background:#d1fae5; color:#065f46; border-radius:8px; text-align:center;">
                         This installment plan is fully paid!
                     </div>

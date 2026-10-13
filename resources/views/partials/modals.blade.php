@@ -534,10 +534,12 @@
             <tr>
               <th>Date</th>
               <th>Order #</th>
+              <th>Type</th>
               <th>Customer</th>
               <th>Qty</th>
               <th class="text-right">Price</th>
               <th class="text-right">Total</th>
+              <th class="text-center">Action</th>
             </tr>
           </thead>
           <tbody id="prodSalesTbody">
@@ -551,6 +553,65 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeProdSalesModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Refund Item Modal (for partial / IMEI / multi-qty refund) -->
+<div class="modal-overlay hidden" id="refundItemModal" style="z-index: 1050;">
+  <div class="modal modal-md">
+    <div class="modal-header" style="border-bottom: 1px solid var(--border); padding: 14px 20px;">
+      <div>
+        <h3 id="refundModalTitle" style="margin: 0; font-size: 16px; font-weight: 700; color: #111827;">Refund Item</h3>
+        <p id="refundModalSubtitle" style="margin: 2px 0 0; font-size: 12px; color: #6b7280;">Select quantity or IMEI to refund</p>
+      </div>
+      <button class="modal-close" onclick="closeRefundItemModal()">×</button>
+    </div>
+    <div class="modal-body" style="padding: 20px;">
+      <!-- Hidden inputs -->
+      <input type="hidden" id="refundItemId" value="" />
+      <input type="hidden" id="refundOrderId" value="" />
+      <input type="hidden" id="refundProdId" value="" />
+      <input type="hidden" id="refundMaxQty" value="1" />
+      <input type="hidden" id="refundUnitPrice" value="0" />
+
+      <!-- Section A: If product has IMEIs -->
+      <div id="refundImeiSection" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <label style="font-weight: 600; font-size: 13px; color: #374151; margin: 0;">Select Sold IMEIs to Refund:</label>
+          <button type="button" class="btn btn-xs btn-outline" onclick="toggleSelectAllRefundImeis()" id="btnSelectAllRefundImeis" style="padding: 2px 8px; font-size: 11px;">Select All</button>
+        </div>
+        <div id="refundImeiList" style="max-height: 200px; overflow-y: auto; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: #fafafa; display: flex; flex-direction: column; gap: 8px;">
+          <!-- Dynamically populated checkboxes -->
+        </div>
+        <small style="color: #6b7280; font-size: 11px; margin-top: 6px; display: block;">* Each checked IMEI will be returned to stock and refunded from this invoice.</small>
+      </div>
+
+      <!-- Section B: If product does NOT have IMEIs (Quantity input) -->
+      <div id="refundQtySection" style="display: none;">
+        <label style="font-weight: 600; font-size: 13px; color: #374151; margin-bottom: 6px; display: block;">Enter Quantity to Refund:</label>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <input type="number" id="refundQtyInput" class="input" min="1" step="1" value="1" style="font-size: 15px; font-weight: 600; width: 140px;" oninput="updateRefundSummary()" />
+          <button type="button" class="btn btn-outline btn-sm" onclick="setRefundAllQty()">Refund All</button>
+        </div>
+        <small id="refundQtyHelp" style="color: #6b7280; font-size: 11px; margin-top: 6px; display: block;">Max available to refund: 2</small>
+      </div>
+
+      <!-- Summary banner -->
+      <div style="margin-top: 20px; background: #fff5f5; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <span style="font-size: 12px; color: #991b1b; font-weight: 600; display: block;">Selected for Refund</span>
+          <span id="refundSummaryQty" style="font-size: 14px; font-weight: 700; color: #dc2626;">0 item(s)</span>
+        </div>
+        <div style="text-align: right;">
+          <span style="font-size: 12px; color: #991b1b; font-weight: 600; display: block;">Refund Amount</span>
+          <span id="refundSummaryAmount" style="font-size: 16px; font-weight: 700; color: #dc2626;">PKR 0.00</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="border-top: 1px solid var(--border); padding: 12px 20px; display: flex; justify-content: flex-end; gap: 10px;">
+      <button type="button" class="btn btn-ghost" onclick="closeRefundItemModal()">Cancel</button>
+      <button type="button" class="btn btn-danger" id="btnConfirmRefund" onclick="submitRefundItem()" style="padding: 8px 18px; font-weight: 600;">Confirm Refund</button>
     </div>
   </div>
 </div>

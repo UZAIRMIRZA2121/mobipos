@@ -171,7 +171,10 @@
                                 $dueColor = '';
                                 $paidThisMonth = 0;
                                 
-                                if ($installment->status === 'Completed' || $remaining <= 0) {
+                                if ($installment->status === 'Refunded') {
+                                    $dueText = 'Refunded';
+                                    $dueColor = '#ef4444';
+                                } elseif ($installment->status === 'Completed' || $remaining <= 0) {
                                     $dueText = 'Fully Paid';
                                     $dueColor = '#10b981';
                                 } else {
@@ -247,7 +250,7 @@
                                     <div style="font-size: 11px; color: #6b7280; margin-top: 2px;">Pend: PKR {{ number_format($installment->pending_profit ?? 0, 2) }}</div>
                                 </td>
                                 <td>
-                                    <span class="badge {{ $installment->status === 'Completed' ? 'badge-success' : 'badge-warning' }}">
+                                    <span class="badge {{ $installment->status === 'Completed' ? 'badge-success' : ($installment->status === 'Refunded' ? 'badge-danger' : 'badge-warning') }}">
                                         {{ $installment->status }}
                                     </span>
                                 </td>
@@ -264,9 +267,11 @@
                                         <a href="{{ route('shop.installments.print', $installment->id) }}" class="action-btn" style="background:#fef3c7; color:#d97706;" target="_blank" title="Print Installment Details">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
                                         </a>
+                                        @if($installment->status !== 'Refunded')
                                         <button type="button" class="action-btn edit" style="background:#e0f2fe; color:#0284c7; border:none; cursor:pointer;" data-edit='{{ json_encode($editData, JSON_HEX_APOS) }}' onclick="openEditInstallmentModal(this)" title="Edit Installment Setup">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                         </button>
+                                        @endif
                                         <button type="button" class="action-btn delete" style="background:#fee2e2; color:#dc2626; border:none; cursor:pointer;" onclick="deleteInstallment({{ $installment->order_id }})" title="Delete Installment Setup">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                                         </button>

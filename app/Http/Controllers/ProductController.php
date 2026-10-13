@@ -7,6 +7,7 @@ use App\Models\ProductStockUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
@@ -173,9 +174,7 @@ class ProductController extends Controller
             }
         }
 
-        return response()->json($product->load(['stockUnits' => function($q) {
-            $q->where('status', 'available');
-        }]));
+        return response()->json($product->load('stockUnits'));
     }
 
     public function destroy(Product $product)
@@ -202,20 +201,209 @@ class ProductController extends Controller
             ->whereHas('order', function($q) {
                 $q->where('user_id', Auth::id());
             })
-            ->with(['order', 'order.buyer'])
+            ->with(['order', 'order.buyer', 'stockUnits'])
+            ->latest('id')
             ->get()
             ->map(function($item) {
+                $isRefunded = (bool)($item->is_refunded || ($item->order && $item->order->payment_status === 'refunded'));
+                
+                $imeiUnits = [];
+                if ($item->stockUnits && $item->stockUnits->count() > 0) {
+                    foreach ($item->stockUnits as $unit) {
+                        $imeiUnits[] = [
+                            'id' => $unit->id,
+                            'imeis' => $unit->imeis,
+                            'is_pta' => (bool)$unit->is_pta,
+                            'status' => $unit->status,
+                        ];
+                    }
+                } elseif (!empty($item->imeis)) {
+                    $rawImeis = preg_split('/[\s\|\,]+/', $item->imeis);
+                    $rawImeis = array_values(array_filter(array_map('trim', $rawImeis)));
+                    foreach ($rawImeis as $imeiStr) {
+                        $existingUnit = \App\Models\ProductStockUnit::where('product_id', $item->product_id)
+                            ->where('imeis', $imeiStr)
+                            ->first();
+                        $imeiUnits[] = [
+                            'id' => $existingUnit ? $existingUnit->id : null,
+                            'imeis' => $imeiStr,
+                            'is_pta' => $existingUnit ? (bool)$existingUnit->is_pta : false,
+                            'status' => $existingUnit ? $existingUnit->status : 'sold',
+                        ];
+                    }
+                }
+
                 return [
+                    'id' => $item->id,
                     'date' => $item->order->created_at->format('Y-m-d H:i:s'),
                     'order_id' => $item->order_id,
-                    'customer' => $item->order->buyer ? $item->order->buyer->name : 'Walk-in',
-                    'qty' => $item->qty,
-                    'price' => $item->sell_price,
-                    'total' => $item->qty * $item->sell_price
+                    'is_installment' => (bool)$item->order->is_installment,
+                    'order_type' => $item->order->is_installment ? 'Installment' : 'Billing',
+                    'customer' => $item->order->buyer ? $item->order->buyer->name : ($item->order->customer_name ?: 'Walk-in'),
+                    'qty' => (float)$item->qty,
+                    'price' => (float)$item->sell_price,
+                    'total' => (float)($item->qty * $item->sell_price),
+                    'imeis' => $item->imeis,
+                    'imei_units' => $imeiUnits,
+                    'is_refunded' => $isRefunded,
+                    'order_payment_status' => $item->order->payment_status
                 ];
             });
 
         return response()->json($sales);
+    }
+
+    private function removeOrderLedgers(\App\Models\Order $order)
+    {
+        $ledgers = \App\Models\CustomerLedger::where('type', 'like', '%Order #' . $order->id . ')%')->get();
+        foreach ($ledgers as $ledger) {
+            $deletedDate = $ledger->date;
+            $deletedId = $ledger->id;
+            $customerId = $ledger->customer_id;
+            
+            if ($ledger->payment_proof) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($ledger->payment_proof);
+            }
+            $ledger->delete();
+
+            $subsequentLedgers = \App\Models\CustomerLedger::where('customer_id', $customerId)
+                ->where(function($query) use ($deletedDate, $deletedId) {
+                    $query->where('date', '>', $deletedDate)
+                          ->orWhere(function($q) use ($deletedDate, $deletedId) {
+                              $q->where('date', '=', $deletedDate)
+                                ->where('id', '>', $deletedId);
+                          });
+                })
+                ->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
+
+            $previousLedger = \App\Models\CustomerLedger::where('customer_id', $customerId)
+                ->where(function($query) use ($deletedDate, $deletedId) {
+                    $query->where('date', '<', $deletedDate)
+                          ->orWhere(function($q) use ($deletedDate, $deletedId) {
+                              $q->where('date', '=', $deletedDate)
+                                ->where('id', '<', $deletedId);
+                          });
+                })
+                ->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
+
+            $currentBalance = $previousLedger ? (float)$previousLedger->balance : 0;
+            foreach ($subsequentLedgers as $subLedger) {
+                $currentBalance = $currentBalance + $subLedger->debit - $subLedger->credit;
+                $subLedger->update(['balance' => $currentBalance]);
+            }
+        }
+    }
+
+    public function refundStockUnit(ProductStockUnit $stockUnit)
+    {
+        $product = $stockUnit->product;
+        if (!$product || $product->user_id !== Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        if ($stockUnit->status === 'available') {
+            return response()->json(['success' => false, 'message' => 'This unit is already available in stock.'], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $orderItem = $stockUnit->order_item_id ? \App\Models\OrderItem::with('order')->find($stockUnit->order_item_id) : null;
+
+            // Make stock unit available
+            $stockUnit->status = 'available';
+            $stockUnit->order_item_id = null;
+            $stockUnit->save();
+
+            // Increase product stock
+            $product->stock += 1;
+            if ($product->status === 'sold') {
+                $product->status = 'in_stock';
+            }
+            $product->save();
+
+            // If attached to an order item, refund / update order item & order
+            if ($orderItem) {
+                $order = $orderItem->order;
+                
+                if ($orderItem->qty > 1) {
+                    // Split into active and refunded item
+                    $remainingQty = $orderItem->qty - 1;
+
+                    \App\Models\OrderItem::create([
+                        'order_id' => $orderItem->order_id,
+                        'product_id' => $orderItem->product_id,
+                        'seller_id' => $orderItem->seller_id,
+                        'qty' => 1,
+                        'buy_price' => $orderItem->buy_price,
+                        'sell_price' => $orderItem->sell_price,
+                        'user_id' => $orderItem->user_id,
+                        'imeis' => $stockUnit->imeis,
+                        'meta_data' => $orderItem->meta_data,
+                        'is_refunded' => true,
+                        'refunded_at' => now(),
+                    ]);
+
+                    $orderItem->qty = $remainingQty;
+                    $remainingUnits = \App\Models\ProductStockUnit::where('order_item_id', $orderItem->id)->get();
+                    $orderItem->imeis = $remainingUnits->pluck('imeis')->filter()->implode(' | ') ?: null;
+                    $orderItem->save();
+                } else {
+                    $orderItem->is_refunded = true;
+                    $orderItem->refunded_at = now();
+                    $orderItem->save();
+                }
+
+                if ($order) {
+                    $activeItems = $order->items()->where('is_refunded', false)->get();
+                    if ($activeItems->count() === 0) {
+                        $order->payment_status = 'refunded';
+                        $order->subtotal = 0;
+                        $order->total = 0;
+                        $order->paid_amount = 0;
+                        $order->due_amount = 0;
+
+                        // Remove ledgers
+                        $this->removeOrderLedgers($order);
+
+                        $installment = \App\Models\Installment::where('order_id', $order->id)->first();
+                        if ($installment) {
+                            $installment->status = 'Refunded';
+                            $installment->save();
+                        }
+                    } else {
+                        $newSubtotal = $activeItems->sum(fn($it) => $it->qty * $it->sell_price);
+                        $order->subtotal = $newSubtotal;
+                        $order->total = max(0, $newSubtotal - $order->discount + $order->tax);
+                        $order->paid_amount = min($order->paid_amount, $order->total);
+                        $order->due_amount = max(0, $order->total - $order->paid_amount);
+
+                        $installment = \App\Models\Installment::where('order_id', $order->id)->first();
+                        if ($installment) {
+                            $installment->actual_price = max(0, $installment->actual_price - $orderItem->sell_price);
+                            $interest = $installment->interest_percentage ?? 0;
+                            $installment->total_amount = $installment->actual_price + ($installment->actual_price * ($interest / 100));
+                            $months = $order->installment_months ?: 1;
+                            $remainingAfterDown = max(0, $installment->total_amount - $installment->down_payment);
+                            $installment->agreed_monthly_amount = $months > 0 ? ($remainingAfterDown / $months) : 0;
+                            $installment->save();
+                        }
+                    }
+                    $order->save();
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'IMEI refunded and returned to stock successfully.',
+                'product' => $product->fresh('stockUnits')
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     public function barcodeLookup($barcode)

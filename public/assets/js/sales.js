@@ -148,16 +148,23 @@ function buildInvoiceHTML(inv, ledgerHtml = '') {
   }
 
   // Build item rows
-  const itemRows = inv.items.map(it => `
-    <tr>
+  const itemRows = inv.items.map(it => {
+    const isRef = it.is_refunded || inv.payment_status === 'refunded';
+    return `
+    <tr style="${isRef ? 'background:#fff5f5;' : ''}">
       <td>
-        <div class="r-item-name">${it.product ? it.product.name : (it.name || 'Unknown')}</div>
-        ${it.imeis ? `<div style="font-size: 8px; color: #555; margin-top: 2px;">IMEI/SN: ${it.imeis}</div>` : ''}
+        ${isRef ? '<span style="background:#dc2626; color:#fff; font-size:8px; font-weight:bold; padding:1px 4px; border-radius:2px; margin-right:3px;">REFUNDED</span>' : ''}
+        <span class="r-item-name" style="${isRef ? 'text-decoration:line-through; color:#b91c1c;' : ''}">${it.product ? it.product.name : (it.name || 'Unknown')}</span>
+        ${it.imeis ? `<div style="font-size: 8px; color: #555; margin-top: 2px; ${isRef ? 'text-decoration:line-through;' : ''}">IMEI/SN: ${it.imeis}</div>` : ''}
       </td>
-      <td style="text-align:center">${it.qty}</td>
+      <td style="text-align:center; ${isRef ? 'text-decoration:line-through; color:#dc2626;' : ''}">${it.qty}</td>
       <td style="text-align:right">${parseFloat(it.price).toFixed(0)}</td>
-      <td style="text-align:right">${parseFloat(it.sub || (it.qty * it.price)).toFixed(0)}</td>
-    </tr>`).join('');
+      <td style="text-align:right; ${isRef ? 'text-decoration:line-through; color:#9ca3af;' : ''}">
+        ${parseFloat(it.sub || (it.qty * it.price)).toFixed(0)}
+        ${isRef ? '<div style="color:#dc2626; font-size:8px; font-weight:bold;">(REFUNDED)</div>' : ''}
+      </td>
+    </tr>`;
+  }).join('');
 
   const custPhone = inv.custId ? (getCustomer(inv.custId).phone || '') : '';
 
@@ -366,7 +373,20 @@ async function renderSales(page = 1) {
           <td style="white-space:nowrap;font-weight:700;color:var(--primary)">${fmtCur(i.total)}</td>
           <td style="white-space:nowrap">${fmtCur(Math.min(parseFloat(i.paid_amount) || 0, parseFloat(i.total) || 0))}</td>
           <td>
-            <span class="badge ${i.payment_status === 'paid' ? 'badge-success' : (i.payment_status === 'refunded' ? 'badge-gray' : (i.payment_status === 'partial' ? 'badge-warning' : 'badge-danger'))}" style="text-transform:capitalize">${i.payment_status}</span>
+            ${(() => {
+              const hasRefunded = i.items && i.items.some(x => x.is_refunded);
+              if (i.payment_status === 'refunded') {
+                return '<span class="badge badge-gray" style="text-transform:capitalize">Refunded</span>';
+              } else if (hasRefunded) {
+                return '<span class="badge badge-warning" style="text-transform:capitalize">Partial Refund</span>';
+              } else if (i.payment_status === 'paid') {
+                return '<span class="badge badge-success" style="text-transform:capitalize">Paid</span>';
+              } else if (i.payment_status === 'partial') {
+                return '<span class="badge badge-warning" style="text-transform:capitalize">Partial</span>';
+              } else {
+                return `<span class="badge badge-danger" style="text-transform:capitalize">${i.payment_status}</span>`;
+              }
+            })()}
           </td>
           <td><span class="badge badge-gray" style="text-transform:capitalize">${i.payment_method}</span></td>
           <td>${fmtDateTime(i.created_at)}</td>

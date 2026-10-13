@@ -21,4 +21,9 @@ class ProductStockUnit extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function orderItem()
+    {
+        return $this->belongsTo(OrderItem::class, 'order_item_id');
+    }
 }

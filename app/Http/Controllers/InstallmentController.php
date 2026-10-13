@@ -103,6 +103,10 @@ class InstallmentController extends Controller
 
         $installment = Installment::where('user_id', Auth::id())->findOrFail($id);
 
+        if ($installment->status === 'Refunded') {
+            return redirect()->back()->with('error', 'Cannot add payment to a refunded installment plan.');
+        }
+
         try {
             DB::beginTransaction();
 

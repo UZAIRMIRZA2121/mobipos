@@ -165,6 +165,8 @@ Route::middleware(['auth', 'role:shop,staff', 'check.privilege'])->prefix('shop'
     Route::put('/api/orders/{order}', [App\Http\Controllers\OrderController::class, 'update'])->name('api.orders.update');
     Route::delete('/api/orders/{order}', [App\Http\Controllers\OrderController::class, 'destroy'])->name('api.orders.destroy');
     Route::post('/api/orders/{order}/refund', [App\Http\Controllers\OrderController::class, 'refund'])->name('api.orders.refund');
+    Route::post('/api/order-items/{item}/refund', [App\Http\Controllers\OrderController::class, 'refundItem'])->name('api.order_items.refund');
+    Route::post('/api/stock-units/{stockUnit}/refund', [App\Http\Controllers\ProductController::class, 'refundStockUnit'])->name('api.stock_units.refund');
     Route::post('/api/orders', [App\Http\Controllers\OrderController::class, 'store'])->name('api.orders.store');
     Route::get('/orders/{order}/invoice', [App\Http\Controllers\OrderController::class, 'invoice'])->name('orders.invoice');
 
