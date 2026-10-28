@@ -7,7 +7,13 @@
         <div class="card" style="flex: 1; min-width: 300px; margin-bottom: 0;">
             <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
                 <h3 style="margin: 0;">Installment Plan Details - Order #{{ $installment->order_id }}</h3>
-                <a href="{{ route('shop.installments.index') }}" class="btn btn-ghost">Back to List</a>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <a href="{{ route('shop.installments.print', $installment->id) }}" target="_blank" class="btn btn-outline" style="border: 1px solid #d1d5db; background:#fff; color:#374151; display:flex; align-items:center; gap:6px; font-weight:500;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        Print Plan
+                    </a>
+                    <a href="{{ route('shop.installments.index') }}" class="btn btn-ghost">Back to List</a>
+                </div>
             </div>
             <div class="card-body" style="padding: 20px;">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
@@ -162,7 +168,13 @@
                                 <td>PKR {{ number_format($installment->down_payment, 2) }}</td>
                                 <td>{{ ucfirst($installment->order->payment_method ?? 'cash') }}</td>
                                 <td>Advance / Down Payment</td>
-                                <td></td>
+                                <td>
+                                    <div style="display:flex; gap:5px;">
+                                        <button type="button" class="action-btn print" style="background:#f3f4f6; color:#4b5563; border:none; cursor:pointer;" onclick="printOrderInvoice({{ $installment->order_id }})" title="Print Invoice">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                             @endif
 
@@ -355,6 +367,10 @@
 
     function printPayment(id) {
         window.open(`/shop/installments/payment/${id}/print`, 'PrintPayment', 'width=400,height=600');
+    }
+
+    function printOrderInvoice(orderId) {
+        window.open(`/shop/orders/${orderId}/invoice`, 'InvoicePopup', 'width=400,height=600');
     }
 
     @if(session('print_payment_id'))
