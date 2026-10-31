@@ -21,7 +21,7 @@ class ProductController extends Controller
 
     public function apiIndex(Request $request)
     {
-        $products = Product::where('user_id', Auth::id())->with('stockUnits')->get();
+        $products = Product::where('user_id', Auth::id())->with('stockUnits')->orderBy('code', 'asc')->get();
         return response()->json($products);
     }
 
